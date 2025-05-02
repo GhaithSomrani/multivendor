@@ -291,37 +291,37 @@ class AdminVendorsController extends ModuleAdminController
     public function postProcess()
     {
         if (Tools::isSubmit('submitAdd' . $this->table)) {
-            // Handle image uploads
-            if ($this->object->id) {
-                $upload_dir = _PS_IMG_DIR_ . 'vendors/' . $this->object->id . '/';
+            // // Handle image uploads
+            // if ($this->object->id) {
+            //     $upload_dir = _PS_IMG_DIR_ . 'vendors/' . $this->object->id . '/';
 
-                // Create directory if it doesn't exist
-                if (!file_exists($upload_dir)) {
-                    @mkdir($upload_dir, 0777, true);
-                }
+            //     // Create directory if it doesn't exist
+            //     if (!file_exists($upload_dir)) {
+            //         @mkdir($upload_dir, 0777, true);
+            //     }
 
-                // Handle logo upload
-                if (isset($_FILES['logo']) && !empty($_FILES['logo']['name'])) {
-                    $ext = pathinfo($_FILES['logo']['name'], PATHINFO_EXTENSION);
-                    $filename = 'logo_' . $this->object->id . '.' . $ext;
-                    $filepath = $upload_dir . $filename;
+            // Handle logo upload
+            // if (isset($_FILES['logo']) && !empty($_FILES['logo']['name'])) {
+            //     $ext = pathinfo($_FILES['logo']['name'], PATHINFO_EXTENSION);
+            //     $filename = 'logo_' . $this->object->id . '.' . $ext;
+            //     $filepath = $upload_dir . $filename;
 
-                    if (move_uploaded_file($_FILES['logo']['tmp_name'], $filepath)) {
-                        $_POST['logo'] = $filename;
-                    }
-                }
+            //     if (move_uploaded_file($_FILES['logo']['tmp_name'], $filepath)) {
+            //         $_POST['logo'] = $filename;
+            //     }
+            // }
 
-                // Handle banner upload
-                if (isset($_FILES['banner']) && !empty($_FILES['banner']['name'])) {
-                    $ext = pathinfo($_FILES['banner']['name'], PATHINFO_EXTENSION);
-                    $filename = 'banner_' . $this->object->id . '.' . $ext;
-                    $filepath = $upload_dir . $filename;
+            // Handle banner upload
+            // if (isset($_FILES['banner']) && !empty($_FILES['banner']['name'])) {
+            //     $ext = pathinfo($_FILES['banner']['name'], PATHINFO_EXTENSION);
+            //     $filename = 'banner_' . $this->object->id . '.' . $ext;
+            //     $filepath = $upload_dir . $filename;
 
-                    if (move_uploaded_file($_FILES['banner']['tmp_name'], $filepath)) {
-                        $_POST['banner'] = $filename;
-                    }
-                }
-            }
+            //     if (move_uploaded_file($_FILES['banner']['tmp_name'], $filepath)) {
+            //         $_POST['banner'] = $filename;
+            //     }
+            // }
+            // }
         }
 
         return parent::postProcess();
@@ -347,5 +347,55 @@ class AdminVendorsController extends ModuleAdminController
         }
 
         parent::initPageHeaderToolbar();
+    }
+
+    /**
+     * AJAX process to search customers
+     */
+    /**
+     * AJAX process to search customers
+     */
+    public function ajaxProcessSearchCustomers()
+    {
+        $query = Tools::getValue('q', false);
+
+        if (!$query || $query == '' || strlen($query) < 3) {
+            die(json_encode([]));
+        }
+
+        $customers = Db::getInstance()->executeS('
+        SELECT c.id_customer, c.firstname, c.lastname, c.email
+        FROM `' . _DB_PREFIX_ . 'customer` c
+        WHERE (
+            LOWER(c.firstname) LIKE LOWER("%' . pSQL($query) . '%") 
+            OR LOWER(c.lastname) LIKE LOWER("%' . pSQL($query) . '%") 
+            OR LOWER(c.email) LIKE LOWER("%' . pSQL($query) . '%")
+        )
+        ORDER BY c.firstname, c.lastname
+        LIMIT 20
+    ');
+
+        die(json_encode($customers));
+    }
+
+    /**
+     * AJAX process to search suppliers
+     */
+    public function ajaxProcessSearchSuppliers()
+    {
+        $query = Tools::getValue('q', false);
+
+        if (!$query || $query == '' || strlen($query) < 3) {
+            die(json_encode([]));
+        }
+        $suppliers = Db::getInstance()->executeS('
+        SELECT s.id_supplier, s.name
+        FROM `' . _DB_PREFIX_ . 'supplier` s
+        WHERE LOWER(s.name) LIKE LOWER("%' . pSQL($query) . '%")
+        ORDER BY s.name
+        LIMIT 20
+    ');
+
+        die(json_encode($suppliers));
     }
 }

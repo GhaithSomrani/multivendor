@@ -88,6 +88,8 @@ class MultivendorCommissionsModuleFrontController extends ModuleFrontController
         $this->setTemplate('module:multivendor/views/templates/front/commissions.tpl');
     }
 
+
+
     /**
      * Get category-specific commission rates for a vendor
      */

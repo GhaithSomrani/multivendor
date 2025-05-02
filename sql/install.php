@@ -160,6 +160,35 @@ $sql[] = 'INSERT INTO `' . _DB_PREFIX_ . 'configuration` (`name`, `value`, `date
           ("MV_ALLOW_VENDOR_REGISTRATION", "1", NOW(), NOW())
           ON DUPLICATE KEY UPDATE `value` = VALUES(`value`), `date_upd` = VALUES(`date_upd`)';
 
+$sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'order_line_status_type` (
+            `id_order_line_status_type` int(10) unsigned NOT NULL AUTO_INCREMENT,
+            `name` varchar(64) NOT NULL,
+            `color` varchar(32) DEFAULT NULL,
+            `is_vendor_allowed` tinyint(1) unsigned NOT NULL DEFAULT "0",
+            `is_admin_allowed` tinyint(1) unsigned NOT NULL DEFAULT "1",
+            `affects_commission` tinyint(1) unsigned NOT NULL DEFAULT "0",
+            `commission_action` varchar(32) DEFAULT "none",
+            `position` int(10) unsigned NOT NULL DEFAULT "0",
+            `active` tinyint(1) unsigned NOT NULL DEFAULT "1",
+            `date_add` datetime NOT NULL,
+            `date_upd` datetime NOT NULL,
+            PRIMARY KEY (`id_order_line_status_type`)
+        ) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8;';
+
+// Add default order line status types
+$sql[] = 'INSERT INTO `' . _DB_PREFIX_ . 'order_line_status_type` 
+            (`name`, `color`, `is_vendor_allowed`, `is_admin_allowed`, `affects_commission`, `commission_action`, `position`, `active`, `date_add`, `date_upd`) 
+            VALUES 
+            ("Pending", "#FFDD99", 1, 1, 0, "none", 1, 1, NOW(), NOW()),
+            ("Processing", "#8AAAE5", 1, 1, 0, "none", 2, 1, NOW(), NOW()),
+            ("Shipped", "#32CD32", 1, 1, 1, "add", 3, 1, NOW(), NOW()),
+            ("Delivered", "#228B22", 0, 1, 0, "none", 4, 1, NOW(), NOW()),
+            ("Cancelled", "#DC143C", 1, 1, 1, "cancel", 5, 1, NOW(), NOW()),
+            ("Refunded", "#B22222", 0, 1, 1, "refund", 6, 1, NOW(), NOW())
+            ON DUPLICATE KEY UPDATE `date_upd` = VALUES(`date_upd`)';
+
+
+
 // Execute all SQL queries
 foreach ($sql as $query) {
     if (Db::getInstance()->execute($query) == false) {

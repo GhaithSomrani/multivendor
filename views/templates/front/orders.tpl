@@ -5,7 +5,7 @@
     {extends file='page.tpl'}
     
     {block name='page_title'}
-        {l s='My Orders' mod='multivendor'}
+        {l s='My Order Lines' mod='multivendor'}
     {/block}
     
     {block name='page_content'}
@@ -50,33 +50,98 @@
                 <div class="col-md-9">
                     <div class="card">
                         <div class="card-header">
-                            <h3 class="card-title">{l s='My Orders' mod='multivendor'}</h3>
+                            <h3 class="card-title">{l s='My Order Lines' mod='multivendor'}</h3>
                         </div>
                         <div class="card-body">
-                            {if $orders}
+                            {if isset($success)}
+                                {foreach $success as $msg}
+                                    <div class="alert alert-success">
+                                        {$msg}
+                                    </div>
+                                {/foreach}
+                            {/if}
+                            
+                            {if isset($errors)}
+                                {foreach $errors as $error}
+                                    <div class="alert alert-danger">
+                                        {$error}
+                                    </div>
+                                {/foreach}
+                            {/if}
+                            
+                            {if $order_lines}
                                 <div class="table-responsive">
                                     <table class="table">
                                         <thead>
                                             <tr>
-                                                <th>{l s='Order Reference' mod='multivendor'}</th>
-                                                <th>{l s='Date' mod='multivendor'}</th>
-                                                <th>{l s='Status' mod='multivendor'}</th>
+                                                <th>{l s='Reference' mod='multivendor'}</th>
+                                                <th>{l s='Product' mod='multivendor'}</th>
+                                                <th>{l s='Unit Price' mod='multivendor'}</th>
+                                                <th>{l s='Quantity' mod='multivendor'}</th>
                                                 <th>{l s='Total' mod='multivendor'}</th>
+                                                <th>{l s='Commission' mod='multivendor'}</th>
+                                                <th>{l s='Status' mod='multivendor'}</th>
                                                 <th>{l s='Actions' mod='multivendor'}</th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {foreach from=$orders item=order}
+                                            {foreach from=$order_lines item=line}
                                                 <tr>
-                                                    <td>#{$order.reference}</td>
-                                                    <td>{$order.date_add|date_format:'%Y-%m-%d %H:%M:%S'}</td>
-                                                    <td>{$order.status}</td>
-                                                    <td>{Tools::displayPrice($order.total_paid)}</td>
+                                                    <td>#{$line.order_reference}#{$line.id_order_detail}</td>
+                                                    <td>{$line.product_name}</td>
+                                                    <td>{$line.product_price|displayPrice}</td>
+                                                    <td>{$line.product_quantity}</td>
+                                                    <td>{($line.product_price * $line.product_quantity)|displayPrice}</td>
+                                                    <td>{$line.commission_amount|displayPrice}</td>
                                                     <td>
-                                                        <a href="{$link->getModuleLink('multivendor', 'orders', ['id_order' => $order.id_order])}" class="btn btn-primary btn-sm">
-                                                            <i class="material-icons">visibility</i>
-                                                            {l s='View' mod='multivendor'}
-                                                        </a>
+                                                        <span class="badge" style="background-color: {$status_colors[$line.line_status]}; color: white;">
+                                                            {$line.line_status|capitalize|default:'Pending'}
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        <button class="btn btn-primary btn-sm update-status-btn" data-toggle="modal" data-target="#updateStatus-{$line.id_order_detail}">
+                                                            <i class="material-icons">edit</i>
+                                                            {l s='Update Status' mod='multivendor'}
+                                                        </button>
+                                                        
+                                                        {* Status Update Modal *}
+                                                        <div class="modal fade" id="updateStatus-{$line.id_order_detail}" tabindex="-1" role="dialog" aria-labelledby="updateStatusLabel-{$line.id_order_detail}" aria-hidden="true">
+                                                            <div class="modal-dialog" role="document">
+                                                                <form action="{$link->getModuleLink('multivendor', 'orders')}" method="post">
+                                                                    <div class="modal-content">
+                                                                        <div class="modal-header">
+                                                                            <h5 class="modal-title" id="updateStatusLabel-{$line.id_order_detail}">{l s='Update Order Line Status' mod='multivendor'}</h5>
+                                                                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                                                                <span aria-hidden="true">&times;</span>
+                                                                            </button>
+                                                                        </div>
+                                                                        <div class="modal-body">
+                                                                            <input type="hidden" name="id_order_detail" value="{$line.id_order_detail}">
+                                                                            
+                                                                            <div class="form-group">
+                                                                                <label for="status-{$line.id_order_detail}">{l s='Status' mod='multivendor'}</label>
+                                                                                <select class="form-control" id="status-{$line.id_order_detail}" name="status">
+                                                                                    {foreach from=$statuses key=status_key item=status_label}
+                                                                                    <option value="{$status_key}" {if $line.line_status == $status_key}selected{/if} style="background-color: {$status_colors[$status_key]}">
+                                                                                        {$status_label|escape:'html':'UTF-8'|capitalize}
+                                                                                    </option>
+                                                                                    {/foreach}
+                                                                                </select>
+                                                                            </div>
+                                                                            
+                                                                            <div class="form-group">
+                                                                                <label for="comment-{$line.id_order_detail}">{l s='Comment (optional)' mod='multivendor'}</label>
+                                                                                <textarea class="form-control" id="comment-{$line.id_order_detail}" name="comment" rows="3"></textarea>
+                                                                            </div>
+                                                                        </div>
+                                                                        <div class="modal-footer">
+                                                                            <button type="button" class="btn btn-secondary" data-dismiss="modal">{l s='Cancel' mod='multivendor'}</button>
+                                                                            <button type="submit" name="submitStatusUpdate" class="btn btn-primary">{l s='Update Status' mod='multivendor'}</button>
+                                                                        </div>
+                                                                    </div>
+                                                                </form>
+                                                            </div>
+                                                        </div>
                                                     </td>
                                                 </tr>
                                             {/foreach}
@@ -127,7 +192,7 @@
                                 {/if}
                             {else}
                                 <div class="alert alert-info">
-                                    {l s='No orders found.' mod='multivendor'}
+                                    {l s='No order lines found.' mod='multivendor'}
                                 </div>
                             {/if}
                         </div>

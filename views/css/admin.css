@@ -1,1 +1,23 @@
+.ui-autocomplete {
+    max-height: 300px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    z-index: 9999 !important;
+}
 
+.ui-autocomplete .ui-menu-item {
+    padding: 5px;
+}
+
+.customer-item {
+    padding: 5px;
+}
+
+.customer-autocomplete-container {
+    display: flex;
+    gap: 10px;
+}
+
+.customer-autocomplete-container input {
+    flex-grow: 1;
+}

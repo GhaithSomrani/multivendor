@@ -20,6 +20,7 @@ require_once(dirname(__FILE__) . '/classes/VendorPayment.php');
 require_once(dirname(__FILE__) . '/classes/OrderLineStatus.php');
 require_once(dirname(__FILE__) . '/classes/OrderLineStatusLog.php');
 require_once(dirname(__FILE__) . '/classes/VendorOrderDetail.php');
+require_once(dirname(__FILE__) . '/classes/OrderLineStatusType.php');
 
 class multivendor extends Module
 {
@@ -136,8 +137,13 @@ class multivendor extends Module
             ],
             [
                 'class_name' => 'AdminVendorSettings',
-                'name' => 'Settings'
-            ]
+                'name' => 'Settings',
+
+            ],
+            [
+                'class_name' => 'AdminOrderLineStatus',
+                'name' => 'Order Line Statuses'
+            ],
         ];
 
         foreach ($tabs as $t) {
@@ -168,7 +174,8 @@ class multivendor extends Module
             'AdminVendorCommissions',
             'AdminVendorPayments',
             'AdminVendorSettings',
-            'AdminVendor'
+            'AdminVendor',
+            'AdminOrderLineStatus'
         ];
 
         foreach ($tabs as $className) {
@@ -548,6 +555,7 @@ class multivendor extends Module
                 $this->context->smarty->assign([
                     'is_vendor' => false,
                     'vendor_register_url' => $this->context->link->getModuleLink('multivendor', 'register', [])
+
                 ]);
 
                 return $this->display(__FILE__, 'views/templates/front/customer_account.tpl');
@@ -611,7 +619,7 @@ class multivendor extends Module
      */
     public function hookActionAdminControllerSetMedia($params)
     {
-
+        $this->context->controller->addJS($this->_path . 'views/js/admin.js');
         $this->context->controller->addJS($this->_path . 'views/js/admin-orders.js');
         $this->context->controller->addCSS($this->_path . 'views/css/admin.css');
     }
