@@ -112,7 +112,7 @@ $sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'order_line_status_log` 
     `id_order_line_status_log` int(10) unsigned NOT NULL AUTO_INCREMENT,
     `id_order_detail` int(10) unsigned NOT NULL,
     `id_vendor` int(10) unsigned NOT NULL,
-    `old_status` varchar(32) NOT NULL,
+    `old_status` varchar(32),
     `new_status` varchar(32) NOT NULL,
     `comment` text,
     `changed_by` int(10) unsigned NOT NULL,

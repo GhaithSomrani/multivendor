@@ -89,13 +89,13 @@
                                                 <tr>
                                                     <td>#{$line.order_reference}#{$line.id_order_detail}</td>
                                                     <td>{$line.product_name}</td>
-                                                    <td>{$line.product_price|displayPrice}</td>
+                                                    <td>{$line.unit_price_tax_incl|displayPrice}</td>
                                                     <td>{$line.product_quantity}</td>
-                                                    <td>{($line.product_price * $line.product_quantity)|displayPrice}</td>
+                                                    <td>{$line.total_price_tax_incl|displayPrice}</td>
                                                     <td>{$line.commission_amount|displayPrice}</td>
                                                     <td>
                                                         <span class="badge" style="background-color: {$status_colors[$line.line_status]}; color: white;">
-                                                            {$line.line_status|capitalize|default:'Pending'}
+                                                            {$line.line_status|capitalize}
                                                         </span>
                                                     </td>
                                                     <td>

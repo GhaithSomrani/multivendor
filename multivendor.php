@@ -467,9 +467,9 @@ class multivendor extends Module
             if ($vendor) {
                 // Calculate commission
                 $commission_rate = $this->getCommissionRate($vendor['id_vendor'], $product->id_category_default);
-                $product_price = $detail['product_price'];
+                $product_price = $detail['unit_price_tax_incl'];
                 $quantity = $detail['product_quantity'];
-                $total_price = $product_price * $quantity;
+                $total_price =  $detail['total_price_tax_incl'];
                 $commission_amount = $total_price * ($commission_rate / 100);
                 $vendor_amount = $total_price - $commission_amount;
 
@@ -488,7 +488,7 @@ class multivendor extends Module
                 $orderLineStatus = new OrderLineStatus();
                 $orderLineStatus->id_order_detail = $detail['id_order_detail'];
                 $orderLineStatus->id_vendor = $vendor['id_vendor'];
-                $orderLineStatus->status = 'pending';
+                $orderLineStatus->status = 'Pending';
                 $orderLineStatus->date_add = date('Y-m-d H:i:s');
                 $orderLineStatus->date_upd = date('Y-m-d H:i:s');
                 $orderLineStatus->save();
@@ -497,8 +497,8 @@ class multivendor extends Module
                 $orderLineStatusLog = new OrderLineStatusLog();
                 $orderLineStatusLog->id_order_detail = $detail['id_order_detail'];
                 $orderLineStatusLog->id_vendor = $vendor['id_vendor'];
-                $orderLineStatusLog->old_status = '';
-                $orderLineStatusLog->new_status = 'pending';
+                $orderLineStatusLog->old_status = 'Pending';
+                $orderLineStatusLog->new_status = 'Pending';
                 $orderLineStatusLog->changed_by = 0; // System
                 $orderLineStatusLog->date_add = date('Y-m-d H:i:s');
                 $orderLineStatusLog->save();
