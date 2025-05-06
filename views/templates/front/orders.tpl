@@ -94,8 +94,17 @@
                                                     <td>{$line.total_price_tax_incl|displayPrice}</td>
                                                     <td>{$line.commission_amount|displayPrice}</td>
                                                     <td>
+                                                       {*<span class="badge" style="background-color: {$status_colors[$line.line_status]}; color: white;">*} 
+
+                                                        {if $line.line_status }
+
                                                         <span class="badge" style="background-color: {$status_colors[$line.line_status]}; color: white;">
+                                                        {else }
+                                                        <span class="badge">
+                                                            {/if}
+
                                                             {$line.line_status|capitalize}
+
                                                         </span>
                                                     </td>
                                                     <td>

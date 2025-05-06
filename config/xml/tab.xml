@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<entities>
+    <override>
+        <files>
+            <file path="controllers/admin/AdminOrdersController.php">AdminOrdersController.php</file>
+        </files>
+    </override>
+</entities>

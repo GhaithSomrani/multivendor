@@ -21,3 +21,18 @@
 .customer-autocomplete-container input {
     flex-grow: 1;
 }
+
+.cellProductLineStatus {
+    min-width: 150px;
+}
+
+.order-line-status-select {
+    max-width: 140px;
+    margin: 0 auto;
+}
+
+.order-line-status-select option {
+    color: white;
+    font-weight: bold;
+    padding: 3px;
+}

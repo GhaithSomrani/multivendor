@@ -72,6 +72,7 @@ class multivendor extends Module
             !$this->registerHook('actionValidateOrder') ||
             !$this->registerHook('displayBackOfficeHeader') ||
             !$this->registerHook('actionAdminControllerSetMedia') ||
+            !$this->installOverrides() ||
             !$this->installTab()
         ) {
             return false;
@@ -554,6 +555,7 @@ class multivendor extends Module
             if (Configuration::get('MV_ALLOW_VENDOR_REGISTRATION', 1)) {
                 $this->context->smarty->assign([
                     'is_vendor' => false,
+                    'vendor_dashboard_url' => $this->context->link->getModuleLink('multivendor', 'dashboard', []),
                     'vendor_register_url' => $this->context->link->getModuleLink('multivendor', 'register', [])
 
                 ]);
@@ -614,13 +616,92 @@ class multivendor extends Module
         return $this->display(__FILE__, 'views/templates/admin/order_detail.tpl');
     }
 
+
+
+
+    /**
+     * Get order line statuses for admin
+     */
+    public function ajaxProcessGetOrderLineStatusesForAdmin()
+    {
+        // Check if this is an AJAX request
+        if (!$this->isXmlHttpRequest()) {
+            die(json_encode(['success' => false, 'message' => 'Invalid request']));
+        }
+
+        $id_order = (int)Tools::getValue('id_order');
+        $statusData = [];
+
+        // Get all vendor order details for this order
+        $vendorOrderDetails = VendorOrderDetail::getByOrderId($id_order);
+
+        foreach ($vendorOrderDetails as $detail) {
+            $id_order_detail = $detail['id_order_detail'];
+            $id_vendor = $detail['id_vendor'];
+
+            $vendor = new Vendor($id_vendor);
+            $lineStatus = OrderLineStatus::getByOrderDetailAndVendor($id_order_detail, $id_vendor);
+
+            $statusData[$id_order_detail] = [
+                'id_vendor' => $id_vendor,
+                'vendor_name' => $vendor->shop_name,
+                'status' => $lineStatus ? $lineStatus['status'] : 'Pending',
+                'status_date' => $lineStatus ? $lineStatus['date_upd'] : null
+            ];
+        }
+
+        // Get all available statuses that admin can set
+        $availableStatuses = OrderLineStatusType::getAllActiveStatusTypes(false, true);
+
+        die(json_encode([
+            'success' => true,
+            'statusData' => $statusData,
+            'availableStatuses' => $availableStatuses
+        ]));
+    }
+
+    /**
+     * Update order line status
+     */
+    public function ajaxProcessUpdateOrderLineStatus()
+    {
+        // Check if this is an AJAX request
+        if (!$this->isXmlHttpRequest()) {
+            die(json_encode(['success' => false, 'message' => 'Invalid request']));
+        }
+
+        // Get parameters
+        $id_order_detail = (int)Tools::getValue('id_order_detail');
+        $id_vendor = (int)Tools::getValue('id_vendor');
+        $new_status = Tools::getValue('status');
+
+        // Update the status
+        $success = OrderLineStatus::updateStatus(
+            $id_order_detail,
+            $id_vendor,
+            $new_status,
+            $this->context->employee->id,
+            null, // No comment
+            true // is admin
+        );
+
+        die(json_encode(['success' => $success]));
+    }
+
+    /**
+     * Check if current request is an AJAX request
+     */
+    private function isXmlHttpRequest()
+    {
+        return (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest');
+    }
+
     /**
      * Hook: Add JS/CSS to admin pages
      */
     public function hookActionAdminControllerSetMedia($params)
     {
         $this->context->controller->addJS($this->_path . 'views/js/admin.js');
-        $this->context->controller->addJS($this->_path . 'views/js/admin-orders.js');
         $this->context->controller->addCSS($this->_path . 'views/css/admin.css');
     }
 
@@ -628,7 +709,18 @@ class multivendor extends Module
      * Hook: Add JS/CSS to back office
      */
     public function hookDisplayBackOfficeHeader($params)
+
     {
+        $ajaxUrl = $this->context->link->getModuleLink('multivendor', 'ajax');
+
+        Media::addJsDef([
+            'multivendorAjaxUrl' => $ajaxUrl,
+            'adminToken' => Tools::getAdminToken('AdminOrders')
+        ]);
+
+        // Add the JavaScript file
+        $this->context->controller->addJS($this->_path . 'views/js/admin.js');
+
         $this->context->controller->addCSS($this->_path . 'views/css/admin.css');
     }
 }
