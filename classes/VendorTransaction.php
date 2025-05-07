@@ -43,8 +43,8 @@ class VendorTransaction extends ObjectModel
         'fields' => [
             'id_vendor' => ['type' => self::TYPE_INT, 'validate' => 'isUnsignedId', 'required' => true],
             'id_order' => ['type' => self::TYPE_INT, 'validate' => 'isUnsignedId', 'required' => true],
-            'commission_amount' => ['type' => self::TYPE_FLOAT, 'validate' => 'isPrice', 'required' => true],
-            'vendor_amount' => ['type' => self::TYPE_FLOAT, 'validate' => 'isPrice', 'required' => true],
+            'commission_amount' => ['type' => self::TYPE_FLOAT, 'validate' => 'isFloat', 'required' => true],
+            'vendor_amount' => ['type' => self::TYPE_FLOAT, 'validate' => 'isFloat', 'required' => true],
             'transaction_type' => ['type' => self::TYPE_STRING, 'validate' => 'isGenericName', 'required' => true, 'size' => 32],
             'status' => ['type' => self::TYPE_STRING, 'validate' => 'isGenericName', 'required' => true, 'size' => 32],
             'date_add' => ['type' => self::TYPE_DATE, 'validate' => 'isDate']

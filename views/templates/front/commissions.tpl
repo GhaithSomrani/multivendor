@@ -118,10 +118,11 @@
                                             <tr>
                                                 <th>{l s='Order' mod='multivendor'}</th>
                                                 <th>{l s='Date' mod='multivendor'}</th>
-                                                <th>{l s='Commission' mod='multivendor'}</th>
+                                                <th>{l s='Product Details' mod='multivendor'}</th>
                                                 <th>{l s='Your Amount' mod='multivendor'}</th>
                                                 <th>{l s='Status' mod='multivendor'}</th>
                                             </tr>
+                                            
                                         </thead>
                                         <tbody>
                                             {foreach from=$transactions item=transaction}
@@ -132,8 +133,19 @@
                                                         </a>
                                                     </td>
                                                     <td>{$transaction.date_add|date_format:'%Y-%m-%d'}</td>
-                                                    <td>{$transaction.commission_amount|displayPrice}</td>
-                                                    <td>{$transaction.vendor_amount|displayPrice}</td>
+                                                    <td>
+                                                        {if $transaction.product_name}
+                                                            {$transaction.product_name} 
+                                                            {if $transaction.product_quantity > 0}
+                                                                (x{$transaction.product_quantity})
+                                                            {/if}
+                                                            {if $transaction.product_reference}
+                                                                <div class="small text-muted">Ref: {$transaction.product_reference}</div>
+                                                            {/if}
+                                                        {else}
+                                                            {l s='Product details not available' mod='multivendor'}
+                                                        {/if}
+                                                    </td>                                                    <td>{$transaction.vendor_amount|displayPrice}</td>
                                                     <td>
                                                         <span class="badge 
                                                             {if $transaction.status == 'pending'}badge-warning

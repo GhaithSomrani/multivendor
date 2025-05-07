@@ -52,7 +52,11 @@ class MultivendorCommissionsModuleFrontController extends ModuleFrontController
         $offset = ($page - 1) * $per_page;
 
         // Get transactions
-        $transactions = VendorTransaction::getVendorTransactions($id_vendor, null, $per_page, $offset);
+        // $transactions = VendorTransaction::getVendorTransactions($id_vendor, null, $per_page, $offset);
+        $transactions = $this->getTransactionsWithProductDetails($id_vendor, $per_page, $offset);
+
+
+
         $totalTransactions = count(VendorTransaction::getVendorTransactions($id_vendor));
         $totalPages = ceil($totalTransactions / $per_page);
 
@@ -89,7 +93,23 @@ class MultivendorCommissionsModuleFrontController extends ModuleFrontController
     }
 
 
+    protected function getTransactionsWithProductDetails($id_vendor, $limit = null, $offset = null)
+    {
+        $query = new DbQuery();
+        $query->select('vt.*, o.reference, od.product_name, od.product_quantity, od.product_reference');
+        $query->from('vendor_transaction', 'vt');
+        $query->leftJoin('orders', 'o', 'o.id_order = vt.id_order');
+        $query->leftJoin('vendor_order_detail', 'vod', 'vod.id_vendor = vt.id_vendor AND vod.id_order = vt.id_order');
+        $query->leftJoin('order_detail', 'od', 'od.id_order_detail = vod.id_order_detail');
+        $query->where('vt.id_vendor = ' . (int)$id_vendor);
+        $query->orderBy('vt.date_add DESC');
 
+        if ($limit) {
+            $query->limit($limit, $offset);
+        }
+
+        return Db::getInstance()->executeS($query);
+    }
     /**
      * Get category-specific commission rates for a vendor
      */
