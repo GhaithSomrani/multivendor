@@ -81,7 +81,9 @@
                                                 <th>{l s='Total' mod='multivendor'}</th>
                                                 <th>{l s='Commission' mod='multivendor'}</th>
                                                 <th>{l s='Status' mod='multivendor'}</th>
+                                                <th>{l s='Date' mod='multivendor'}</th>
                                                 <th>{l s='Actions' mod='multivendor'}</th>
+
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -96,16 +98,20 @@
                                                     <td>
                                                        {*<span class="badge" style="background-color: {$status_colors[$line.line_status]}; color: white;">*} 
 
-                                                        {if $line.line_status }
-
-                                                        <span class="badge" style="background-color: {$status_colors[$line.line_status]}; color: white;">
-                                                        {else }
+                                                        {if $line.line_status}
+                                                        {if isset($status_colors[$line.line_status])}
+                                                            <span class="badge" style="background-color: {$status_colors[$line.line_status]}; color: white;">
+                                                        {else}
+                                                            <span class="badge" style="background-color: #777777; color: white;">
+                                                        {/if}
+                                                    {else}
                                                         <span class="badge">
-                                                            {/if}
-
-                                                            {$line.line_status|capitalize}
-
-                                                        </span>
+                                                    {/if}
+                                                        {$line.line_status|capitalize}
+                                                    </span>
+                                                    </td>
+                                                    <td>
+                                                        {$line.order_date}
                                                     </td>
                                                     <td>
                                                         <button class="btn btn-primary btn-sm update-status-btn" data-toggle="modal" data-target="#updateStatus-{$line.id_order_detail}">
@@ -152,6 +158,7 @@
                                                             </div>
                                                         </div>
                                                     </td>
+                                                    
                                                 </tr>
                                             {/foreach}
                                         </tbody>

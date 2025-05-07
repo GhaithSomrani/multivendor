@@ -43,44 +43,49 @@ class MultivendorAjaxModuleFrontController extends ModuleFrontController
     private function processGetOrderLineStatusesForAdmin()
     {
         try {
-            // Instead of checking for employee->id which won't work in front controllers
-            // We'll use a token-based approach for security
-            // $token = Tools::getValue('token');
 
-            // Simple security check - in a real implementation you might want something more robust
-            // if (empty($token) || $token !== Tools::getAdminToken('AdminOrders')) {
-            //     die(json_encode(['success' => false, 'message' => 'Access denied: Invalid token']));
-            // }
 
             $id_order = (int)Tools::getValue('id_order');
             $statusData = [];
 
-            // Get all vendor order details for this order
             $vendorOrderDetails = VendorOrderDetail::getByOrderId($id_order);
 
-            if (empty($vendorOrderDetails)) {
-                die(json_encode([
-                    'success' => true,
-                    'statusData' => [],
-                    'availableStatuses' => []
-                ]));
+            if (!empty($vendorOrderDetails)) {
+                foreach ($vendorOrderDetails as $detail) {
+                    $id_order_detail = $detail['id_order_detail'];
+                    $id_vendor = $detail['id_vendor'];
+                    $vendor = new Vendor($id_vendor);
+                    $lineStatus = OrderLineStatus::getByOrderDetailAndVendor($id_order_detail, $id_vendor);
+
+                    $statusData[$id_order_detail] = [
+                        'id_vendor' => $id_vendor,
+                        'vendor_name' => Validate::isLoadedObject($vendor) ? $vendor->shop_name : 'Unknown vendor',
+                        'status' => $lineStatus ? $lineStatus['status'] : 'Pending',
+                        'status_date' => $lineStatus ? $lineStatus['date_upd'] : null,
+                        'is_vendor_product' => true
+                    ];
+                }
             }
 
-            foreach ($vendorOrderDetails as $detail) {
-                $id_order_detail = $detail['id_order_detail'];
-                $id_vendor = $detail['id_vendor'];
+            // Get all order details for this order to handle non-vendor products
+            $allOrderDetails = OrderDetail::getList($id_order);
 
-                // Get vendor info
-                $vendor = new Vendor($id_vendor);
+            // Process all order details to include non-vendor products
+            foreach ($allOrderDetails as $orderDetail) {
+                $id_order_detail = $orderDetail['id_order_detail'];
 
-                // Get line status
-                $lineStatus = OrderLineStatus::getByOrderDetailAndVendor($id_order_detail, $id_vendor);
+                // Skip if this order detail is already handled by a vendor
+                if (isset($statusData[$id_order_detail])) {
+                    continue;
+                }
 
+                // This is a non-vendor product, add it with appropriate indication
                 $statusData[$id_order_detail] = [
-                    'id_vendor' => $id_vendor,
-                    'vendor_name' => Validate::isLoadedObject($vendor) ? $vendor->shop_name : 'Unknown vendor',
-                    'status' => $lineStatus ? $lineStatus['status'] : 'Pending',
-                    'status_date' => $lineStatus ? $lineStatus['date_upd'] : null
+                    'id_vendor' => 0,
+                    'vendor_name' => null,
+                    'status' => 'Not a vendor product',
+                    'status_date' => null,
+                    'is_vendor_product' => false
                 ];
             }
 

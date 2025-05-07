@@ -455,6 +455,14 @@ class multivendor extends Module
         $order = $params['order'];
         $cart = $params['cart'];
 
+        $defaultStatus = Db::getInstance()->getValue('
+            SELECT name FROM `' . _DB_PREFIX_ . 'order_line_status_type` 
+            WHERE active = 1 
+            ORDER BY position ASC ');
+        if (!$defaultStatus) {
+            $defaultStatus = 'Pending';
+        }
+
         // Get order details
         $orderDetails = OrderDetail::getList($order->id);
 
@@ -489,7 +497,7 @@ class multivendor extends Module
                 $orderLineStatus = new OrderLineStatus();
                 $orderLineStatus->id_order_detail = $detail['id_order_detail'];
                 $orderLineStatus->id_vendor = $vendor['id_vendor'];
-                $orderLineStatus->status = 'Pending';
+                $orderLineStatus->status = $defaultStatus;
                 $orderLineStatus->date_add = date('Y-m-d H:i:s');
                 $orderLineStatus->date_upd = date('Y-m-d H:i:s');
                 $orderLineStatus->save();
@@ -498,8 +506,8 @@ class multivendor extends Module
                 $orderLineStatusLog = new OrderLineStatusLog();
                 $orderLineStatusLog->id_order_detail = $detail['id_order_detail'];
                 $orderLineStatusLog->id_vendor = $vendor['id_vendor'];
-                $orderLineStatusLog->old_status = 'Pending';
-                $orderLineStatusLog->new_status = 'Pending';
+                $orderLineStatusLog->old_status = $defaultStatus;
+                $orderLineStatusLog->new_status = $defaultStatus;
                 $orderLineStatusLog->changed_by = 0; // System
                 $orderLineStatusLog->date_add = date('Y-m-d H:i:s');
                 $orderLineStatusLog->save();

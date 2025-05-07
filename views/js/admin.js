@@ -172,39 +172,34 @@ $(document).ready(function() {
             success: function(response) {
                 console.log('Status data received:', response);
                 if (response.success) {
-                    // Update each status placeholder
-                    $.each(response.statusData, function(orderDetailId, data) {
+                    $('#orderProductsTable tbody tr.cellProduct').each(function() {
+                        const orderDetailId = $(this).attr('id').replace('orderProduct_', '');
                         const placeholder = $('.js-line-status-placeholder[data-order-detail-id="' + orderDetailId + '"]');
 
-                        if (placeholder.length > 0) {
-                            if (data) {
-                                // Create dropdown with current status selected
-                                let html = '<select class="form-control order-line-status-select" ';
-                                html += 'data-order-detail-id="' + orderDetailId + '" ';
-                                html += 'data-vendor-id="' + data.id_vendor + '">';
+                        if (response.statusData && response.statusData[orderDetailId]) {
+                            const data = response.statusData[orderDetailId];
 
-                                // Add options for all available statuses
-                                $.each(response.availableStatuses, function(i, status) {
-                                    html += '<option value="' + status.name + '" ';
-                                    if (data.status === status.name) {
-                                        html += 'selected ';
-                                    }
-                                    html += 'style="background-color: ' + status.color + '">';
-                                    html += status.name;
-                                    html += '</option>';
-                                });
+                            let html = '<select class="form-control order-line-status-select" ';
+                            html += 'data-order-detail-id="' + orderDetailId + '" ';
+                            html += 'data-vendor-id="' + data.id_vendor + '">';
 
-                                html += '</select>';
+                            $.each(response.availableStatuses, function(i, status) {
+                                html += '<option value="' + status.name + '" ';
+                                if (data.status === status.name) {
+                                    html += 'selected ';
+                                }
+                                html += 'style="background-color: ' + status.color + '">';
+                                html += status.name;
+                                html += '</option>';
+                            });
+                            html += '</select>';
+                            html += '<div class="text-muted small mt-1">';
+                            html += data.vendor_name ? data.vendor_name : 'No vendor';
+                            html += '</div>';
 
-                                // Add current vendor info
-                                html += '<div class="text-muted small mt-1">';
-                                html += data.vendor_name ? data.vendor_name : 'No vendor';
-                                html += '</div>';
-
-                                placeholder.html(html);
-                            } else {
-                                placeholder.html('<span class="badge badge-secondary">No vendor</span>');
-                            }
+                            placeholder.html(html);
+                        } else {
+                            placeholder.html('<span class="badge badge-secondary">Not a vendor product</span>');
                         }
                     });
                 } else {
