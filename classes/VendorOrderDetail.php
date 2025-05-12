@@ -162,7 +162,7 @@ class VendorOrderDetail extends ObjectModel
             $endDate = $year . '-' . str_pad($i, 2, '0', STR_PAD_LEFT) . '-31';
 
             $totalSales = Db::getInstance()->getValue('
-                SELECT SUM(vendor_amount + commission_amount)
+                SELECT SUM(vendor_amount)
                 FROM ' . _DB_PREFIX_ . 'vendor_order_detail vod
                 LEFT JOIN ' . _DB_PREFIX_ . 'orders o ON o.id_order = vod.id_order
                 WHERE vod.id_vendor = ' . (int)$id_vendor . '
