@@ -1,0 +1,374 @@
+/* Status Actions */
+.mv-status-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.mv-status-buttons {
+    display: flex;
+    gap: 4px;
+}
+
+.mv-btn-icon {
+    background: none;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 4px 8px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
+}
+
+.mv-btn-icon:hover {
+    background-color: #f5f5f5;
+    border-color: #6366f1;
+}
+
+/* Checkbox */
+.mv-checkbox {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+}
+
+.mv-checkbox input[type="checkbox"] {
+    margin-right: 8px;
+}
+
+/* Status History */
+.mv-history-list {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.mv-history-item {
+    padding: 12px;
+    border-bottom: 1px solid #eee;
+}
+
+.mv-history-item:last-child {
+    border-bottom: none;
+}
+
+.mv-history-date {
+    font-size: 12px;
+    color: #888;
+    margin-bottom: 4px;
+}
+
+.mv-history-change {
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.mv-history-old,
+.mv-history-new {
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+.mv-history-old {
+    background-color: #f5f5f5;
+    color: #666;
+}
+
+.mv-history-new {
+    background-color: #e7f3ff;
+    color: #0066cc;
+}
+
+.mv-history-comment {
+    font-style: italic;
+    color: #666;
+    margin: 4px 0;
+    padding: 8px;
+    background-color: #f9f9f9;
+    border-radius: 4px;
+}
+
+.mv-history-user {
+    font-size: 11px;
+    color: #888;
+    margin-top: 4px;
+}
+
+.mv-status-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.mv-status-count {
+    font-size: 18px;
+    font-weight: 600;
+    color: #333;
+}
+
+/* Status Select */
+.mv-status-select {
+    padding: 6px 8px;
+    font-size: 12px;
+    border-radius: 6px;
+    border: 1px solid #ddd;
+    background-color: white;
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    min-width: 120px;
+}
+
+.mv-status-select:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.mv-status-select option {
+    color: white;
+    font-weight: 600;
+    padding: 4px;
+}
+
+/* Alert Dismissible */
+.mv-alert-dismissible {
+    position: relative;
+    padding-right: 40px;
+}
+
+/* Order Summary Cards */
+.mv-stat-description {
+    margin: 8px 0 0 0;
+    font-size: 12px;
+    color: #888;
+}
+
+/* Alerts */
+.mv-alert-success {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.mv-alert-danger {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+/* Buttons */
+.mv-btn-primary {
+    background-color: #6366f1;
+    color: white;
+}
+
+.mv-btn-primary:hover {
+    background-color: #4f51d9;
+}
+
+.mv-btn-secondary {
+    background-color: #6c757d;
+    color: white;
+}
+
+.mv-btn-secondary:hover {
+    background-color: #5a6268;
+}
+
+.mv-btn-sm {
+    padding: 6px 12px;
+    font-size: 12px;
+}
+
+.mv-icon-sm {
+    font-size: 14px;
+    margin-right: 4px;
+}
+
+/* Modal */
+.mv-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1050;
+}
+
+.mv-modal-open {
+    display: block;
+}
+
+.mv-modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1040;
+}
+
+.mv-modal-content {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: white;
+    border-radius: 12px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    max-width: 500px;
+    width: 90%;
+    z-index: 1050;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.mv-modal-header {
+    padding: 20px;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: between;
+    align-items: center;
+}
+
+.mv-modal-title {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    flex-grow: 1;
+}
+
+.mv-modal-close {
+    background: none;
+    border: none;
+    font-size: 28px;
+    font-weight: 300;
+    line-height: 1;
+    color: #000;
+    opacity: 0.5;
+    cursor: pointer;
+    padding: 0;
+    margin-left: auto;
+}
+
+.mv-modal-close:hover {
+    opacity: 0.75;
+}
+
+.mv-modal-body {
+    padding: 20px;
+}
+
+.mv-modal-footer {
+    padding: 20px;
+    border-top: 1px solid #eee;
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+}
+
+/* Form Controls */
+.mv-form-group {
+    margin-bottom: 20px;
+}
+
+.mv-form-label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: #333;
+}
+
+.mv-form-control {
+    width: 100%;
+    padding: 10px 12px;
+    font-size: 14px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background-color: white;
+    transition: border-color 0.2s;
+}
+
+.mv-status-breakdown {
+    display: flex;
+    width: 100%;
+    justify-content: space-between;
+}
+
+
+
+.mv-form-control:focus {
+    outline: none;
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+textarea.mv-form-control {
+    resize: vertical;
+    min-height: 100px;
+}
+
+/* Pagination */
+.mv-pagination {
+    margin-top: 24px;
+    display: flex;
+    justify-content: center;
+}
+
+.mv-pagination-list {
+    display: flex;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    gap: 8px;
+}
+
+.mv-pagination-item {
+    margin: 0;
+}
+
+.mv-pagination-link {
+    display: block;
+    padding: 8px 12px;
+    color: #6366f1;
+    text-decoration: none;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    background-color: white;
+    transition: all 0.2s;
+}
+
+.mv-pagination-link:hover {
+    background-color: #f5f5f5;
+    border-color: #6366f1;
+}
+
+.mv-pagination-active .mv-pagination-link {
+    background-color: #6366f1;
+    color: white;
+    border-color: #6366f1;
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+    .mv-table {
+        font-size: 12px;
+    }
+    
+    .mv-table th,
+    .mv-table td {
+        padding: 8px;
+    }
+    
+    .mv-product-name {
+        max-width: 150px;
+    }
+    
+    .mv-btn-sm {
+        padding: 4px 8px;
+        font-size: 11px;
+    }
+    
+}

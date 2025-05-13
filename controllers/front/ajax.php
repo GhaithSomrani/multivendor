@@ -31,7 +31,12 @@ class MultivendorAjaxModuleFrontController extends ModuleFrontController
             case 'updateOrderLineStatus':
                 $this->processUpdateOrderLineStatus();
                 break;
-
+            case 'updateVendorStatus':
+                $this->processUpdateVendorStatus();
+                break;
+            case 'getStatusHistory':
+                $this->processGetStatusHistory();
+                break;
             default:
                 die(json_encode(['success' => false, 'message' => 'Unknown action']));
         }
@@ -140,4 +145,122 @@ class MultivendorAjaxModuleFrontController extends ModuleFrontController
             die(json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]));
         }
     }
+
+    /**
+     * Process vendor status update with additional options
+     */
+    private function processUpdateVendorStatus()
+    {
+        // Check if customer is a vendor
+        $id_customer = $this->context->customer->id;
+        $vendor = Vendor::getVendorByCustomer($id_customer);
+
+        if (!$vendor) {
+            die(json_encode(['success' => false, 'message' => 'Not authorized']));
+        }
+
+        $id_vendor = $vendor['id_vendor'];
+        $id_supplier = $vendor['id_supplier'];
+        $id_order_detail = (int)Tools::getValue('id_order_detail');
+        $new_status = Tools::getValue('status');
+        $comment = Tools::getValue('comment');
+       
+
+        try {
+            // Verify authorization
+            $query = new DbQuery();
+            $query->select('p.id_supplier, od.id_order');
+            $query->from('order_detail', 'od');
+            $query->innerJoin('product', 'p', 'p.id_product = od.product_id');
+            $query->where('od.id_order_detail = ' . (int)$id_order_detail);
+
+            $result = Db::getInstance()->getRow($query);
+
+            if (!$result || (int)$result['id_supplier'] !== (int)$id_supplier) {
+                throw new Exception('Not authorized for this product');
+            }
+
+            $id_order = $result['id_order'];
+
+            // Update the status
+            $success = OrderLineStatus::updateStatus(
+                $id_order_detail,
+                $id_vendor,
+                $new_status,
+                $this->context->customer->id,
+                $comment,
+                false // not admin
+            );
+
+            if (!$success) {
+                throw new Exception('Failed to update status');
+            }
+
+
+            // Get updated status data
+            $statusData = $this->getOrderLineStatusData($id_order_detail, $id_vendor);
+
+            die(json_encode([
+                'success' => true,
+                'statusData' => $statusData,
+                'message' => 'Status updated successfully'
+            ]));
+        } catch (Exception $e) {
+            die(json_encode(['success' => false, 'message' => $e->getMessage()]));
+        }
+    }
+
+    /**
+     * Get status history for an order line
+     */
+    private function processGetStatusHistory()
+    {
+        $id_order_detail = (int)Tools::getValue('id_order_detail');
+
+        // Check authorization
+        $id_customer = $this->context->customer->id;
+        $vendor = Vendor::getVendorByCustomer($id_customer);
+
+        if (!$vendor) {
+            die(json_encode(['success' => false, 'message' => 'Not authorized']));
+        }
+
+        try {
+            $history = OrderLineStatusLog::getStatusHistory($id_order_detail);
+
+            // Format the history data
+            $formattedHistory = [];
+            foreach ($history as $log) {
+                $formattedHistory[] = [
+                    'date' => date('Y-m-d H:i:s', strtotime($log['date_add'])),
+                    'old_status' => $log['old_status'] ?: 'Initial',
+                    'new_status' => $log['new_status'],
+                    'comment' => $log['comment'],
+                    'changed_by' => $log['changed_by_firstname'] . ' ' . $log['changed_by_lastname']
+                ];
+            }
+
+            die(json_encode([
+                'success' => true,
+                'history' => $formattedHistory
+            ]));
+        } catch (Exception $e) {
+            die(json_encode(['success' => false, 'message' => $e->getMessage()]));
+        }
+    }
+
+    /**
+     * Get order line status data
+     */
+    private function getOrderLineStatusData($id_order_detail, $id_vendor)
+    {
+        $lineStatus = OrderLineStatus::getByOrderDetailAndVendor($id_order_detail, $id_vendor);
+
+        return [
+            'status' => $lineStatus ? $lineStatus['status'] : 'Pending',
+            'last_update' => $lineStatus ? date('Y-m-d H:i:s', strtotime($lineStatus['date_upd'])) : null,
+            'comment' => $lineStatus ? $lineStatus['comment'] : null
+        ];
+    }
+
 }

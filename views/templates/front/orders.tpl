@@ -1,219 +1,217 @@
 {*
-    * Vendor Orders Template
-    *}
-    
-    {extends file='page.tpl'}
-    
-    {block name='page_title'}
-        {l s='My Order Lines' mod='multivendor'}
-    {/block}
-    
-    {block name='page_content'}
-        <div class="vendor-orders">
-            <div class="row">
-                <div class="col-md-3">
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">{l s='Navigation' mod='multivendor'}</h3>
+* Vendor Orders Template with Custom CSS and AJAX
+*}
+
+{extends file='page.tpl'}
+
+{block name='page_title'}
+    {l s='My Order Lines' mod='multivendor'}
+{/block}
+
+{block name='page_content'}
+    <div class="mv-dashboard">
+        <div class="mv-container">
+            <aside class="mv-sidebar">
+                <div class="mv-card">
+                    <div class="mv-card-header">
+                        <h3 class="mv-card-title">{l s='Navigation' mod='multivendor'}</h3>
+                    </div>
+                    <div class="mv-card-body">
+                        <nav class="mv-nav">
+                            <a class="mv-nav-link" href="{$vendor_dashboard_url}">
+                                <i class="mv-icon">📊</i>
+                                <span>{l s='Dashboard' mod='multivendor'}</span>
+                            </a>
+                            <a class="mv-nav-link mv-nav-link-active" href="{$vendor_orders_url}">
+                                <i class="mv-icon">🛒</i>
+                                <span>{l s='Orders' mod='multivendor'}</span>
+                            </a>
+                            <a class="mv-nav-link" href="{$vendor_commissions_url}">
+                                <i class="mv-icon">💰</i>
+                                <span>{l s='Commissions' mod='multivendor'}</span>
+                            </a>
+                            <a class="mv-nav-link" href="{$vendor_profile_url}">
+                                <i class="mv-icon">🏪</i>
+                                <span>{l s='Shop Profile' mod='multivendor'}</span>
+                            </a>
+                        </nav>
+                    </div>
+                </div>
+            </aside>
+            
+            <main class="mv-main-content">
+                {* Order Summary Cards *}
+                <div class="mv-stats-grid">
+                    <div class="mv-stat-card">
+                        <div class="mv-stat-content">
+                            <h6 class="mv-stat-label">{l s='Total Order Lines' mod='multivendor'}</h6>
+                            <h3 class="mv-stat-value">{$order_summary.total_lines}</h3>
+                            <p class="mv-stat-description">{l s='All time' mod='multivendor'}</p>
                         </div>
-                        <div class="card-body">
-                            <ul class="nav flex-column">
-                                <li class="nav-item">
-                                    <a class="nav-link" href="{$vendor_dashboard_url}">
-                                        <i class="material-icons">dashboard</i>
-                                        {l s='Dashboard' mod='multivendor'}
-                                    </a>
-                                </li>
-                                <li class="nav-item active">
-                                    <a class="nav-link" href="#">
-                                        <i class="material-icons">shopping_cart</i>
-                                        {l s='Orders' mod='multivendor'}
-                                    </a>
-                                </li>
-                                <li class="nav-item">
-                                    <a class="nav-link" href="{$vendor_commissions_url}">
-                                        <i class="material-icons">attach_money</i>
-                                        {l s='Commissions' mod='multivendor'}
-                                    </a>
-                                </li>
-                                <li class="nav-item">
-                                    <a class="nav-link" href="{$vendor_profile_url}">
-                                        <i class="material-icons">store</i>
-                                        {l s='Shop Profile' mod='multivendor'}
-                                    </a>
-                                </li>
-                            </ul>
+                    </div>
+                    <div class="mv-stat-card">
+                        <div class="mv-stat-content">
+                            <h6 class="mv-stat-label">{l s='Revenue (Last 28 Days)' mod='multivendor'}</h6>
+                            <h3 class="mv-stat-value">{Tools::displayPrice($order_summary.total_revenue)}</h3>
+                            <p class="mv-stat-description">{l s='Your earnings after commission' mod='multivendor'}</p>
+                        </div>
+                    </div>
+                    <div class="mv-stat-card">
+                        <div class="mv-stat-content">
+                            <h6 class="mv-stat-label">{l s="Today's Orders" mod='multivendor'}</h6>
+                            <h3 class="mv-stat-value">{$order_summary.todays_orders}</h3>
+                            <p class="mv-stat-description">{l s='New order lines' mod='multivendor'}</p>
                         </div>
                     </div>
                 </div>
-                
-                <div class="col-md-9">
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">{l s='My Order Lines' mod='multivendor'}</h3>
+
+                {* Status Breakdown *}
+                {if $order_summary.status_breakdown}
+                    <div class="mv-card">
+                        <div class="mv-card-header">
+                            <h3 class="mv-card-title">{l s='Order Status Overview' mod='multivendor'}</h3>
                         </div>
-                        <div class="card-body">
-                            {if isset($success)}
-                                {foreach $success as $msg}
-                                    <div class="alert alert-success">
-                                        {$msg}
+                        <div class="mv-card-body">
+                            <div class="mv-status-breakdown">
+                                {foreach from=$order_summary.status_breakdown item=statusData}
+                                    <div class="mv-status-item">
+                                        <span class="mv-status-badge" 
+                                              style="background-color: {$status_colors[$statusData.status]|default:'#777'};">
+                                            {$statusData.status|capitalize} : {$statusData.count}
+                                        </span>
                                     </div>
                                 {/foreach}
-                            {/if}
-                            
-                            {if isset($errors)}
-                                {foreach $errors as $error}
-                                    <div class="alert alert-danger">
-                                        {$error}
-                                    </div>
-                                {/foreach}
-                            {/if}
-                            
-                            {if $order_lines}
-                                <div class="table-responsive">
-                                    <table class="table">
-                                        <thead>
+                            </div>
+                        </div>
+                    </div>
+                {/if}
+
+                {* Orders Table *}
+                <div class="mv-card">
+                    <div class="mv-card-header">
+                        <h3 class="mv-card-title">{l s='Order Lines' mod='multivendor'}</h3>
+                    </div>
+                    <div class="mv-card-body">
+                        {if $order_lines}
+                            <div class="mv-table-container">
+                                <table class="mv-table">
+                                    <thead>
+                                        <tr>
+                                            <th>{l s='Reference' mod='multivendor'}</th>
+                                            <th>{l s='Product' mod='multivendor'}</th>
+                                            <th>{l s='Unit Price' mod='multivendor'}</th>
+                                            <th>{l s='Qty' mod='multivendor'}</th>
+                                            <th>{l s='Total' mod='multivendor'}</th>
+                                            <th>{l s='Commission' mod='multivendor'}</th>
+                                            <th>{l s='Status' mod='multivendor'}</th>
+                                            <th>{l s='Date' mod='multivendor'}</th>
+                                            <th>{l s='Actions' mod='multivendor'}</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {foreach from=$order_lines item=line}
                                             <tr>
-                                                <th>{l s='Reference' mod='multivendor'}</th>
-                                                <th>{l s='Product' mod='multivendor'}</th>
-                                                <th>{l s='Unit Price' mod='multivendor'}</th>
-                                                <th>{l s='Quantity' mod='multivendor'}</th>
-                                                <th>{l s='Total' mod='multivendor'}</th>
-                                                <th>{l s='Commission' mod='multivendor'}</th>
-                                                <th>{l s='Status' mod='multivendor'}</th>
-                                                <th>{l s='Date' mod='multivendor'}</th>
-                                                <th>{l s='Actions' mod='multivendor'}</th>
-
+                                                <td>
+                                                    <a href="#" class="mv-link">
+                                                        #{$line.order_reference}#{$line.id_order_detail}
+                                                    </a>
+                                                </td>
+                                                <td class="mv-product-name">{$line.product_name|truncate:40:'...'}</td>
+                                                <td>{$line.unit_price_tax_incl|displayPrice}</td>
+                                                <td class="mv-text-center">{$line.product_quantity}</td>
+                                                <td>{$line.total_price_tax_incl|displayPrice}</td>
+                                                <td>{$line.commission_amount|displayPrice}</td>
+                                                <td>
+                                                    <select class="mv-status-select order-line-status-select" 
+                                                            id="status-select-{$line.id_order_detail}"
+                                                            data-order-detail-id="{$line.id_order_detail}"
+                                                            data-original-status="{$line.line_status|default:'Pending'}">
+                                                        {foreach from=$statuses key=status_key item=status_label}
+                                                            <option value="{$status_key}" 
+                                                                    {if ($line.line_status|lower) == ($status_key|lower)}selected{/if}
+                                                                    style="background-color: {$status_colors[$status_key]}; color: white;">
+                                                                {$status_label|escape:'html':'UTF-8'|capitalize}
+                                                            </option>
+                                                        {/foreach}
+                                                    </select>
+                                                </td>
+                                                <td>{$line.order_date|date_format:'%Y-%m-%d'}</td>
+                                                <td>
+                                                    <button class="mv-btn-icon view-status-history" 
+                                                            data-order-detail-id="{$line.id_order_detail}"
+                                                            title="{l s='View History' mod='multivendor'}">
+                                                        <i class="mv-icon">📜</i>
+                                                    </button>
+                                                </td>
                                             </tr>
-                                        </thead>
-                                        <tbody>
-                                            {foreach from=$order_lines item=line}
-                                                <tr>
-                                                    <td>#{$line.order_reference}#{$line.id_order_detail}</td>
-                                                    <td>{$line.product_name}</td>
-                                                    <td>{$line.unit_price_tax_incl|displayPrice}</td>
-                                                    <td>{$line.product_quantity}</td>
-                                                    <td>{$line.total_price_tax_incl|displayPrice}</td>
-                                                    <td>{$line.commission_amount|displayPrice}</td>
-                                                    <td>
-                                                       {*<span class="badge" style="background-color: {$status_colors[$line.line_status]}; color: white;">*} 
-
-                                                        {if $line.line_status}
-                                                        {if isset($status_colors[$line.line_status])}
-                                                            <span class="badge" style="background-color: {$status_colors[$line.line_status]}; color: white;">
-                                                        {else}
-                                                            <span class="badge" style="background-color: #777777; color: white;">
-                                                        {/if}
-                                                    {else}
-                                                        <span class="badge">
-                                                    {/if}
-                                                        {$line.line_status|capitalize}
-                                                    </span>
-                                                    </td>
-                                                    <td>
-                                                        {$line.order_date}
-                                                    </td>
-                                                    <td>
-                                                        <button class="btn btn-primary btn-sm update-status-btn" data-toggle="modal" data-target="#updateStatus-{$line.id_order_detail}">
-                                                            <i class="material-icons">edit</i>
-                                                            {l s='Update Status' mod='multivendor'}
-                                                        </button>
-                                                        
-                                                        {* Status Update Modal *}
-                                                        <div class="modal fade" id="updateStatus-{$line.id_order_detail}" tabindex="-1" role="dialog" aria-labelledby="updateStatusLabel-{$line.id_order_detail}" aria-hidden="true">
-                                                            <div class="modal-dialog" role="document">
-                                                                <form action="{$link->getModuleLink('multivendor', 'orders')}" method="post">
-                                                                    <div class="modal-content">
-                                                                        <div class="modal-header">
-                                                                            <h5 class="modal-title" id="updateStatusLabel-{$line.id_order_detail}">{l s='Update Order Line Status' mod='multivendor'}</h5>
-                                                                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                                                                <span aria-hidden="true">&times;</span>
-                                                                            </button>
-                                                                        </div>
-                                                                        <div class="modal-body">
-                                                                            <input type="hidden" name="id_order_detail" value="{$line.id_order_detail}">
-                                                                            
-                                                                            <div class="form-group">
-                                                                                <label for="status-{$line.id_order_detail}">{l s='Status' mod='multivendor'}</label>
-                                                                                <select class="form-control" id="status-{$line.id_order_detail}" name="status">
-                                                                                    {foreach from=$statuses key=status_key item=status_label}
-                                                                                    <option value="{$status_key}" {if $line.line_status == $status_key}selected{/if} style="background-color: {$status_colors[$status_key]}">
-                                                                                        {$status_label|escape:'html':'UTF-8'|capitalize}
-                                                                                    </option>
-                                                                                    {/foreach}
-                                                                                </select>
-                                                                            </div>
-                                                                            
-                                                                            <div class="form-group">
-                                                                                <label for="comment-{$line.id_order_detail}">{l s='Comment (optional)' mod='multivendor'}</label>
-                                                                                <textarea class="form-control" id="comment-{$line.id_order_detail}" name="comment" rows="3"></textarea>
-                                                                            </div>
-                                                                        </div>
-                                                                        <div class="modal-footer">
-                                                                            <button type="button" class="btn btn-secondary" data-dismiss="modal">{l s='Cancel' mod='multivendor'}</button>
-                                                                            <button type="submit" name="submitStatusUpdate" class="btn btn-primary">{l s='Update Status' mod='multivendor'}</button>
-                                                                        </div>
-                                                                    </div>
-                                                                </form>
-                                                            </div>
-                                                        </div>
-                                                    </td>
-                                                    
-                                                </tr>
-                                            {/foreach}
-                                        </tbody>
-                                    </table>
-                                </div>
-                                
-                                {* Pagination *}
-                                {if $pages_nb > 1}
-                                    <nav aria-label="Page navigation">
-                                        <ul class="pagination justify-content-center">
-                                            {if $current_page > 1}
-                                                <li class="page-item">
-                                                    <a class="page-link" href="{$link->getModuleLink('multivendor', 'orders', ['page' => 1])}" aria-label="First">
-                                                        <span aria-hidden="true">&laquo;&laquo;</span>
-                                                    </a>
-                                                </li>
-                                                <li class="page-item">
-                                                    <a class="page-link" href="{$link->getModuleLink('multivendor', 'orders', ['page' => $current_page-1])}" aria-label="Previous">
-                                                        <span aria-hidden="true">&laquo;</span>
-                                                    </a>
-                                                </li>
-                                            {/if}
-                                            
-                                            {assign var=p_start value=max(1, $current_page-2)}
-                                            {assign var=p_end value=min($pages_nb, $current_page+2)}
-                                            
-                                            {for $p=$p_start to $p_end}
-                                                <li class="page-item {if $p == $current_page}active{/if}">
-                                                    <a class="page-link" href="{$link->getModuleLink('multivendor', 'orders', ['page' => $p])}">{$p}</a>
-                                                </li>
-                                            {/for}
-                                            
-                                            {if $current_page < $pages_nb}
-                                                <li class="page-item">
-                                                    <a class="page-link" href="{$link->getModuleLink('multivendor', 'orders', ['page' => $current_page+1])}" aria-label="Next">
-                                                        <span aria-hidden="true">&raquo;</span>
-                                                    </a>
-                                                </li>
-                                                <li class="page-item">
-                                                    <a class="page-link" href="{$link->getModuleLink('multivendor', 'orders', ['page' => $pages_nb])}" aria-label="Last">
-                                                        <span aria-hidden="true">&raquo;&raquo;</span>
-                                                    </a>
-                                                </li>
-                                            {/if}
-                                        </ul>
-                                    </nav>
-                                {/if}
-                            {else}
-                                <div class="alert alert-info">
-                                    {l s='No order lines found.' mod='multivendor'}
-                                </div>
+                                        {/foreach}
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            {* Pagination *}
+                            {if $pages_nb > 1}
+                                <nav class="mv-pagination">
+                                    <ul class="mv-pagination-list">
+                                        {if $current_page > 1}
+                                            <li class="mv-pagination-item">
+                                                <a class="mv-pagination-link" href="{$link->getModuleLink('multivendor', 'orders', ['page' => 1])}">
+                                                    <span>«</span>
+                                                </a>
+                                            </li>
+                                            <li class="mv-pagination-item">
+                                                <a class="mv-pagination-link" href="{$link->getModuleLink('multivendor', 'orders', ['page' => $current_page-1])}">
+                                                    <span>‹</span>
+                                                </a>
+                                            </li>
+                                        {/if}
+                                        
+                                        {assign var=p_start value=max(1, $current_page-2)}
+                                        {assign var=p_end value=min($pages_nb, $current_page+2)}
+                                        
+                                        {for $p=$p_start to $p_end}
+                                            <li class="mv-pagination-item {if $p == $current_page}mv-pagination-active{/if}">
+                                                <a class="mv-pagination-link" href="{$link->getModuleLink('multivendor', 'orders', ['page' => $p])}">{$p}</a>
+                                            </li>
+                                        {/for}
+                                        
+                                        {if $current_page < $pages_nb}
+                                            <li class="mv-pagination-item">
+                                                <a class="mv-pagination-link" href="{$link->getModuleLink('multivendor', 'orders', ['page' => $current_page+1])}">
+                                                    <span>›</span>
+                                                </a>
+                                            </li>
+                                            <li class="mv-pagination-item">
+                                                <a class="mv-pagination-link" href="{$link->getModuleLink('multivendor', 'orders', ['page' => $pages_nb])}">
+                                                    <span>»</span>
+                                                </a>
+                                            </li>
+                                        {/if}
+                                    </ul>
+                                </nav>
                             {/if}
-                        </div>
+                        {else}
+                            <p class="mv-empty-state">
+                                {l s='No order lines found.' mod='multivendor'}
+                            </p>
+                        {/if}
                     </div>
                 </div>
+            </main>
+        </div>
+    </div>
+
+    {* Status History Modal *}
+    <div class="mv-modal" id="statusHistoryModal">
+        <div class="mv-modal-backdrop" onclick="$('#statusHistoryModal').removeClass('mv-modal-open')"></div>
+        <div class="mv-modal-content">
+            <div class="mv-modal-header">
+                <h5 class="mv-modal-title">{l s='Status History' mod='multivendor'}</h5>
+                <button class="mv-modal-close" onclick="$('#statusHistoryModal').removeClass('mv-modal-open')">×</button>
+            </div>
+            <div class="mv-modal-body" id="statusHistoryContent">
+                <!-- History will be loaded here -->
             </div>
         </div>
-    {/block}
+    </div>
+{/block}

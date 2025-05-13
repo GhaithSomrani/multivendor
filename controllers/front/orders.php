@@ -39,10 +39,13 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
         $id_vendor = $this->context->smarty->getTemplateVars('id_vendor');
         $id_supplier = $this->context->smarty->getTemplateVars('id_supplier');
 
-        // Handle status update
+        // Handle status update submission
         if (Tools::isSubmit('submitStatusUpdate')) {
             $this->processStatusUpdate();
         }
+
+        // Get order summary data
+        $orderSummary = $this->getOrderSummary($id_vendor, $id_supplier);
 
         // Pagination
         $page = (int)Tools::getValue('page', 1);
@@ -62,10 +65,21 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
             $statuses[$status['name']] = $status['name'];
             $status_colors[$status['name']] = $status['color'];
         }
+        // Add CSS and JS files
+        $this->context->controller->addCSS($this->module->getPathUri() . 'views/css/dashboard.css');
+        $this->context->controller->addCSS($this->module->getPathUri() . 'views/css/orders.css');
+        $this->context->controller->addJS($this->module->getPathUri() . 'views/js/orders.js');
+
+        // Add JS definitions for AJAX
+        Media::addJsDef([
+            'ordersAjaxUrl' => $this->context->link->getModuleLink('multivendor', 'ajax'),
+            'ordersAjaxToken' => Tools::getToken('multivendor')
+        ]);
 
         // Assign data to template
         $this->context->smarty->assign([
             'order_lines' => $orderLines,
+            'order_summary' => $orderSummary,
             'statuses' => $statuses,
             'status_colors' => $status_colors,
             'pages_nb' => $total_pages,
@@ -73,7 +87,9 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
             'vendor_dashboard_url' => $this->context->link->getModuleLink('multivendor', 'dashboard'),
             'vendor_commissions_url' => $this->context->link->getModuleLink('multivendor', 'commissions'),
             'vendor_profile_url' => $this->context->link->getModuleLink('multivendor', 'profile'),
-            'currency_sign' => $this->context->currency->sign
+            'vendor_orders_url' => $this->context->link->getModuleLink('multivendor', 'orders'),
+            'currency_sign' => $this->context->currency->sign,
+            'currency' => $this->context->currency
         ]);
 
         $this->setTemplate('module:multivendor/views/templates/front/orders.tpl');
@@ -92,9 +108,9 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
     {
         $query = new DbQuery();
         $query->select('od.id_order_detail, od.product_name, od.product_quantity, od.unit_price_tax_incl,od.total_price_tax_incl,
-                      o.reference as order_reference, o.date_add as order_date, p.id_supplier,
-                      vod.id_vendor, vod.commission_amount, vod.vendor_amount, vod.id_order,
-                      ols.status as line_status');
+                  o.reference as order_reference, o.date_add as order_date, p.id_supplier,
+                  vod.id_vendor, vod.commission_amount, vod.vendor_amount, vod.id_order,
+                  COALESCE(ols.status, "Pending") as line_status'); // Fix: Set default status if null
         $query->from('order_detail', 'od');
         $query->innerJoin('orders', 'o', 'o.id_order = od.id_order');
         $query->innerJoin('product', 'p', 'p.id_product = od.product_id');
@@ -104,7 +120,16 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
         $query->orderBy('o.date_add DESC');
         $query->limit($limit, $offset);
 
-        return Db::getInstance()->executeS($query);
+        $results = Db::getInstance()->executeS($query);
+
+        // Ensure status is set for each line
+        foreach ($results as &$result) {
+            if (empty($result['line_status'])) {
+                $result['line_status'] = 'Pending';
+            }
+        }
+
+        return $results;
     }
 
     /**
@@ -155,7 +180,10 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
 
         if (!$vendorOrderDetail) {
             // Create a new vendor order detail record
-            $this->createVendorOrderDetail($id_order_detail, $id_vendor, $id_supplier);
+            if (!$this->createVendorOrderDetail($id_order_detail, $id_vendor)) {
+                $this->errors[] = $this->module->l('Failed to create vendor order detail.');
+                return;
+            }
         }
 
         // Update the status
@@ -179,7 +207,7 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
      * Create vendor order detail if it doesn't exist
      * This handles cases where order was placed before the vendor was associated
      */
-    protected function createVendorOrderDetail($id_order_detail, $id_vendor, $id_supplier)
+    protected function createVendorOrderDetail($id_order_detail, $id_vendor)
     {
         // Get order detail info
         $orderDetail = new OrderDetail($id_order_detail);
@@ -205,6 +233,7 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
         $vendorOrderDetail->commission_amount = $commission_amount;
         $vendorOrderDetail->vendor_amount = $vendor_amount;
         $vendorOrderDetail->date_add = date('Y-m-d H:i:s');
+
         return $vendorOrderDetail->save();
     }
 
@@ -213,24 +242,88 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
      */
     protected function getCommissionRate($id_vendor, $id_product)
     {
+        if (!$id_product || !$id_vendor) {
+            return Configuration::get('MV_DEFAULT_COMMISSION', 10);
+        }
+
         $product = new Product($id_product);
+
+        if (!Validate::isLoadedObject($product)) {
+            return Configuration::get('MV_DEFAULT_COMMISSION', 10);
+        }
+
         $id_category = $product->id_category_default;
 
         // Check if there's a specific category commission
         $categoryCommission = CategoryCommission::getCommissionRate($id_vendor, $id_category);
-
-        if ($categoryCommission) {
+        if ($categoryCommission !== null) {
             return $categoryCommission;
         }
 
         // Check if there's a vendor-specific commission
         $vendorCommission = VendorCommission::getCommissionRate($id_vendor);
-
-        if ($vendorCommission) {
+        if ($vendorCommission !== null) {
             return $vendorCommission;
         }
 
         // Return default commission
         return Configuration::get('MV_DEFAULT_COMMISSION', 10);
     }
+
+   /**
+ * Get order summary data
+ */
+protected function getOrderSummary($id_vendor, $id_supplier)
+{
+    // Total order lines
+    $totalLines = Db::getInstance()->getValue('
+        SELECT COUNT(DISTINCT od.id_order_detail)
+        FROM ' . _DB_PREFIX_ . 'order_detail od
+        LEFT JOIN ' . _DB_PREFIX_ . 'product p ON p.id_product = od.product_id
+        WHERE p.id_supplier = ' . (int)$id_supplier
+    );
+
+    // Total revenue - Changed to show vendor commission for last 28 days
+    $totalRevenue = Db::getInstance()->getValue('
+        SELECT SUM(vod.vendor_amount)
+        FROM ' . _DB_PREFIX_ . 'vendor_order_detail vod
+        LEFT JOIN ' . _DB_PREFIX_ . 'order_detail od ON od.id_order_detail = vod.id_order_detail
+        LEFT JOIN ' . _DB_PREFIX_ . 'orders o ON o.id_order = vod.id_order
+        LEFT JOIN ' . _DB_PREFIX_ . 'product p ON p.id_product = od.product_id
+        WHERE p.id_supplier = ' . (int)$id_supplier . '
+        AND vod.id_vendor = ' . (int)$id_vendor . '
+        AND DATE(o.date_add) >= DATE_SUB(CURDATE(), INTERVAL 28 DAY)
+    ');
+
+    // Status breakdown - gets all statuses with order line counts
+    $statusBreakdown = Db::getInstance()->executeS('
+        SELECT lstype.name as status, COUNT(ols.id_order_line_status) as count
+        FROM ' . _DB_PREFIX_ . 'order_line_status_type lstype
+        LEFT JOIN ' . _DB_PREFIX_ . 'order_line_status ols ON ols.status = lstype.name AND ols.id_vendor = ' . (int)$id_vendor . '
+        LEFT JOIN ' . _DB_PREFIX_ . 'order_detail od ON od.id_order_detail = ols.id_order_detail
+        LEFT JOIN ' . _DB_PREFIX_ . 'product p ON p.id_product = od.product_id
+        WHERE lstype.active = 1
+        AND lstype.is_vendor_allowed = 1
+        AND (p.id_supplier = ' . (int)$id_supplier . ' OR p.id_supplier IS NULL)
+        GROUP BY lstype.name
+        ORDER BY lstype.position ASC
+    ');
+
+    // Today's orders
+    $todaysOrders = Db::getInstance()->getValue('
+        SELECT COUNT(DISTINCT od.id_order_detail)
+        FROM ' . _DB_PREFIX_ . 'order_detail od
+        LEFT JOIN ' . _DB_PREFIX_ . 'orders o ON o.id_order = od.id_order
+        LEFT JOIN ' . _DB_PREFIX_ . 'product p ON p.id_product = od.product_id
+        WHERE p.id_supplier = ' . (int)$id_supplier . '
+        AND DATE(o.date_add) = CURDATE()
+    ');
+
+    return [
+        'total_lines' => (int)$totalLines,
+        'total_revenue' => (float)$totalRevenue ?: 0.00,
+        'todays_orders' => (int)$todaysOrders,
+        'status_breakdown' => $statusBreakdown
+    ];
+}
 }
