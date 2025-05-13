@@ -43,11 +43,13 @@
 }
 
 .mv-card-header {
+    align-items: center;
+    display: flex;
     padding: 20px;
     border-bottom: 1px solid #eee;
     background-color: #fafafa;
+    justify-content: space-between;
 }
-
 .mv-card-title {
     margin: 0;
     font-size: 18px;

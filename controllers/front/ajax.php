@@ -146,8 +146,9 @@ class MultivendorAjaxModuleFrontController extends ModuleFrontController
         }
     }
 
+
     /**
-     * Process vendor status update with additional options
+     * Process vendor status update
      */
     private function processUpdateVendorStatus()
     {
@@ -164,7 +165,6 @@ class MultivendorAjaxModuleFrontController extends ModuleFrontController
         $id_order_detail = (int)Tools::getValue('id_order_detail');
         $new_status = Tools::getValue('status');
         $comment = Tools::getValue('comment');
-       
 
         try {
             // Verify authorization
@@ -196,7 +196,6 @@ class MultivendorAjaxModuleFrontController extends ModuleFrontController
                 throw new Exception('Failed to update status');
             }
 
-
             // Get updated status data
             $statusData = $this->getOrderLineStatusData($id_order_detail, $id_vendor);
 
@@ -209,7 +208,6 @@ class MultivendorAjaxModuleFrontController extends ModuleFrontController
             die(json_encode(['success' => false, 'message' => $e->getMessage()]));
         }
     }
-
     /**
      * Get status history for an order line
      */
@@ -262,5 +260,4 @@ class MultivendorAjaxModuleFrontController extends ModuleFrontController
             'comment' => $lineStatus ? $lineStatus['comment'] : null
         ];
     }
-
 }

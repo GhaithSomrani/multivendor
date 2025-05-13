@@ -90,6 +90,16 @@
                 <div class="mv-card">
                     <div class="mv-card-header">
                         <h3 class="mv-card-title">{l s='Order Lines' mod='multivendor'}</h3>
+                        <div class="mv-export-buttons">
+                            <button class="mv-btn mv-btn-export" onclick="exportTableToCSV()">
+                                <i class="mv-icon">📥</i>
+                                {l s='Export CSV' mod='multivendor'}
+                            </button>
+                            <button class="mv-btn mv-btn-export" onclick="exportTableToExcel()">
+                                <i class="mv-icon">📊</i>
+                                {l s='Export Excel' mod='multivendor'}
+                            </button>
+                        </div>
                     </div>
                     <div class="mv-card-body">
                         {if $order_lines}
@@ -122,18 +132,25 @@
                                                 <td>{$line.total_price_tax_incl|displayPrice}</td>
                                                 <td>{$line.commission_amount|displayPrice}</td>
                                                 <td>
-                                                    <select class="mv-status-select order-line-status-select" 
-                                                            id="status-select-{$line.id_order_detail}"
-                                                            data-order-detail-id="{$line.id_order_detail}"
-                                                            data-original-status="{$line.line_status|default:'Pending'}">
-                                                        {foreach from=$statuses key=status_key item=status_label}
-                                                            <option value="{$status_key}" 
-                                                                    {if ($line.line_status|lower) == ($status_key|lower)}selected{/if}
-                                                                    style="background-color: {$status_colors[$status_key]}; color: white;">
-                                                                {$status_label|escape:'html':'UTF-8'|capitalize}
-                                                            </option>
-                                                        {/foreach}
-                                                    </select>
+                                                    {if isset($all_statuses[$line.line_status]) && !isset($vendor_statuses[$line.line_status])}
+                                                        <span class="mv-status-badge" 
+                                                            style="background-color: {$status_colors[$line.line_status]|default:'#777'};">
+                                                            {$line.line_status|capitalize} 
+                                                        </span>
+                                                    {else}
+                                                        <select class="mv-status-select order-line-status-select" 
+                                                                id="status-select-{$line.id_order_detail}"
+                                                                data-order-detail-id="{$line.id_order_detail}"
+                                                                data-original-status="{$line.line_status|default:'Pending'}">
+                                                            {foreach from=$vendor_statuses key=status_key item=status_label}
+                                                                <option value="{$status_key}" 
+                                                                        {if ($line.line_status|default:'Pending') == $status_key}selected{/if}
+                                                                        style="background-color: {$status_colors[$status_key]}; color: white;">
+                                                                    {$status_label|escape:'html':'UTF-8'|capitalize}
+                                                                </option>
+                                                            {/foreach}
+                                                        </select>
+                                                    {/if}
                                                 </td>
                                                 <td>{$line.order_date|date_format:'%Y-%m-%d'}</td>
                                                 <td>

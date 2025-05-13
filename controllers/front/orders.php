@@ -58,13 +58,25 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
         $total_pages = ceil($total_lines / $per_page);
 
         // Get available line statuses (only ones that vendor can use)
-        $statuses = [];
+        $vendorStatuses = [];
+        $allStatuses = [];
         $status_colors = [];
-        $statusTypes = OrderLineStatusType::getAllActiveStatusTypes(true);
-        foreach ($statusTypes as $status) {
-            $statuses[$status['name']] = $status['name'];
+
+        // Get only vendor-allowed statuses for dropdown
+        $vendorStatusTypes = OrderLineStatusType::getAllActiveStatusTypes(true); // true = vendor only
+        foreach ($vendorStatusTypes as $status) {
+            $vendorStatuses[$status['name']] = $status['name'];
             $status_colors[$status['name']] = $status['color'];
         }
+
+        // Get ALL statuses (including admin-only) for display
+        $allStatusTypes = OrderLineStatusType::getAllActiveStatusTypes();
+        foreach ($allStatusTypes as $status) {
+            $allStatuses[$status['name']] = $status['name'];
+            $status_colors[$status['name']] = $status['color'];
+        }
+
+
         // Add CSS and JS files
         $this->context->controller->addCSS($this->module->getPathUri() . 'views/css/dashboard.css');
         $this->context->controller->addCSS($this->module->getPathUri() . 'views/css/orders.css');
@@ -80,7 +92,8 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
         $this->context->smarty->assign([
             'order_lines' => $orderLines,
             'order_summary' => $orderSummary,
-            'statuses' => $statuses,
+            'vendor_statuses' => $vendorStatuses,
+            'all_statuses' => $allStatuses,
             'status_colors' => $status_colors,
             'pages_nb' => $total_pages,
             'current_page' => $page,
@@ -270,47 +283,52 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
         return Configuration::get('MV_DEFAULT_COMMISSION', 10);
     }
 
-   /**
- * Get order summary data
- */
-protected function getOrderSummary($id_vendor, $id_supplier)
-{
-    // Total order lines
-    $totalLines = Db::getInstance()->getValue('
+    /**
+     * Get order summary data
+     */
+    protected function getOrderSummary($id_vendor, $id_supplier)
+    {
+        // Total order lines
+        $totalLines = Db::getInstance()->getValue(
+            '
         SELECT COUNT(DISTINCT od.id_order_detail)
         FROM ' . _DB_PREFIX_ . 'order_detail od
         LEFT JOIN ' . _DB_PREFIX_ . 'product p ON p.id_product = od.product_id
         WHERE p.id_supplier = ' . (int)$id_supplier
-    );
+        );
 
-    // Total revenue - Changed to show vendor commission for last 28 days
-    $totalRevenue = Db::getInstance()->getValue('
+        // Total revenue - Only count when commission_action = "add"
+        $totalRevenue = Db::getInstance()->getValue('
         SELECT SUM(vod.vendor_amount)
         FROM ' . _DB_PREFIX_ . 'vendor_order_detail vod
         LEFT JOIN ' . _DB_PREFIX_ . 'order_detail od ON od.id_order_detail = vod.id_order_detail
         LEFT JOIN ' . _DB_PREFIX_ . 'orders o ON o.id_order = vod.id_order
         LEFT JOIN ' . _DB_PREFIX_ . 'product p ON p.id_product = od.product_id
+        LEFT JOIN ' . _DB_PREFIX_ . 'order_line_status ols ON ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor
+        LEFT JOIN ' . _DB_PREFIX_ . 'order_line_status_type olst ON olst.name = ols.status
         WHERE p.id_supplier = ' . (int)$id_supplier . '
         AND vod.id_vendor = ' . (int)$id_vendor . '
         AND DATE(o.date_add) >= DATE_SUB(CURDATE(), INTERVAL 28 DAY)
+        AND olst.commission_action = "add"
     ');
 
-    // Status breakdown - gets all statuses with order line counts
-    $statusBreakdown = Db::getInstance()->executeS('
-        SELECT lstype.name as status, COUNT(ols.id_order_line_status) as count
+        // Status breakdown - gets all statuses (including admin-only)
+        $statusBreakdown = Db::getInstance()->executeS('
+        SELECT lstype.name as status, 
+               COUNT(ols.id_order_line_status) as count,
+               lstype.is_vendor_allowed
         FROM ' . _DB_PREFIX_ . 'order_line_status_type lstype
         LEFT JOIN ' . _DB_PREFIX_ . 'order_line_status ols ON ols.status = lstype.name AND ols.id_vendor = ' . (int)$id_vendor . '
         LEFT JOIN ' . _DB_PREFIX_ . 'order_detail od ON od.id_order_detail = ols.id_order_detail
         LEFT JOIN ' . _DB_PREFIX_ . 'product p ON p.id_product = od.product_id
         WHERE lstype.active = 1
-        AND lstype.is_vendor_allowed = 1
         AND (p.id_supplier = ' . (int)$id_supplier . ' OR p.id_supplier IS NULL)
         GROUP BY lstype.name
         ORDER BY lstype.position ASC
     ');
 
-    // Today's orders
-    $todaysOrders = Db::getInstance()->getValue('
+        // Today's orders
+        $todaysOrders = Db::getInstance()->getValue('
         SELECT COUNT(DISTINCT od.id_order_detail)
         FROM ' . _DB_PREFIX_ . 'order_detail od
         LEFT JOIN ' . _DB_PREFIX_ . 'orders o ON o.id_order = od.id_order
@@ -319,11 +337,11 @@ protected function getOrderSummary($id_vendor, $id_supplier)
         AND DATE(o.date_add) = CURDATE()
     ');
 
-    return [
-        'total_lines' => (int)$totalLines,
-        'total_revenue' => (float)$totalRevenue ?: 0.00,
-        'todays_orders' => (int)$todaysOrders,
-        'status_breakdown' => $statusBreakdown
-    ];
-}
+        return [
+            'total_lines' => (int)$totalLines,
+            'total_revenue' => (float)$totalRevenue ?: 0.00,
+            'todays_orders' => (int)$todaysOrders,
+            'status_breakdown' => $statusBreakdown
+        ];
+    }
 }
