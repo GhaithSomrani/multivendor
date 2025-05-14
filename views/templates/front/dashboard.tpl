@@ -37,10 +37,7 @@
                                 <i class="mv-icon">💰</i>
                                 <span>{l s='Commissions' mod='multivendor'}</span>
                             </a>
-                            <a class="mv-nav-link" href="{$vendor_profile_url}">
-                                <i class="mv-icon">🏪</i>
-                                <span>{l s='Shop Profile' mod='multivendor'}</span>
-                            </a>
+                           
                         </nav>
                     </div>
                 </div>
@@ -115,13 +112,13 @@
                                                 {foreach from=$recent_order_lines item=line}
                                                     <tr>
                                                         <td>
-                                                            <a href="{$vendor_orders_url}&id_order={$line.id_order}" class="mv-link">
+                                                            <a href="#" class="mv-link">
                                                                 #{$line.order_reference}
                                                             </a>
                                                         </td>
                                                         <td class="mv-product-name">{$line.product_name|truncate:30:'...'}</td>
                                                         <td class="mv-text-center">{$line.product_quantity}</td>
-                                                        <td>{Tools::displayPrice($line.total_price_tax_incl)}</td>
+                                                        <td>{Tools::displayPrice($line.vendor_amount)}</td>
                                                         <td>
                                                             <span class="mv-status-badge" style="background-color: {$line.status_color};">
                                                                 {$line.line_status|default:'Pending'|capitalize}

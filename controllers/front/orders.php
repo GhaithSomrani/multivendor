@@ -120,10 +120,10 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
     protected function getVendorOrderLines($id_vendor, $id_supplier, $limit = 20, $offset = 0)
     {
         $query = new DbQuery();
-        $query->select('od.id_order_detail, od.product_name, od.product_quantity, od.unit_price_tax_incl,od.total_price_tax_incl,
+        $query->select('od.id_order_detail, od.product_name,od.product_reference ,  od.product_quantity, od.unit_price_tax_incl,od.total_price_tax_incl,
                   o.reference as order_reference, o.date_add as order_date, p.id_supplier,
                   vod.id_vendor, vod.commission_amount, vod.vendor_amount, vod.id_order,
-                  COALESCE(ols.status, "Pending") as line_status'); // Fix: Set default status if null
+                  COALESCE(ols.status, "Pending") as line_status'); 
         $query->from('order_detail', 'od');
         $query->innerJoin('orders', 'o', 'o.id_order = od.id_order');
         $query->innerJoin('product', 'p', 'p.id_product = od.product_id');

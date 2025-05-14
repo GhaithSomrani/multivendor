@@ -13,9 +13,6 @@
         <div class="mv-container">
             <aside class="mv-sidebar">
                 <div class="mv-card">
-                    <div class="mv-card-header">
-                        <h3 class="mv-card-title">{l s='Navigation' mod='multivendor'}</h3>
-                    </div>
                     <div class="mv-card-body">
                         <nav class="mv-nav">
                             <a class="mv-nav-link" href="{$vendor_dashboard_url}">
@@ -30,10 +27,7 @@
                                 <i class="mv-icon">💰</i>
                                 <span>{l s='Commissions' mod='multivendor'}</span>
                             </a>
-                            <a class="mv-nav-link" href="{$vendor_profile_url}">
-                                <i class="mv-icon">🏪</i>
-                                <span>{l s='Shop Profile' mod='multivendor'}</span>
-                            </a>
+                           
                         </nav>
                     </div>
                 </div>
@@ -85,7 +79,6 @@
                         </div>
                     </div>
                 {/if}
-
                 {* Orders Table *}
                 <div class="mv-card">
                     <div class="mv-card-header">
@@ -95,10 +88,7 @@
                                 <i class="mv-icon">📥</i>
                                 {l s='Export CSV' mod='multivendor'}
                             </button>
-                            <button class="mv-btn mv-btn-export" onclick="exportTableToExcel()">
-                                <i class="mv-icon">📊</i>
-                                {l s='Export Excel' mod='multivendor'}
-                            </button>
+                           
                         </div>
                     </div>
                     <div class="mv-card-body">
@@ -109,10 +99,8 @@
                                         <tr>
                                             <th>{l s='Reference' mod='multivendor'}</th>
                                             <th>{l s='Product' mod='multivendor'}</th>
-                                            <th>{l s='Unit Price' mod='multivendor'}</th>
                                             <th>{l s='Qty' mod='multivendor'}</th>
                                             <th>{l s='Total' mod='multivendor'}</th>
-                                            <th>{l s='Commission' mod='multivendor'}</th>
                                             <th>{l s='Status' mod='multivendor'}</th>
                                             <th>{l s='Date' mod='multivendor'}</th>
                                             <th>{l s='Actions' mod='multivendor'}</th>
@@ -126,11 +114,10 @@
                                                         #{$line.order_reference}#{$line.id_order_detail}
                                                     </a>
                                                 </td>
-                                                <td class="mv-product-name">{$line.product_name|truncate:40:'...'}</td>
-                                                <td>{$line.unit_price_tax_incl|displayPrice}</td>
+                                                <td class="mv-product-name">{$line.product_name|truncate:80:'...'}
+                                                   <br> (SKU : {$line.product_reference})</td>
                                                 <td class="mv-text-center">{$line.product_quantity}</td>
-                                                <td>{$line.total_price_tax_incl|displayPrice}</td>
-                                                <td>{$line.commission_amount|displayPrice}</td>
+                                                <td>{($line.total_price_tax_incl - $line.commission_amount)|displayPrice}</td>
                                                 <td>
                                                     {if isset($all_statuses[$line.line_status]) && !isset($vendor_statuses[$line.line_status])}
                                                         <span class="mv-status-badge" 

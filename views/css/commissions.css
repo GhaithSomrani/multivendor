@@ -1,0 +1,391 @@
+/* Multivendor Commissions Custom CSS - Consistent with Dashboard and Orders */
+
+.mv-dashboard {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    color: #333;
+    background-color: #f5f5f7;
+    min-height: 100vh;
+    padding: 20px;
+}
+
+.mv-container {
+    display: flex;
+    gap: 24px;
+    max-width: 1400px;
+    margin: 0 auto;
+    flex-direction: column;
+}
+
+/* Sidebar Navigation */
+.mv-sidebar {
+    width: 100%;
+}
+
+.mv-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+    margin-bottom: 24px;
+    overflow: hidden;
+}
+
+.mv-card-header {
+    align-items: center;
+    display: flex;
+    padding: 20px;
+    border-bottom: 1px solid #eee;
+    background-color: #fafafa;
+    justify-content: space-between;
+}
+
+.mv-card-title {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #1a1a1a;
+}
+
+.mv-card-body {
+    padding: 20px;
+}
+
+.mv-nav {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-around;
+}
+
+.mv-nav-link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    color: #555;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    border-left: 3px solid transparent;
+}
+
+.mv-nav-link:hover {
+    background-color: #f8f8f8;
+    color: #333;
+}
+
+.mv-nav-link-active {
+    background-color: #f0f0ff;
+    color: #6366f1;
+    border-left-color: #6366f1;
+}
+
+.mv-icon {
+    font-size: 20px;
+    display: inline-block;
+    width: 24px;
+    text-align: center;
+}
+
+/* Main Content */
+.mv-main-content {
+    flex: 1;
+    width: 100%;
+    min-width: 0;
+}
+
+/* Stats Grid */
+.mv-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin-bottom: 24px;
+}
+
+.mv-stat-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+    padding: 24px;
+    text-align: center;
+}
+
+.mv-stat-label {
+    margin: 0 0 8px 0;
+    font-size: 14px;
+    color: #666;
+    font-weight: 500;
+}
+
+.mv-stat-value {
+    margin: 0;
+    font-size: 28px;
+    font-weight: 700;
+    color: #1a1a1a;
+}
+
+.mv-stat-description {
+    margin: 8px 0 0 0;
+    font-size: 12px;
+    color: #888;
+}
+
+/* Commission Summary Cards */
+.mv-commission-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin-bottom: 24px;
+}
+
+.mv-summary-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+    padding: 20px;
+    text-align: center;
+}
+
+.mv-summary-card-add {
+    border-top: 3px solid #10b981;
+}
+
+.mv-summary-card-refund {
+    border-top: 3px solid #ef4444;
+}
+
+.mv-summary-card-pending {
+    border-top: 3px solid #f59e0b;
+}
+
+.mv-summary-card-paid {
+    border-top: 3px solid #6366f1;
+}
+
+/* Tables */
+.mv-table-container {
+    overflow-x: auto;
+}
+
+.mv-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.mv-table th,
+.mv-table td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+}
+
+.mv-table th {
+    font-weight: 600;
+    color: #666;
+    font-size: 13px;
+    text-transform: uppercase;
+}
+
+.mv-table tbody tr:hover {
+    background-color: #fafafa;
+}
+
+/* Status Badges */
+.mv-status-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: capitalize;
+}
+
+.mv-status-pending {
+    background-color: #fbbf24;
+    color: #78350f;
+}
+
+.mv-status-paid {
+    background-color: #34d399;
+    color: #064e3b;
+}
+
+.mv-status-cancelled {
+    background-color: #f87171;
+    color: #7f1d1d;
+}
+
+.mv-status-refunded {
+    background-color: #ef4444;
+    color: white;
+}
+
+/* Action Types */
+.mv-action-type {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.mv-action-add {
+    background-color: #d1fae5;
+    color: #065f46;
+}
+
+.mv-action-refund {
+    background-color: #fee2e2;
+    color: #991b1b;
+}
+
+/* Links */
+.mv-link {
+    color: #6366f1;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.mv-link:hover {
+    text-decoration: underline;
+}
+
+/* Buttons */
+.mv-btn {
+    display: inline-block;
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: 500;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+}
+
+.mv-btn-outline {
+    color: #6366f1;
+    background-color: white;
+    border: 1px solid #6366f1;
+}
+
+.mv-btn-outline:hover {
+    background-color: #6366f1;
+    color: white;
+}
+
+/* Empty State */
+.mv-empty-state {
+    text-align: center;
+    color: #888;
+    padding: 40px 0;
+    font-size: 14px;
+}
+
+/* Section Divider */
+.mv-section-divider {
+    height: 1px;
+    background-color: #e5e7eb;
+    margin: 32px 0;
+}
+
+/* Commission Details */
+.mv-commission-detail {
+    padding: 8px 0;
+    font-size: 14px;
+}
+
+.mv-commission-detail-label {
+    font-weight: 600;
+    color: #374151;
+    margin-right: 8px;
+}
+
+.mv-commission-detail-value {
+    color: #6b7280;
+}
+
+/* Pagination */
+.mv-pagination {
+    margin-top: 24px;
+    display: flex;
+    justify-content: center;
+}
+
+.mv-pagination-list {
+    display: flex;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    gap: 8px;
+}
+
+.mv-pagination-item {
+    margin: 0;
+}
+
+.mv-pagination-link {
+    display: block;
+    padding: 8px 12px;
+    color: #6366f1;
+    text-decoration: none;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    background-color: white;
+    transition: all 0.2s;
+}
+
+.mv-pagination-link:hover {
+    background-color: #f5f5f5;
+    border-color: #6366f1;
+}
+
+.mv-pagination-active .mv-pagination-link {
+    background-color: #6366f1;
+    color: white;
+    border-color: #6366f1;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+    .mv-container {
+        flex-direction: column;
+    }
+
+    .mv-sidebar {
+        width: 100%;
+    }
+
+    .mv-stats-grid {
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    }
+}
+
+@media (max-width: 640px) {
+    .mv-dashboard {
+        padding: 10px;
+    }
+
+    .mv-stats-grid,
+    .mv-commission-summary {
+        grid-template-columns: 1fr;
+    }
+
+    .mv-stat-card,
+    .mv-summary-card {
+        padding: 16px;
+    }
+
+    .mv-stat-value {
+        font-size: 24px;
+    }
+
+    .mv-table {
+        font-size: 12px;
+    }
+
+    .mv-table th,
+    .mv-table td {
+        padding: 8px;
+    }
+}

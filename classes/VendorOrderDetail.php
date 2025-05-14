@@ -189,7 +189,7 @@ class VendorOrderDetail extends ObjectModel
     {
         $query = '
             SELECT od.product_id, od.product_name, SUM(od.product_quantity) as quantity_sold,
-                   SUM(vod.vendor_amount + vod.commission_amount) as total_sales
+                   SUM(vod.vendor_amount) as total_sales
             FROM ' . _DB_PREFIX_ . 'vendor_order_detail vod
             LEFT JOIN ' . _DB_PREFIX_ . 'order_detail od ON od.id_order_detail = vod.id_order_detail
             WHERE vod.id_vendor = ' . (int)$id_vendor . '

@@ -56,6 +56,8 @@ $sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'vendor_transaction` (
     `id_vendor_transaction` int(10) unsigned NOT NULL AUTO_INCREMENT,
     `id_vendor` int(10) unsigned NOT NULL,
     `id_order` int(10) unsigned NOT NULL,
+    `order_detail_id` int(10) unsigned DEFAULT NULL,
+    `id_vendor_payment` int(10) unsigned DEFAULT NULL,
     `commission_amount` decimal(20,6) NOT NULL DEFAULT "0.000000",
     `vendor_amount` decimal(20,6) NOT NULL DEFAULT "0.000000",
     `transaction_type` varchar(32) NOT NULL,
@@ -63,7 +65,9 @@ $sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'vendor_transaction` (
     `date_add` datetime NOT NULL,
     PRIMARY KEY (`id_vendor_transaction`),
     KEY `id_vendor` (`id_vendor`),
-    KEY `id_order` (`id_order`)
+    KEY `id_order` (`id_order`),
+    KEY `order_detail_id` (`order_detail_id`),
+    KEY `id_vendor_payment` (`id_vendor_payment`)
 ) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8;';
 
 // Create Vendor Payment table

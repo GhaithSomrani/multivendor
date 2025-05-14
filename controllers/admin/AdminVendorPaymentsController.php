@@ -271,24 +271,82 @@ class AdminVendorPaymentsController extends ModuleAdminController
 
         return parent::renderForm();
     }
-
-    /**
+     /**
      * Init content for pending commissions
      */
     public function initContentPendingCommissions()
     {
         $this->display = '';
 
+        // Get the default status and its commission action
+        $defaultStatus = Db::getInstance()->getRow('
+            SELECT * FROM `' . _DB_PREFIX_ . 'order_line_status_type` 
+            WHERE active = 1 
+            ORDER BY position ASC '
+        );
+        
+        $defaultAction = $defaultStatus ? $defaultStatus['commission_action'] : 'none';
+
         // Get vendors with pending commissions
+        // Pending = (Commissions Added) - (Total Paid)
         $query = new DbQuery();
-        $query->select('v.id_vendor, v.shop_name, SUM(vt.commission_amount) as pending_amount, COUNT(vt.id_vendor_transaction) as transaction_count');
-        $query->from('vendor_transaction', 'vt');
-        $query->leftJoin('vendor', 'v', 'v.id_vendor = vt.id_vendor');
-        $query->where('vt.status = "pending"');
-        $query->groupBy('vt.id_vendor');
+        $query->select('v.id_vendor, v.shop_name');
+        
+        // Subquery for commissions added
+        $query->select('(
+            SELECT SUM(vod.vendor_amount) 
+            FROM ' . _DB_PREFIX_ . 'vendor_order_detail vod
+            LEFT JOIN ' . _DB_PREFIX_ . 'order_line_status ols ON ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor
+            LEFT JOIN ' . _DB_PREFIX_ . 'order_line_status_type olst ON olst.name = ols.status
+            WHERE vod.id_vendor = v.id_vendor
+            AND (
+                (olst.commission_action = "add") 
+                OR 
+                (ols.status IS NULL AND "' . pSQL($defaultAction) . '" = "add")
+            )
+        ) as commissions_added');
+        
+        // Subquery for total paid
+        $query->select('(
+            SELECT COALESCE(SUM(vp.amount), 0)
+            FROM ' . _DB_PREFIX_ . 'vendor_payment vp
+            WHERE vp.id_vendor = v.id_vendor
+            AND vp.status = "completed"
+        ) as total_paid');
+        
+        // Calculate pending amount
+        $query->select('(
+            COALESCE((
+                SELECT SUM(vod.vendor_amount) 
+                FROM ' . _DB_PREFIX_ . 'vendor_order_detail vod
+                LEFT JOIN ' . _DB_PREFIX_ . 'order_line_status ols ON ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor
+                LEFT JOIN ' . _DB_PREFIX_ . 'order_line_status_type olst ON olst.name = ols.status
+                WHERE vod.id_vendor = v.id_vendor
+                AND (
+                    (olst.commission_action = "add") 
+                    OR 
+                    (ols.status IS NULL AND "' . pSQL($defaultAction) . '" = "add")
+                )
+            ), 0) - 
+            COALESCE((
+                SELECT SUM(vp.amount)
+                FROM ' . _DB_PREFIX_ . 'vendor_payment vp
+                WHERE vp.id_vendor = v.id_vendor
+                AND vp.status = "completed"
+            ), 0)
+        ) as pending_amount');
+        
+        $query->from('vendor', 'v');
         $query->having('pending_amount > 0');
+        $query->orderBy('pending_amount DESC');
 
         $pendingCommissions = Db::getInstance()->executeS($query);
+
+        // Format the results
+        foreach ($pendingCommissions as &$commission) {
+            $commission['pending_amount'] = (float)$commission['pending_amount'];
+            $commission['transaction_count'] = $this->countPendingTransactions($commission['id_vendor']);
+        }
 
         // Get payment methods
         $paymentMethods = [
@@ -309,6 +367,44 @@ class AdminVendorPaymentsController extends ModuleAdminController
         $this->context->smarty->assign('content', $this->content);
     }
 
+    /**
+     * Count pending transactions for a vendor
+     * This counts unique order details with commission_action = 'add' that haven't been fully paid
+     * 
+     * @param int $id_vendor Vendor ID
+     * @return int Number of pending transactions
+     */
+    protected function countPendingTransactions($id_vendor)
+    {
+        // Get the default status and its commission action
+        $defaultStatus = Db::getInstance()->getRow(
+            '
+            SELECT * FROM `' . _DB_PREFIX_ . 'order_line_status_type` 
+            WHERE active = 1 
+            ORDER BY position ASC 
+           '
+        );
+
+        $defaultAction = $defaultStatus ? $defaultStatus['commission_action'] : 'none';
+
+        // Count order details with 'add' commission action
+        $query = '
+            SELECT COUNT(DISTINCT vod.id_order_detail)
+            FROM ' . _DB_PREFIX_ . 'vendor_order_detail vod
+            LEFT JOIN ' . _DB_PREFIX_ . 'order_line_status ols 
+                ON ols.id_order_detail = vod.id_order_detail 
+                AND ols.id_vendor = vod.id_vendor
+            LEFT JOIN ' . _DB_PREFIX_ . 'order_line_status_type olst 
+                ON olst.name = ols.status
+            WHERE vod.id_vendor = ' . (int)$id_vendor . '
+            AND (
+                (olst.commission_action = "add") 
+                OR 
+                (ols.status IS NULL AND "' . pSQL($defaultAction) . '" = "add")
+            )';
+
+        return (int)Db::getInstance()->getValue($query);
+    }
     /**
      * AJAX process pay commission
      */
