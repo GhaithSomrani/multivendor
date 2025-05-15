@@ -28,8 +28,14 @@ class VendorTransaction extends ObjectModel
     /** @var string Transaction type */
     public $transaction_type;
 
+    /** @var int Order detail ID */
+    public $order_detail_id ;
+
     /** @var string Status */
     public $status;
+
+    /** @var int Vendor payment ID */
+    public $id_vendor_payment;
 
     /** @var string Creation date */
     public $date_add;
@@ -42,8 +48,10 @@ class VendorTransaction extends ObjectModel
         'primary' => 'id_vendor_transaction',
         'fields' => [
             'id_vendor' => ['type' => self::TYPE_INT, 'validate' => 'isUnsignedId', 'required' => true],
-            'id_order' => ['type' => self::TYPE_INT, 'validate' => 'isUnsignedId', 'required' => true],
-            'commission_amount' => ['type' => self::TYPE_FLOAT, 'validate' => 'isFloat', 'required' => true],
+            'transaction_type' => ['type' => self::TYPE_STRING, 'validate' => 'isGenericName', 'required' => true, 'size' => 32],
+            'order_detail_id' => ['type' => self::TYPE_INT, 'validate' => 'isUnsignedId', 'required' => false],
+            'status' => ['type' => self::TYPE_STRING, 'validate' => 'isGenericName', 'required' => true, 'size' => 32],
+            'id_vendor_payment' => ['type' => self::TYPE_INT, 'validate' => 'isUnsignedId', 'required' => false],
             'vendor_amount' => ['type' => self::TYPE_FLOAT, 'validate' => 'isFloat', 'required' => true],
             'transaction_type' => ['type' => self::TYPE_STRING, 'validate' => 'isGenericName', 'required' => true, 'size' => 32],
             'status' => ['type' => self::TYPE_STRING, 'validate' => 'isGenericName', 'required' => true, 'size' => 32],
@@ -98,7 +106,7 @@ class VendorTransaction extends ObjectModel
         return (float)Db::getInstance()->getValue($query);
     }
 
-        /**
+    /**
      * Pay pending commissions for a vendor
      * This creates a payment record and properly tracks which order lines are being paid
      *
@@ -111,35 +119,36 @@ class VendorTransaction extends ObjectModel
     public static function payVendorCommissions($id_vendor, $payment_method, $reference, $id_employee)
     {
         // Get the default status
-        $defaultStatus = Db::getInstance()->getRow('
-            SELECT * FROM `' . _DB_PREFIX_ . 'order_line_status_type` 
-            WHERE active = 1 
-            ORDER BY position ASC '
+        $defaultStatus = Db::getInstance()->getRow(
+            '
+        SELECT * FROM `' . _DB_PREFIX_ . 'order_line_status_type` 
+        WHERE active = 1 
+        ORDER BY position ASC '
         );
-        
+
         $defaultAction = $defaultStatus ? $defaultStatus['commission_action'] : 'none';
 
         // Get all unpaid order lines with commission_action = 'add'
         $unpaidOrderLines = Db::getInstance()->executeS('
-            SELECT DISTINCT vod.*, od.id_order_detail, od.product_name,
-                   COALESCE(ols.status, "' . pSQL($defaultStatus['name']) . '") as line_status,
-                   COALESCE(olst.commission_action, "' . pSQL($defaultAction) . '") as commission_action
-            FROM ' . _DB_PREFIX_ . 'vendor_order_detail vod
-            LEFT JOIN ' . _DB_PREFIX_ . 'order_detail od ON od.id_order_detail = vod.id_order_detail
-            LEFT JOIN ' . _DB_PREFIX_ . 'order_line_status ols ON ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor
-            LEFT JOIN ' . _DB_PREFIX_ . 'order_line_status_type olst ON olst.name = ols.status
-            LEFT JOIN ' . _DB_PREFIX_ . 'vendor_transaction vt ON vt.id_order = vod.id_order 
-                AND vt.id_vendor = vod.id_vendor 
-                AND vt.transaction_type = "commission"
-                AND vt.order_detail_id = vod.id_order_detail
-            WHERE vod.id_vendor = ' . (int)$id_vendor . '
-            AND (
-                (olst.commission_action = "add") 
-                OR 
-                (ols.status IS NULL AND "' . pSQL($defaultAction) . '" = "add")
-            )
-            AND vt.id_vendor_transaction IS NULL
-        ');
+        SELECT DISTINCT vod.*, od.id_order_detail, od.product_name,
+               COALESCE(ols.status, "' . pSQL($defaultStatus['name']) . '") as line_status,
+               COALESCE(olst.commission_action, "' . pSQL($defaultAction) . '") as commission_action
+        FROM ' . _DB_PREFIX_ . 'vendor_order_detail vod
+        LEFT JOIN ' . _DB_PREFIX_ . 'order_detail od ON od.id_order_detail = vod.id_order_detail
+        LEFT JOIN ' . _DB_PREFIX_ . 'order_line_status ols ON ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor
+        LEFT JOIN ' . _DB_PREFIX_ . 'order_line_status_type olst ON olst.name = ols.status
+        LEFT JOIN ' . _DB_PREFIX_ . 'vendor_transaction vt ON vt.id_order = vod.id_order 
+            AND vt.id_vendor = vod.id_vendor 
+            AND vt.transaction_type = "commission"
+            AND vt.order_detail_id = vod.id_order_detail
+        WHERE vod.id_vendor = ' . (int)$id_vendor . '
+        AND (
+            (olst.commission_action = "add") 
+            OR 
+            (ols.status IS NULL AND "' . pSQL($defaultAction) . '" = "add")
+        )
+        AND vt.id_vendor_transaction IS NULL
+    ');
 
         if (empty($unpaidOrderLines)) {
             return ['success' => false, 'message' => 'No unpaid commissions found'];
@@ -175,7 +184,7 @@ class VendorTransaction extends ObjectModel
                 $transaction = new VendorTransaction();
                 $transaction->id_vendor = (int)$id_vendor;
                 $transaction->id_order = (int)$line['id_order'];
-                $transaction->order_detail_id = (int)$line['id_order_detail'];
+                $transaction->order_detail_id = (int)$line['order_detail_id'];
                 $transaction->commission_amount = $line['vendor_amount'];
                 $transaction->vendor_amount = $line['vendor_amount'];
                 $transaction->transaction_type = 'commission';
@@ -192,16 +201,15 @@ class VendorTransaction extends ObjectModel
             Db::getInstance()->execute('COMMIT');
 
             return [
-                'success' => true, 
+                'success' => true,
                 'payment_id' => $payment->id,
                 'amount_paid' => $totalCommissionAmount,
                 'lines_paid' => count($unpaidOrderLines)
             ];
-
         } catch (Exception $e) {
             // Rollback transaction
             Db::getInstance()->execute('ROLLBACK');
-            
+
             return [
                 'success' => false,
                 'message' => $e->getMessage()

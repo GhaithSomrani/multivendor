@@ -271,7 +271,7 @@ class AdminVendorPaymentsController extends ModuleAdminController
 
         return parent::renderForm();
     }
-     /**
+    /**
      * Init content for pending commissions
      */
     public function initContentPendingCommissions()
@@ -279,19 +279,20 @@ class AdminVendorPaymentsController extends ModuleAdminController
         $this->display = '';
 
         // Get the default status and its commission action
-        $defaultStatus = Db::getInstance()->getRow('
+        $defaultStatus = Db::getInstance()->getRow(
+            '
             SELECT * FROM `' . _DB_PREFIX_ . 'order_line_status_type` 
             WHERE active = 1 
             ORDER BY position ASC '
         );
-        
+
         $defaultAction = $defaultStatus ? $defaultStatus['commission_action'] : 'none';
 
         // Get vendors with pending commissions
         // Pending = (Commissions Added) - (Total Paid)
         $query = new DbQuery();
         $query->select('v.id_vendor, v.shop_name');
-        
+
         // Subquery for commissions added
         $query->select('(
             SELECT SUM(vod.vendor_amount) 
@@ -305,7 +306,7 @@ class AdminVendorPaymentsController extends ModuleAdminController
                 (ols.status IS NULL AND "' . pSQL($defaultAction) . '" = "add")
             )
         ) as commissions_added');
-        
+
         // Subquery for total paid
         $query->select('(
             SELECT COALESCE(SUM(vp.amount), 0)
@@ -313,7 +314,7 @@ class AdminVendorPaymentsController extends ModuleAdminController
             WHERE vp.id_vendor = v.id_vendor
             AND vp.status = "completed"
         ) as total_paid');
-        
+
         // Calculate pending amount
         $query->select('(
             COALESCE((
@@ -335,7 +336,7 @@ class AdminVendorPaymentsController extends ModuleAdminController
                 AND vp.status = "completed"
             ), 0)
         ) as pending_amount');
-        
+
         $query->from('vendor', 'v');
         $query->having('pending_amount > 0');
         $query->orderBy('pending_amount DESC');
@@ -369,7 +370,7 @@ class AdminVendorPaymentsController extends ModuleAdminController
 
     /**
      * Count pending transactions for a vendor
-     * This counts unique order details with commission_action = 'add' that haven't been fully paid
+     * This counts unique order details with commission_action = 'add' that haven't been paid
      * 
      * @param int $id_vendor Vendor ID
      * @return int Number of pending transactions
@@ -379,29 +380,33 @@ class AdminVendorPaymentsController extends ModuleAdminController
         // Get the default status and its commission action
         $defaultStatus = Db::getInstance()->getRow(
             '
-            SELECT * FROM `' . _DB_PREFIX_ . 'order_line_status_type` 
-            WHERE active = 1 
-            ORDER BY position ASC 
-           '
+        SELECT * FROM `' . _DB_PREFIX_ . 'order_line_status_type` 
+        WHERE active = 1 
+        ORDER BY position ASC '
         );
 
         $defaultAction = $defaultStatus ? $defaultStatus['commission_action'] : 'none';
 
-        // Count order details with 'add' commission action
+        // Count unpaid order details with 'add' commission action
         $query = '
-            SELECT COUNT(DISTINCT vod.id_order_detail)
-            FROM ' . _DB_PREFIX_ . 'vendor_order_detail vod
-            LEFT JOIN ' . _DB_PREFIX_ . 'order_line_status ols 
-                ON ols.id_order_detail = vod.id_order_detail 
-                AND ols.id_vendor = vod.id_vendor
-            LEFT JOIN ' . _DB_PREFIX_ . 'order_line_status_type olst 
-                ON olst.name = ols.status
-            WHERE vod.id_vendor = ' . (int)$id_vendor . '
-            AND (
-                (olst.commission_action = "add") 
-                OR 
-                (ols.status IS NULL AND "' . pSQL($defaultAction) . '" = "add")
-            )';
+        SELECT COUNT(DISTINCT vod.id_order_detail)
+        FROM ' . _DB_PREFIX_ . 'vendor_order_detail vod
+        LEFT JOIN ' . _DB_PREFIX_ . 'order_line_status ols 
+            ON ols.id_order_detail = vod.id_order_detail 
+            AND ols.id_vendor = vod.id_vendor
+        LEFT JOIN ' . _DB_PREFIX_ . 'order_line_status_type olst 
+            ON olst.name = ols.status
+        LEFT JOIN ' . _DB_PREFIX_ . 'vendor_transaction vt 
+            ON vt.order_detail_id = vod.id_order_detail 
+            AND vt.id_vendor = vod.id_vendor
+            AND vt.transaction_type = "commission"
+        WHERE vod.id_vendor = ' . (int)$id_vendor . '
+        AND (
+            (olst.commission_action = "add") 
+            OR 
+            (ols.status IS NULL AND "' . pSQL($defaultAction) . '" = "add")
+        )
+        AND vt.id_vendor_transaction IS NULL';
 
         return (int)Db::getInstance()->getValue($query);
     }
@@ -414,6 +419,13 @@ class AdminVendorPaymentsController extends ModuleAdminController
         $payment_method = Tools::getValue('payment_method');
         $reference = Tools::getValue('reference');
 
+        if (!$id_vendor || !$payment_method || !$reference) {
+            die(json_encode([
+                'success' => false,
+                'message' => $this->l('Missing required parameters')
+            ]));
+        }
+
         $result = VendorTransaction::payVendorCommissions(
             $id_vendor,
             $payment_method,
@@ -421,9 +433,21 @@ class AdminVendorPaymentsController extends ModuleAdminController
             $this->context->employee->id
         );
 
-        die(json_encode([
-            'success' => (bool)$result
-        ]));
+        if ($result['success']) {
+            die(json_encode([
+                'success' => true,
+                'message' => sprintf(
+                    $this->l('Successfully paid %s for %d order lines'),
+                    Tools::displayPrice($result['amount_paid']),
+                    $result['lines_paid']
+                )
+            ]));
+        } else {
+            die(json_encode([
+                'success' => false,
+                'message' => $result['message']
+            ]));
+        }
     }
 
     /**

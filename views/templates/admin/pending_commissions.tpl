@@ -96,36 +96,36 @@
         </div>
     </div>
     
-    <script type="text/javascript">
-        $(document).ready(function() {
-            $('.confirm-pay-btn').click(function() {
-                var id_vendor = $(this).data('id');
-                var form = $('#pay-commission-form-' + id_vendor);
-                
-                if (form[0].checkValidity()) {
-                    $.ajax({
-                        url: '{$current_url}&ajax=1&action=payCommission',
-                        type: 'POST',
-                        data: form.serialize(),
-                        dataType: 'json',
-                        success: function(response) {
-                            if (response.success) {
-                                showSuccessMessage('{l s='Payment processed successfully' mod='multivendor'}');
-                                $('#payCommissionModal-' + id_vendor).modal('hide');
-                                setTimeout(function() {
-                                    location.reload();
-                                }, 1000);
-                            } else {
-                                showErrorMessage('{l s='Error processing payment' mod='multivendor'}');
-                            }
-                        },
-                        error: function() {
-                            showErrorMessage('{l s='Error communicating with server' mod='multivendor'}');
+   <script type="text/javascript">
+    $(document).ready(function() {
+        $('.confirm-pay-btn').click(function() {
+            var id_vendor = $(this).data('id');
+            var form = $('#pay-commission-form-' + id_vendor);
+            
+            if (form[0].checkValidity()) {
+                $.ajax({
+                    url: '{$current_url}&ajax=1&action=payCommission',
+                    type: 'POST',
+                    data: form.serialize(),
+                    dataType: 'json',
+                    success: function(response) {
+                        if (response.success) {
+                            showSuccessMessage(response.message || '{l s='Payment processed successfully' mod='multivendor'}');
+                            $('#payCommissionModal-' + id_vendor).modal('hide');
+                            setTimeout(function() {
+                                location.reload();
+                            }, 1500);
+                        } else {
+                            showErrorMessage(response.message || '{l s='Error processing payment' mod='multivendor'}');
                         }
-                    });
-                } else {
-                    form[0].reportValidity();
-                }
-            });
+                    },
+                    error: function(xhr) {
+                        showErrorMessage('{l s='Error communicating with server' mod='multivendor'}: ' + xhr.responseText);
+                    }
+                });
+            } else {
+                form[0].reportValidity();
+            }
         });
-    </script>
+    });
+</script>

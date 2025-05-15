@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Vendor Commissions controller
  */
@@ -56,8 +57,7 @@ class MultivendorCommissionsModuleFrontController extends ModuleFrontController
         $totalPages = ceil($totalTransactions / $per_page);
 
         // Get payments
-        $payments = VendorPayment::getVendorPayments($id_vendor, 5);
-
+        $payments = VendorPayment::getVendorPaymentsWithDetails($id_vendor, 5);
         // Add CSS file
         $this->context->controller->addCSS($this->module->getPathUri() . 'views/css/dashboard.css');
         $this->context->controller->addCSS($this->module->getPathUri() . 'views/css/commissions.css');
@@ -91,6 +91,8 @@ class MultivendorCommissionsModuleFrontController extends ModuleFrontController
         $this->setTemplate('module:multivendor/views/templates/front/commissions.tpl');
     }
 
+    
+
     /**
      * Get transactions with commission action details
      * This method gets all vendor order details and determines their commission status
@@ -99,7 +101,8 @@ class MultivendorCommissionsModuleFrontController extends ModuleFrontController
     protected function getTransactionsWithCommissionDetails($id_vendor, $limit = null, $offset = null)
     {
         // Get the default status and its commission action
-        $defaultStatus = Db::getInstance()->getRow('
+        $defaultStatus = Db::getInstance()->getRow(
+            '
             SELECT * FROM `' . _DB_PREFIX_ . 'order_line_status_type` 
             WHERE active = 1 
             ORDER BY position ASC '
@@ -118,7 +121,7 @@ class MultivendorCommissionsModuleFrontController extends ModuleFrontController
         $query->leftJoin('order_line_status', 'ols', 'ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor');
         $query->leftJoin('order_line_status_type', 'olst', 'olst.name = ols.status');
         $query->where('vod.id_vendor = ' . (int)$id_vendor);
-        
+
         // Filter to show only transactions with add or refund actions
         // Include records where either the status has these actions OR no status exists yet (will use default)
         $query->where('(
@@ -126,7 +129,7 @@ class MultivendorCommissionsModuleFrontController extends ModuleFrontController
             OR 
             (ols.status IS NULL AND "' . pSQL($defaultStatus['commission_action']) . '" IN ("add", "refund"))
         )');
-        
+
         $query->groupBy('od.id_order_detail');
         $query->orderBy('o.date_add DESC');
 
@@ -143,7 +146,8 @@ class MultivendorCommissionsModuleFrontController extends ModuleFrontController
     protected function countTotalTransactions($id_vendor)
     {
         // Get the default status and its commission action
-        $defaultStatus = Db::getInstance()->getRow('
+        $defaultStatus = Db::getInstance()->getRow(
+            '
             SELECT * FROM `' . _DB_PREFIX_ . 'order_line_status_type` 
             WHERE active = 1 
             ORDER BY position ASC '
@@ -156,7 +160,7 @@ class MultivendorCommissionsModuleFrontController extends ModuleFrontController
         $query->leftJoin('order_line_status', 'ols', 'ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor');
         $query->leftJoin('order_line_status_type', 'olst', 'olst.name = ols.status');
         $query->where('vod.id_vendor = ' . (int)$id_vendor);
-        
+
         // Filter to count only transactions with add or refund actions
         $query->where('(
             (olst.commission_action IN ("add", "refund")) 

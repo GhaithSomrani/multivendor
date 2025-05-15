@@ -210,33 +210,85 @@
                         </div>
                         <div class="mv-card-body">
                             {if $payments}
-                                <div class="mv-table-container">
-                                    <table class="mv-table">
-                                        <thead>
-                                            <tr>
-                                                <th>{l s='Date' mod='multivendor'}</th>
-                                                <th>{l s='Amount' mod='multivendor'}</th>
-                                                <th>{l s='Method' mod='multivendor'}</th>
-                                                <th>{l s='Reference' mod='multivendor'}</th>
-                                                <th>{l s='Status' mod='multivendor'}</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {foreach from=$payments item=payment}
-                                                <tr>
-                                                    <td>{$payment.date_add|date_format:'%Y-%m-%d'}</td>
-                                                    <td>{$payment.amount|displayPrice}</td>
-                                                    <td>{$payment.payment_method|capitalize}</td>
-                                                    <td>{$payment.reference}</td>
-                                                    <td>
-                                                        <span class="mv-status-badge mv-status-{$payment.status}">
-                                                            {$payment.status|capitalize}
-                                                        </span>
-                                                    </td>
-                                                </tr>
-                                            {/foreach}
-                                        </tbody>
-                                    </table>
+                                <div class="mv-payments-list">
+                                    {foreach from=$payments item=payment}
+                                        <div class="mv-payment-item">
+                                            {* Payment Header *}
+                                            <div class="mv-payment-header">
+                                                <div class="mv-payment-info">
+                                                    <span class="mv-payment-date">{$payment.date_add|date_format:'%Y-%m-%d'}</span>
+                                                    <span class="mv-payment-amount">{$payment.amount|displayPrice}</span>
+                                                    <span class="mv-payment-method">{$payment.payment_method|capitalize}</span>
+                                                    <span class="mv-payment-reference">{l s='Ref:' mod='multivendor'} {$payment.reference}</span>
+                                                    <span class="mv-status-badge mv-status-{$payment.status}">
+                                                        {$payment.status|capitalize}
+                                                    </span>
+                                                </div>
+                                                <button class="mv-btn-toggle" onclick="togglePaymentDetails('payment-{$payment.id_vendor_payment}')">
+                                                    <i class="mv-icon-chevron">▼</i>
+                                                </button>
+                                            </div>
+                                            
+                                            {* Payment Details *}
+                                            <div class="mv-payment-details" id="payment-{$payment.id_vendor_payment}" style="display: none;">
+                                                {if $payment.order_details}
+                                                    <table class="mv-table mv-payment-details-table">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>{l s='Order' mod='multivendor'}</th>
+                                                                <th>{l s='Product' mod='multivendor'}</th>
+                                                                <th>{l s='SKU' mod='multivendor'}</th>
+                                                                <th>{l s='Qty' mod='multivendor'}</th>
+                                                                <th>{l s='Amount' mod='multivendor'}</th>
+                                                                <th>{l s='Date' mod='multivendor'}</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {foreach from=$payment.order_details item=detail}
+                                                                <tr>
+                                                                    <td>
+                                                                        {if $detail.order_reference}
+                                                                            <a href="#" class="mv-link">
+                                                                                #{$detail.order_reference}
+                                                                            </a>
+                                                                        {else}
+                                                                            <span class="text-muted">{l s='Order #' mod='multivendor'}{$detail.id_order}</span>
+                                                                        {/if}
+                                                                    </td>
+                                                                    <td>
+                                                                        {if $detail.product_name}
+                                                                            {$detail.product_name|truncate:40:'...'}
+                                                                        {else}
+                                                                            <span class="text-muted">{l s='Product details not available' mod='multivendor'}</span>
+                                                                        {/if}
+                                                                    </td>
+                                                                    <td>{$detail.product_reference|default:'-'}</td>
+                                                                    <td class="mv-text-center">{$detail.product_quantity|default:'-'}</td>
+                                                                    <td>{$detail.vendor_amount|displayPrice}</td>
+                                                                    <td>
+                                                                        {if $detail.order_date}
+                                                                            {$detail.order_date|date_format:'%Y-%m-%d'}
+                                                                        {else}
+                                                                            <span class="text-muted">-</span>
+                                                                        {/if}
+                                                                    </td>
+                                                                </tr>
+                                                            {/foreach}
+                                                        </tbody>
+                                                        <tfoot>
+                                                            <tr>
+                                                                <td colspan="4" class="mv-text-right"><strong>{l s='Total:' mod='multivendor'}</strong></td>
+                                                                <td><strong>{$payment.amount|displayPrice}</strong></td>
+                                                                <td></td>
+                                                            </tr>
+                                                        </tfoot>
+                                                    </table>
+                                                {else}
+                                                    <p class="mv-empty-state">{l s='No order details available for this payment.' mod='multivendor'}</p>
+                                                {/if}
+                                            </div>
+                                        </div>
+                                    {/foreach}
                                 </div>
                             {else}
                                 <div class="mv-empty-state">
@@ -245,7 +297,19 @@
                             {/if}
                         </div>
                     </div>
-                </main>
-            </div>
-        </div>
-    {/block}
+
+                    <script>
+                    function togglePaymentDetails(paymentId) {
+                        const detailsDiv = document.getElementById(paymentId);
+                        const toggleBtn = detailsDiv.parentElement.querySelector('.mv-btn-toggle');
+                        
+                        if (detailsDiv.style.display === 'none') {
+                            detailsDiv.style.display = 'block';
+                            toggleBtn.classList.add('expanded');
+                        } else {
+                            detailsDiv.style.display = 'none';
+                            toggleBtn.classList.remove('expanded');
+                        }
+                    }
+                    </script>
+{/block}

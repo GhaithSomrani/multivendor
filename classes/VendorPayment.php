@@ -81,4 +81,51 @@ class VendorPayment extends ObjectModel
 
         return (float)Db::getInstance()->getValue($query);
     }
+
+    /**
+     * Get payment details including the order lines that were paid
+     *
+     * @param int $id_vendor_payment Payment ID
+     * @return array Payment details with order lines
+     */
+    public static function getPaymentDetails($id_vendor_payment)
+    {
+        $query = '
+        SELECT vt.*, 
+               od.product_name, 
+               od.product_reference, 
+               od.product_quantity,
+               o.reference as order_reference, 
+               o.date_add as order_date,
+               o.id_order
+        FROM ' . _DB_PREFIX_ . 'vendor_transaction vt
+        LEFT JOIN ' . _DB_PREFIX_ . 'order_detail od ON od.id_order_detail = vt.order_detail_id  
+        LEFT JOIN ' . _DB_PREFIX_ . 'orders o ON o.id_order = vt.id_order
+        WHERE vt.id_vendor_payment = ' . (int)$id_vendor_payment . '
+        AND vt.transaction_type = "commission"
+        ORDER BY o.date_add DESC';
+
+        $results = Db::getInstance()->executeS($query);
+
+        return $results;
+    }
+
+    /**
+     * Get vendors payments with order details
+     *
+     * @param int $id_vendor Vendor ID
+     * @param int $limit Optional limit
+     * @param int $offset Optional offset
+     * @return array Payments with order details
+     */
+    public static function getVendorPaymentsWithDetails($id_vendor, $limit = null, $offset = null)
+    {
+        $payments = self::getVendorPayments($id_vendor, $limit, $offset);
+
+        foreach ($payments as &$payment) {
+            $payment['order_details'] = self::getPaymentDetails($payment['id_vendor_payment']);
+        }
+
+        return $payments;
+    }
 }
