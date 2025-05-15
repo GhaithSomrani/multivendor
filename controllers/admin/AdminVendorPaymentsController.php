@@ -456,9 +456,9 @@ class AdminVendorPaymentsController extends ModuleAdminController
     public function postProcess()
     {
         if (Tools::isSubmit('pending_commissions')) {
-            $this->initContentPendingCommissions();
             return;
         }
+        $this->initContentPendingCommissions();
 
         parent::postProcess();
     }

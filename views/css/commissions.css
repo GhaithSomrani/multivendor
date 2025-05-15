@@ -452,6 +452,11 @@
     font-size: 13px;
 }
 
+.mv-status-completed{  
+    background-color: #34d399;
+    color: #064e3b;
+}
+
 /* Responsive */
 @media (max-width: 640px) {
     .mv-payment-info {

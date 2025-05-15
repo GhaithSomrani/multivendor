@@ -29,7 +29,7 @@ class VendorTransaction extends ObjectModel
     public $transaction_type;
 
     /** @var int Order detail ID */
-    public $order_detail_id ;
+    public $order_detail_id;
 
     /** @var string Status */
     public $status;
@@ -49,6 +49,7 @@ class VendorTransaction extends ObjectModel
         'fields' => [
             'id_vendor' => ['type' => self::TYPE_INT, 'validate' => 'isUnsignedId', 'required' => true],
             'transaction_type' => ['type' => self::TYPE_STRING, 'validate' => 'isGenericName', 'required' => true, 'size' => 32],
+            'id_order' => ['type' => self::TYPE_INT, 'validate' => 'isUnsignedId', 'required' => false],
             'order_detail_id' => ['type' => self::TYPE_INT, 'validate' => 'isUnsignedId', 'required' => false],
             'status' => ['type' => self::TYPE_STRING, 'validate' => 'isGenericName', 'required' => true, 'size' => 32],
             'id_vendor_payment' => ['type' => self::TYPE_INT, 'validate' => 'isUnsignedId', 'required' => false],
@@ -130,7 +131,7 @@ class VendorTransaction extends ObjectModel
 
         // Get all unpaid order lines with commission_action = 'add'
         $unpaidOrderLines = Db::getInstance()->executeS('
-        SELECT DISTINCT vod.*, od.id_order_detail, od.product_name,
+        SELECT DISTINCT vod.*, od.id_order_detail, od.product_name, vod.id_order as id_order,
                COALESCE(ols.status, "' . pSQL($defaultStatus['name']) . '") as line_status,
                COALESCE(olst.commission_action, "' . pSQL($defaultAction) . '") as commission_action
         FROM ' . _DB_PREFIX_ . 'vendor_order_detail vod
@@ -184,7 +185,7 @@ class VendorTransaction extends ObjectModel
                 $transaction = new VendorTransaction();
                 $transaction->id_vendor = (int)$id_vendor;
                 $transaction->id_order = (int)$line['id_order'];
-                $transaction->order_detail_id = (int)$line['order_detail_id'];
+                $transaction->order_detail_id = (int)$line['id_order_detail'];
                 $transaction->commission_amount = $line['vendor_amount'];
                 $transaction->vendor_amount = $line['vendor_amount'];
                 $transaction->transaction_type = 'commission';
