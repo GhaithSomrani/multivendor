@@ -123,13 +123,13 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
         $query->select('od.id_order_detail, od.product_name,od.product_reference ,  od.product_quantity, od.unit_price_tax_incl,od.total_price_tax_incl,
                   o.reference as order_reference, o.date_add as order_date, p.id_supplier,
                   vod.id_vendor, vod.commission_amount, vod.vendor_amount, vod.id_order,
-                  COALESCE(ols.status, "Pending") as line_status'); 
+                  COALESCE(ols.status, "Pending") as line_status');
         $query->from('order_detail', 'od');
         $query->innerJoin('orders', 'o', 'o.id_order = od.id_order');
         $query->innerJoin('product', 'p', 'p.id_product = od.product_id');
         $query->leftJoin('vendor_order_detail', 'vod', 'vod.id_order_detail = od.id_order_detail AND vod.id_vendor = ' . (int)$id_vendor);
         $query->leftJoin('order_line_status', 'ols', 'ols.id_order_detail = od.id_order_detail AND ols.id_vendor = ' . (int)$id_vendor);
-        $query->where('p.id_supplier = ' . (int)$id_supplier);
+        $query->where('vod.id_vendor = ' . (int)$id_vendor);
         $query->orderBy('o.date_add DESC');
         $query->limit($limit, $offset);
 
@@ -284,56 +284,39 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
     }
 
     /**
+   /**
      * Get order summary data
      */
-    protected function getOrderSummary($id_vendor, $id_supplier)
+    protected function getOrderSummary($id_vendor)
     {
         // Total order lines
         $totalLines = Db::getInstance()->getValue(
             '
-        SELECT COUNT(DISTINCT od.id_order_detail)
-        FROM ' . _DB_PREFIX_ . 'order_detail od
-        LEFT JOIN ' . _DB_PREFIX_ . 'product p ON p.id_product = od.product_id
-        WHERE p.id_supplier = ' . (int)$id_supplier
+        SELECT COUNT(DISTINCT vod.id_order_detail)
+        FROM ' . _DB_PREFIX_ . 'vendor_order_detail vod
+        WHERE vod.id_vendor = ' . (int)$id_vendor
         );
 
         // Total revenue - Only count when commission_action = "add"
         $totalRevenue = Db::getInstance()->getValue('
         SELECT SUM(vod.vendor_amount)
         FROM ' . _DB_PREFIX_ . 'vendor_order_detail vod
-        LEFT JOIN ' . _DB_PREFIX_ . 'order_detail od ON od.id_order_detail = vod.id_order_detail
         LEFT JOIN ' . _DB_PREFIX_ . 'orders o ON o.id_order = vod.id_order
-        LEFT JOIN ' . _DB_PREFIX_ . 'product p ON p.id_product = od.product_id
         LEFT JOIN ' . _DB_PREFIX_ . 'order_line_status ols ON ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor
         LEFT JOIN ' . _DB_PREFIX_ . 'order_line_status_type olst ON olst.name = ols.status
-        WHERE p.id_supplier = ' . (int)$id_supplier . '
-        AND vod.id_vendor = ' . (int)$id_vendor . '
+        WHERE vod.id_vendor = ' . (int)$id_vendor . '
         AND DATE(o.date_add) >= DATE_SUB(CURDATE(), INTERVAL 28 DAY)
         AND olst.commission_action = "add"
     ');
 
-        // Status breakdown - gets all statuses (including admin-only)
-        $statusBreakdown = Db::getInstance()->executeS('
-        SELECT lstype.name as status, 
-               COUNT(ols.id_order_line_status) as count,
-               lstype.is_vendor_allowed
-        FROM ' . _DB_PREFIX_ . 'order_line_status_type lstype
-        LEFT JOIN ' . _DB_PREFIX_ . 'order_line_status ols ON ols.status = lstype.name AND ols.id_vendor = ' . (int)$id_vendor . '
-        LEFT JOIN ' . _DB_PREFIX_ . 'order_detail od ON od.id_order_detail = ols.id_order_detail
-        LEFT JOIN ' . _DB_PREFIX_ . 'product p ON p.id_product = od.product_id
-        WHERE lstype.active = 1
-        AND (p.id_supplier = ' . (int)$id_supplier . ' OR p.id_supplier IS NULL)
-        GROUP BY lstype.name
-        ORDER BY lstype.position ASC
-    ');
+        $statusBreakdown = $this->getStatusBreakdown($id_vendor);
 
         // Today's orders
         $todaysOrders = Db::getInstance()->getValue('
-        SELECT COUNT(DISTINCT od.id_order_detail)
-        FROM ' . _DB_PREFIX_ . 'order_detail od
-        LEFT JOIN ' . _DB_PREFIX_ . 'orders o ON o.id_order = od.id_order
-        LEFT JOIN ' . _DB_PREFIX_ . 'product p ON p.id_product = od.product_id
-        WHERE p.id_supplier = ' . (int)$id_supplier . '
+        SELECT COUNT(DISTINCT vod.id_order_detail)
+        FROM ' . _DB_PREFIX_ . 'vendor_order_detail vod
+        LEFT JOIN ' . _DB_PREFIX_ . 'orders o ON o.id_order = vod.id_order
+        WHERE vod.id_vendor = ' . (int)$id_vendor . '
         AND DATE(o.date_add) = CURDATE()
     ');
 
@@ -344,4 +327,42 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
             'status_breakdown' => $statusBreakdown
         ];
     }
+
+    protected function getStatusBreakdown($id_vendor)
+{
+    // First, get the default status (first by position)
+    $defaultStatus = Db::getInstance()->getValue('
+        SELECT name FROM `' . _DB_PREFIX_ . 'order_line_status_type` 
+        WHERE active = 1 
+        ORDER BY position ASC 
+    ');
+
+    // Get actual status counts from order lines
+    $statusBreakdown = Db::getInstance()->executeS('
+        SELECT 
+            lstype.name as status,
+            lstype.color,
+            lstype.position,
+            lstype.is_vendor_allowed,
+            (
+                -- Count entries with this status
+                SELECT COUNT(*)
+                FROM ' . _DB_PREFIX_ . 'vendor_order_detail vod
+                LEFT JOIN ' . _DB_PREFIX_ . 'order_line_status ols 
+                    ON ols.id_order_detail = vod.id_order_detail 
+                    AND ols.id_vendor = vod.id_vendor
+                WHERE vod.id_vendor = ' . (int)$id_vendor . '
+                AND (
+                    ols.status = lstype.name 
+                    OR 
+                    (ols.status IS NULL AND lstype.name = "' . pSQL($defaultStatus) . '")
+                )
+            ) as count
+        FROM ' . _DB_PREFIX_ . 'order_line_status_type lstype
+        WHERE lstype.active = 1
+        ORDER BY lstype.position ASC
+    ');
+
+    return $statusBreakdown;
+}
 }

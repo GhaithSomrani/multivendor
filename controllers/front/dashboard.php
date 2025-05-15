@@ -138,7 +138,7 @@ class multivendorDashboardModuleFrontController extends ModuleFrontController
         $query->innerJoin('product', 'p', 'p.id_product = od.product_id');
         $query->leftJoin('vendor_order_detail', 'vod', 'vod.id_order_detail = od.id_order_detail AND vod.id_vendor = ' . (int)$id_vendor);
         $query->leftJoin('order_line_status', 'ols', 'ols.id_order_detail = od.id_order_detail AND ols.id_vendor = ' . (int)$id_vendor);
-        $query->where('p.id_supplier = ' . (int)$id_supplier);
+        $query->where('vod.id_vendor = ' . (int)$id_vendor);
         $query->orderBy('o.date_add DESC');
         $query->limit($limit);
 
