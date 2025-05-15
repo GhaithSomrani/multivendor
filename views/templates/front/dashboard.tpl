@@ -25,6 +25,7 @@
                 <div class="mv-card">
                     <div class="mv-card-body">
                         <nav class="mv-nav">
+                            <nav class="mv-nav">
                             <a class="mv-nav-link mv-nav-link-active" href="{$vendor_dashboard_url}">
                                 <i class="mv-icon">📊</i>
                                 <span>{l s='Dashboard' mod='multivendor'}</span>
@@ -33,10 +34,15 @@
                                 <i class="mv-icon">🛒</i>
                                 <span>{l s='Orders' mod='multivendor'}</span>
                             </a>
+                            <a class="mv-nav-link " href="{$vendor_manage_orders_url}">
+                                <i class="mv-icon">📦</i>
+                                <span>{l s='Manage Orders' mod='multivendor'}</span>
+                            </a>
                             <a class="mv-nav-link" href="{$vendor_commissions_url}">
                                 <i class="mv-icon">💰</i>
                                 <span>{l s='Commissions' mod='multivendor'}</span>
                             </a>
+                        </nav>
                            
                         </nav>
                     </div>

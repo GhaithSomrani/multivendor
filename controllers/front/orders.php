@@ -101,6 +101,8 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
             'vendor_commissions_url' => $this->context->link->getModuleLink('multivendor', 'commissions'),
             'vendor_profile_url' => $this->context->link->getModuleLink('multivendor', 'profile'),
             'vendor_orders_url' => $this->context->link->getModuleLink('multivendor', 'orders'),
+            'vendor_manage_orders_url' => $this->context->link->getModuleLink('multivendor', 'manageorders', []),
+
             'currency_sign' => $this->context->currency->sign,
             'currency' => $this->context->currency
         ]);
@@ -329,16 +331,16 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
     }
 
     protected function getStatusBreakdown($id_vendor)
-{
-    // First, get the default status (first by position)
-    $defaultStatus = Db::getInstance()->getValue('
+    {
+        // First, get the default status (first by position)
+        $defaultStatus = Db::getInstance()->getValue('
         SELECT name FROM `' . _DB_PREFIX_ . 'order_line_status_type` 
         WHERE active = 1 
         ORDER BY position ASC 
     ');
 
-    // Get actual status counts from order lines
-    $statusBreakdown = Db::getInstance()->executeS('
+        // Get actual status counts from order lines
+        $statusBreakdown = Db::getInstance()->executeS('
         SELECT 
             lstype.name as status,
             lstype.color,
@@ -363,6 +365,6 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
         ORDER BY lstype.position ASC
     ');
 
-    return $statusBreakdown;
-}
+        return $statusBreakdown;
+    }
 }

@@ -1,0 +1,288 @@
+/* Manage Orders Custom CSS */
+
+.mv-actions-bar {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 24px;
+    justify-content: flex-end;
+}
+
+.mv-order-panels {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+    margin-top: 24px;
+}
+
+.mv-order-panel {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    min-height: 500px;
+}
+
+.mv-panel-header {
+    padding: 20px;
+    background-color: #f8f9fa;
+    border-bottom: 2px solid #e9ecef;
+}
+
+.mv-panel-title {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.mv-count {
+    background-color: #6366f1;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 16px;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.mv-panel-body {
+    flex: 1;
+    padding: 16px;
+    overflow-y: auto;
+    background-color: #f8f9fa;
+}
+
+.mv-order-zone {
+    min-height: 400px;
+    padding: 8px;
+    border-radius: 8px;
+    background-color: transparent;
+    transition: background-color 0.3s;
+}
+
+.mv-order-zone.drag-over {
+    background-color: #e7f3ff;
+}
+
+.mv-order-card {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-bottom: 12px;
+    position: relative;
+    overflow: hidden;
+    cursor: grab;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.mv-order-card.draggable:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.mv-order-card.dragging {
+    opacity: 0.5;
+    cursor: grabbing;
+    transform: rotate(2deg);
+}
+
+.mv-order-header {
+    display: flex;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.mv-order-ref {
+    font-weight: 600;
+    color: #6366f1;
+}
+
+.mv-order-date {
+    font-size: 12px;
+    color: #6c757d;
+}
+
+.mv-order-body {
+    padding: 16px;
+}
+
+.mv-product-info {
+    margin-bottom: 12px;
+}
+
+.mv-product-info strong {
+    color: #333;
+    display: block;
+    margin-bottom: 4px;
+}
+
+.mv-product-meta {
+    font-size: 12px;
+    color: #6c757d;
+}
+
+.mv-customer-info {
+    margin-bottom: 12px;
+    padding: 8px;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+}
+
+.mv-customer-name {
+    font-weight: 500;
+    color: #333;
+    margin-bottom: 4px;
+}
+
+.mv-customer-address {
+    font-size: 12px;
+    color: #6c757d;
+}
+
+.mv-order-total {
+    font-size: 18px;
+    font-weight: 700;
+    color: #28a745;
+    text-align: right;
+    margin-top: 8px;
+}
+
+.mv-order-status {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    padding: 4px 12px;
+    border-radius: 16px;
+    font-size: 11px;
+    font-weight: 600;
+    color: white;
+    text-transform: uppercase;
+}
+
+.mv-status-no-commission {
+    background-color: #6c757d;
+}
+
+.mv-order-select {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    z-index: 10;
+}
+
+.mv-order-checkbox {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+.mv-order-actions {
+    position: absolute;
+    bottom: 12px;
+    right: 12px;
+}
+
+.mv-btn-icon {
+    background: none;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 6px 10px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: all 0.2s;
+}
+
+.mv-btn-icon:hover {
+    background-color: #f8f9fa;
+    border-color: #6366f1;
+}
+
+/* Media Queries */
+@media (max-width: 1200px) {
+    .mv-order-panels {
+        grid-template-columns: 1fr;
+    }
+    
+    .mv-order-panel {
+        min-height: 400px;
+    }
+}
+
+@media (max-width: 768px) {
+    .mv-actions-bar {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    
+    .mv-btn {
+        font-size: 12px;
+        padding: 8px 12px;
+    }
+}
+
+/* Drag and Drop Placeholder */
+.mv-order-placeholder {
+    background-color: #e9ecef;
+    border: 2px dashed #6c757d;
+    height: 100px;
+    margin-bottom: 12px;
+    border-radius: 8px;
+}
+
+/* Order Amounts for Cancelled/Refunded */
+.mv-order-amounts {
+    margin-top: 12px;
+    padding: 8px;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+}
+
+.mv-vendor-amount,
+.mv-commission-info {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 4px;
+}
+
+.mv-label {
+    font-weight: 500;
+    color: #666;
+    font-size: 12px;
+}
+
+.mv-value {
+    font-weight: 600;
+    color: #333;
+}
+
+.mv-refund {
+    color: #dc3545;
+}
+
+.mv-cancelled {
+    color: #6c757d;
+    font-style: italic;
+}
+
+/* Loading State */
+.mv-loading {
+    text-align: center;
+    padding: 40px;
+    color: #6c757d;
+}
+
+.mv-loading::after {
+    content: '...';
+    animation: dots 1s steps(5, end) infinite;
+}
+
+@keyframes dots {
+    0%, 20% { content: '.'; }
+    40% { content: '..'; }
+    60%, 100% { content: '...'; }
+}

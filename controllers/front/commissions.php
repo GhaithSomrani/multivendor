@@ -84,6 +84,8 @@ class MultivendorCommissionsModuleFrontController extends ModuleFrontController
             'vendor_dashboard_url' => $this->context->link->getModuleLink('multivendor', 'dashboard'),
             'vendor_orders_url' => $this->context->link->getModuleLink('multivendor', 'orders'),
             'vendor_profile_url' => $this->context->link->getModuleLink('multivendor', 'profile'),
+            'vendor_manage_orders_url' => $this->context->link->getModuleLink('multivendor', 'manageorders'),
+
             'currency_sign' => $this->context->currency->sign,
             'currency' => $this->context->currency
         ]);

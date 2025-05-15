@@ -554,7 +554,9 @@ class multivendor extends Module
                 'vendor_dashboard_url' => $this->context->link->getModuleLink('multivendor', 'dashboard', []),
                 'vendor_orders_url' => $this->context->link->getModuleLink('multivendor', 'orders', []),
                 'vendor_commissions_url' => $this->context->link->getModuleLink('multivendor', 'commissions', []),
-                'vendor_profile_url' => $this->context->link->getModuleLink('multivendor', 'profile', [])
+                'vendor_profile_url' => $this->context->link->getModuleLink('multivendor', 'profile', []),
+                'vendor_manage_orders_url' => $this->context->link->getModuleLink('multivendor', 'manageorders', []),
+
             ]);
 
             return $this->display(__FILE__, 'views/templates/front/customer_account.tpl');
