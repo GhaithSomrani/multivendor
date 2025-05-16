@@ -139,81 +139,269 @@ function showErrorMessage(message) {
 }
 
 
+
 function exportTableToCSV() {
-    let csv = [];
-    const table = document.querySelector('.mv-table');
-    const rows = table.querySelectorAll('tr');
-
-    for (let i = 0; i < rows.length; i++) {
-        const row = [];
-        const cols = rows[i].querySelectorAll('td, th');
-
-        for (let j = 0; j < cols.length - 1; j++) { // Skip last column (actions)
-            let data = cols[j].innerText.replace(/,/g, '');
-
-            // Handle status column
-            if (j === 6 && i > 0) { // Status column
-                const select = cols[j].querySelector('select');
-                if (select) {
-                    data = select.options[select.selectedIndex].text;
-                }
-            }
-
-            row.push('"' + data + '"');
-        }
-
-        csv.push(row.join(','));
+    // Create a form element
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = ordersAjaxUrl;
+    form.style.display = 'none';
+    
+    // Add action parameter
+    const actionInput = document.createElement('input');
+    actionInput.type = 'hidden';
+    actionInput.name = 'action';
+    actionInput.value = 'exportOrdersCSV';
+    form.appendChild(actionInput);
+    
+    // Add token if needed
+    if (typeof ordersAjaxToken !== 'undefined') {
+        const tokenInput = document.createElement('input');
+        tokenInput.type = 'hidden';
+        tokenInput.name = 'token';
+        tokenInput.value = ordersAjaxToken;
+        form.appendChild(tokenInput);
     }
-
-    downloadCSV(csv.join('\n'), 'orders_export.csv');
+    
+    // Add the form to the document and submit it
+    document.body.appendChild(form);
+    form.submit();
+    
+    // Remove the form after submission
+    setTimeout(function() {
+        document.body.removeChild(form);
+    }, 1000);
 }
 
-function exportTableToExcel() {
-    let tableHTML = '<table>';
-    const table = document.querySelector('.mv-table');
-    const rows = table.querySelectorAll('tr');
 
-    for (let i = 0; i < rows.length; i++) {
-        tableHTML += '<tr>';
-        const cols = rows[i].querySelectorAll('td, th');
-
-        for (let j = 0; j < cols.length - 1; j++) {
-            let data = cols[j].innerText;
-
-            if (j === 6 && i > 0) {
-                const select = cols[j].querySelector('select');
-                if (select) {
-                    data = select.options[select.selectedIndex].text;
-                }
-            }
-
-            tableHTML += (i === 0 ? '<th>' : '<td>') + data + (i === 0 ? '</th>' : '</td>');
-        }
-
-        tableHTML += '</tr>';
-    }
-    tableHTML += '</table>';
-
-
-    const blob = new Blob(['\ufeff', tableHTML], {
-        type: 'application/vnd.ms-excel'
-    });
-    const url = URL.createObjectURL(blob);
-    downloadFile(url, 'orders_export.xls');
-}
 
 function downloadCSV(csv, filename) {
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    downloadFile(url, filename);
-}
+    const csvFile = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const downloadLink = document.createElement('a');
 
-function downloadFile(url, filename) {
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', filename);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    // File download
+    if (window.navigator.msSaveOrOpenBlob) {
+        window.navigator.msSaveOrOpenBlob(csvFile, filename);
+    } else {
+        downloadLink.href = URL.createObjectURL(csvFile);
+        downloadLink.style.display = 'none';
+        downloadLink.setAttribute('download', filename);
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        document.body.removeChild(downloadLink);
+    }
 }
+$(document).ready(function () {
+    // Make status badges clickable for filtering
+    $('.mv-filter-status').on('click', function () {
+        const status = $(this).data('status');
+
+        // Update active state on filter badges
+        $('.mv-filter-status').removeClass('active');
+        $(this).addClass('active');
+
+        // Show loading indicator
+        $('.mv-table-container').addClass('mv-loading-content');
+
+        // Filter the table rows
+        if (status === 'all') {
+            // Show all rows
+            $('.mv-table tbody tr').show();
+        } else {
+            // Hide all rows first
+            $('.mv-table tbody tr').hide();
+
+            // Show only rows with matching status
+            $('.mv-table tbody tr').each(function () {
+                const rowStatus = $(this).find('.mv-status-select option:selected').val() ||
+                    $(this).find('.mv-status-badge').text().trim().toLowerCase();
+
+                if (rowStatus.toLowerCase().includes(status.toLowerCase())) {
+                    $(this).show();
+                }
+            });
+        }
+
+        // Remove loading indicator
+        $('.mv-table-container').removeClass('mv-loading-content');
+
+        // Update the page title to indicate filtering
+        if (status !== 'all') {
+            const statusText = $(this).text().split(':')[0].trim();
+            $('.page-header h1').text('Orders - ' + statusText);
+        } else {
+            $('.page-header h1').text('My Order Lines');
+        }
+    });
+});
+
+$(document).ready(function () {
+    // Variables to track state
+    let selectedOrders = [];
+
+    // Handle "Select All" checkbox
+    $('#select-all-orders').on('change', function () {
+        const isChecked = $(this).prop('checked');
+        $('.mv-row-checkbox').prop('checked', isChecked);
+
+        // Update selected orders array
+        selectedOrders = isChecked ?
+            $('.mv-row-checkbox').map(function () { return $(this).data('id'); }).get() :
+            [];
+
+        updateBulkControls();
+    });
+
+    // Handle individual row checkboxes
+    $(document).on('change', '.mv-row-checkbox', function () {
+        const id = $(this).data('id');
+
+        if ($(this).prop('checked')) {
+            // Add to selected orders if not already in the array
+            if (selectedOrders.indexOf(id) === -1) {
+                selectedOrders.push(id);
+            }
+        } else {
+            // Remove from selected orders
+            const index = selectedOrders.indexOf(id);
+            if (index !== -1) {
+                selectedOrders.splice(index, 1);
+            }
+
+            // Uncheck "Select All" if any row is unchecked
+            $('#select-all-orders').prop('checked', false);
+        }
+
+        updateBulkControls();
+    });
+
+    // Apply bulk status change
+    $('#apply-bulk-status').on('click', function () {
+        const newStatus = $('#bulk-status-select').val();
+
+        if (!newStatus || selectedOrders.length === 0) {
+            return;
+        }
+
+        // Show confirmation dialog
+        if (!confirm(bulkStatusChangeConfirmText)) {
+            return;
+        }
+
+        // Disable controls during processing
+        $('#apply-bulk-status').prop('disabled', true).text(processingText);
+
+        // Send the bulk update request
+        $.ajax({
+            url: ordersAjaxUrl,
+            type: 'POST',
+            data: {
+                ajax: true,
+                action: 'bulkUpdateVendorStatus', // Use this action name
+                order_detail_ids: selectedOrders,
+                status: newStatus,
+                comment: bulkChangeComment,
+                token: ordersAjaxToken
+            },
+            dataType: 'json',
+            success: function (response) {
+                if (response.success) {
+                    // Update statuses in the UI for successfully updated rows
+                    $.each(response.results, function (id, success) {
+                        if (success) {
+                            updateRowStatus(id, newStatus);
+                        }
+                    });
+
+                    showNotification('success', response.message);
+                } else {
+                    showNotification('error', response.message || 'Error updating statuses');
+                }
+
+                // Reset controls
+                resetBulkControls();
+            },
+            error: function () {
+                showNotification('error', errorStatusText);
+                resetBulkControls();
+            }
+        });
+    });
+
+    // Update controls based on selection state
+    function updateBulkControls() {
+        const count = selectedOrders.length;
+
+        // Update count display
+        $('#selected-count').text(count + ' ' + selectedText);
+
+        // Enable/disable bulk controls
+        $('#bulk-status-select, #apply-bulk-status').prop('disabled', count === 0);
+    }
+
+    // Check if all bulk operations are complete
+    function checkBulkCompletion(completed, total, success, error) {
+        if (completed === total) {
+            // All requests finished - show results
+            let message = '';
+
+            if (success > 0) {
+                message += success + ' ' + successStatusText + '\n';
+            }
+
+            if (error > 0) {
+                message += error + ' ' + errorStatusText;
+            }
+
+            // Show completion message
+            showNotification(success > 0 ? 'success' : 'error', message);
+
+            // Reset the bulk controls
+            resetBulkControls();
+        }
+    }
+
+    // Update a row's status in the UI
+    function updateRowStatus(id, newStatus) {
+        const row = $(`tr[data-id="${id}"]`);
+        const select = row.find('.order-line-status-select');
+
+        // Update select value if present
+        if (select.length) {
+            select.val(newStatus);
+
+            // Also update the data attribute for filtering
+            row.attr('data-status', newStatus.toLowerCase());
+        }
+
+        // Uncheck the row
+        row.find('.mv-row-checkbox').prop('checked', false);
+    }
+
+    // Reset bulk controls after operation
+    function resetBulkControls() {
+        // Reset UI elements
+        $('#apply-bulk-status').prop('disabled', true).text(applyText);
+        $('#bulk-status-select').val('');
+        $('.mv-row-checkbox, #select-all-orders').prop('checked', false);
+
+        // Clear selected orders
+        selectedOrders = [];
+        updateBulkControls();
+    }
+
+    // Show notification message
+    function showNotification(type, message) {
+        const alertClass = type === 'success' ? 'mv-alert-success' : 'mv-alert-danger';
+        const alert = $(`<div class="mv-alert ${alertClass}">${message}</div>`);
+
+        $('.mv-card-body').first().prepend(alert);
+
+        // Auto-remove after delay
+        setTimeout(function () {
+            alert.fadeOut(function () {
+                $(this).remove();
+            });
+        }, 5000);
+    }
+});

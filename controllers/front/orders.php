@@ -43,6 +43,7 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
         if (Tools::isSubmit('submitStatusUpdate')) {
             $this->processStatusUpdate();
         }
+        $filter_status = Tools::getValue('status', 'all');
 
         // Get order summary data
         $orderSummary = $this->getOrderSummary($id_vendor, $id_supplier);
@@ -53,8 +54,8 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
         $offset = ($page - 1) * $per_page;
 
         // Get order lines specific to this vendor's supplier ID
-        $orderLines = $this->getVendorOrderLines($id_vendor, $id_supplier, $per_page, $offset);
-        $total_lines = $this->countVendorOrderLines($id_vendor, $id_supplier);
+        $orderLines = $this->getVendorOrderLines($id_vendor, $id_supplier, $per_page, $offset, $filter_status);
+        $total_lines = $this->countVendorOrderLines($id_vendor, $id_supplier, $filter_status);
         $total_pages = ceil($total_lines / $per_page);
 
         // Get available line statuses (only ones that vendor can use)
@@ -119,10 +120,10 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
      * @param int $offset Offset
      * @return array List of order line items
      */
-    protected function getVendorOrderLines($id_vendor, $id_supplier, $limit = 20, $offset = 0)
+    protected function getVendorOrderLines($id_vendor, $id_supplier, $limit = 20, $offset = 0, $status = 'all')
     {
         $query = new DbQuery();
-        $query->select('od.id_order_detail, od.product_name,od.product_reference ,  od.product_quantity, od.unit_price_tax_incl,od.total_price_tax_incl,
+        $query->select('od.id_order_detail, od.product_name, od.product_reference, od.product_quantity, od.unit_price_tax_incl, od.total_price_tax_incl,
                   o.reference as order_reference, o.date_add as order_date, p.id_supplier,
                   vod.id_vendor, vod.commission_amount, vod.vendor_amount, vod.id_order,
                   COALESCE(ols.status, "Pending") as line_status');
@@ -132,7 +133,13 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
         $query->leftJoin('vendor_order_detail', 'vod', 'vod.id_order_detail = od.id_order_detail AND vod.id_vendor = ' . (int)$id_vendor);
         $query->leftJoin('order_line_status', 'ols', 'ols.id_order_detail = od.id_order_detail AND ols.id_vendor = ' . (int)$id_vendor);
         $query->where('vod.id_vendor = ' . (int)$id_vendor);
-        $query->orderBy('o.date_add DESC');
+
+        // Add status filter if not "all"
+        if ($status !== 'all' && $status) {
+            $query->where('LOWER(COALESCE(ols.status, "Pending")) = "' . pSQL(strtolower($status)) . '"');
+        }
+
+        $query->orderBy('od.id_order_detail DESC');
         $query->limit($limit, $offset);
 
         $results = Db::getInstance()->executeS($query);
@@ -154,13 +161,20 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
      * @param int $id_supplier Supplier ID
      * @return int Number of order lines
      */
-    protected function countVendorOrderLines($id_vendor, $id_supplier)
+    protected function countVendorOrderLines($id_vendor, $id_supplier, $status = 'all')
     {
         $query = new DbQuery();
         $query->select('COUNT(od.id_order_detail)');
         $query->from('order_detail', 'od');
         $query->innerJoin('product', 'p', 'p.id_product = od.product_id');
-        $query->where('p.id_supplier = ' . (int)$id_supplier);
+        $query->leftJoin('vendor_order_detail', 'vod', 'vod.id_order_detail = od.id_order_detail AND vod.id_vendor = ' . (int)$id_vendor);
+        $query->leftJoin('order_line_status', 'ols', 'ols.id_order_detail = od.id_order_detail AND ols.id_vendor = ' . (int)$id_vendor);
+        $query->where('vod.id_vendor = ' . (int)$id_vendor);
+
+        // Add status filter if not "all"
+        if ($status !== 'all' && $status) {
+            $query->where('LOWER(COALESCE(ols.status, "Pending")) = "' . pSQL(strtolower($status)) . '"');
+        }
 
         return (int)Db::getInstance()->getValue($query);
     }

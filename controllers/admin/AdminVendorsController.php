@@ -181,25 +181,27 @@ class AdminVendorsController extends ModuleAdminController
     public function renderForm()
     {
         // Get customers
-        $customers = Customer::getCustomers();
         $customersArray = [];
-        foreach ($customers as $customer) {
-            $customersArray[] = [
-                'id' => $customer['id_customer'],
-                'name' => $customer['firstname'] . ' ' . $customer['lastname'] . ' (' . $customer['email'] . ')'
-            ];
-        }
-
-        // Get suppliers
-        $suppliers = Supplier::getSuppliers();
         $suppliersArray = [];
-        foreach ($suppliers as $supplier) {
-            $suppliersArray[] = [
-                'id' => $supplier['id_supplier'],
-                'name' => $supplier['name']
-            ];
-        }
+        if ($this->object->id) {
+            // Get the current customer
+            $customer = $this->getCustomerByVendor($this->object->id);
+            if (!empty($customer)) {
+                $customersArray[] = [
+                    'id' => $customer['id'],
+                    'name' => $customer['name']
+                ];
+            }
 
+            // Get the current supplier
+            $supplier = $this->getSupplierByVendor($this->object->id);
+            if (!empty($supplier)) {
+                $suppliersArray[] = [
+                    'id' => $supplier['id'],
+                    'name' => $supplier['name']
+                ];
+            }
+        }
         $this->fields_form = [
             'legend' => [
                 'title' => $this->l('Vendor'),
@@ -230,6 +232,15 @@ class AdminVendorsController extends ModuleAdminController
                 ],
                 [
                     'type' => 'text',
+                    'label' => $this->l('Commission Rate (%)'),
+                    'name' => 'commission_rate',
+                    'required' => true,
+                    'suffix' => '%',
+                    'class' => 'fixed-width-sm',
+                    'validation' => 'isPositiveInt'
+                ],
+                [
+                    'type' => 'text',
                     'label' => $this->l('Shop Name'),
                     'name' => 'shop_name',
                     'required' => true
@@ -241,20 +252,7 @@ class AdminVendorsController extends ModuleAdminController
                     'autoload_rte' => true,
                     'rows' => 5
                 ],
-                // [
-                //     'type' => 'file',
-                //     'label' => $this->l('Logo'),
-                //     'name' => 'logo',
-                //     'display_image' => true,
-                //     'image' => $this->object->logo ? _PS_IMG_ . 'vendors/' . $this->object->id . '/' . $this->object->logo : false
-                // ],
-                // [
-                //     'type' => 'file',
-                //     'label' => $this->l('Banner'),
-                //     'name' => 'banner',
-                //     'display_image' => true,
-                //     'image' => $this->object->banner ? _PS_IMG_ . 'vendors/' . $this->object->id . '/' . $this->object->banner : false
-                // ],
+
                 [
                     'type' => 'switch',
                     'label' => $this->l('Status'),
@@ -278,8 +276,12 @@ class AdminVendorsController extends ModuleAdminController
             ]
         ];
 
+
         if (!$this->object->id) {
             $this->fields_value['status'] = 1;
+        } else {
+
+            $this->fields_value['commission_rate'] = VendorCommission::getCommissionRate($this->object->id);
         }
 
         return parent::renderForm();
@@ -291,37 +293,45 @@ class AdminVendorsController extends ModuleAdminController
     public function postProcess()
     {
         if (Tools::isSubmit('submitAdd' . $this->table)) {
-            // // Handle image uploads
-            // if ($this->object->id) {
-            //     $upload_dir = _PS_IMG_DIR_ . 'vendors/' . $this->object->id . '/';
+            // Get values from form
+            $commission_rate = (float)Tools::getValue('commission_rate');
+            if (empty($commission_rate) || $commission_rate <= 0) {
+                $this->errors[] = $this->l('Commission Rate is required and must be greater than zero.');
+                return false;
+            }
 
-            //     // Create directory if it doesn't exist
-            //     if (!file_exists($upload_dir)) {
-            //         @mkdir($upload_dir, 0777, true);
-            //     }
+            // Create or update vendor commission after saving vendor
+            $result = parent::postProcess();
 
-            // Handle logo upload
-            // if (isset($_FILES['logo']) && !empty($_FILES['logo']['name'])) {
-            //     $ext = pathinfo($_FILES['logo']['name'], PATHINFO_EXTENSION);
-            //     $filename = 'logo_' . $this->object->id . '.' . $ext;
-            //     $filepath = $upload_dir . $filename;
+            // If vendor saved successfully, create/update its commission
+            if ($result && !empty($this->object->id)) {
+                // Check if commission already exists
+                $existingCommission = Db::getInstance()->getRow(
+                    'SELECT * FROM `' . _DB_PREFIX_ . 'vendor_commission` 
+                 WHERE `id_vendor` = ' . (int)$this->object->id
+                );
 
-            //     if (move_uploaded_file($_FILES['logo']['tmp_name'], $filepath)) {
-            //         $_POST['logo'] = $filename;
-            //     }
-            // }
+                if ($existingCommission) {
 
-            // Handle banner upload
-            // if (isset($_FILES['banner']) && !empty($_FILES['banner']['name'])) {
-            //     $ext = pathinfo($_FILES['banner']['name'], PATHINFO_EXTENSION);
-            //     $filename = 'banner_' . $this->object->id . '.' . $ext;
-            //     $filepath = $upload_dir . $filename;
+                    // Update existing commission
+                    Db::getInstance()->update('vendor_commission', [
+                        'commission_rate' => $commission_rate,
+                        'date_upd' => date('Y-m-d H:i:s')
+                    ], '`id_vendor_commission` = ' . (int)$existingCommission['id_vendor_commission']);
+                } else {
+                    // Create new commission
+                    Db::getInstance()->insert('vendor_commission', [
+                        'id_vendor' => (int)$this->object->id,
+                        'commission_rate' => $commission_rate,
+                        'date_add' => date('Y-m-d H:i:s'),
+                        'date_upd' => date('Y-m-d H:i:s')
+                    ]);
+                }
 
-            //     if (move_uploaded_file($_FILES['banner']['tmp_name'], $filepath)) {
-            //         $_POST['banner'] = $filename;
-            //     }
-            // }
-            // }
+                return true;
+            }
+
+            return $result;
         }
 
         return parent::postProcess();
@@ -349,9 +359,7 @@ class AdminVendorsController extends ModuleAdminController
         parent::initPageHeaderToolbar();
     }
 
-    /**
-     * AJAX process to search customers
-     */
+
     /**
      * AJAX process to search customers
      */
@@ -397,5 +405,61 @@ class AdminVendorsController extends ModuleAdminController
     ');
 
         die(json_encode($suppliers));
+    }
+
+    /**
+     * Get customer by vendor ID
+     *
+     * @param int $id_vendor Vendor ID
+     * @return array Customer data or empty array
+     */
+    protected function getCustomerByVendor($id_vendor)
+    {
+        if (!$id_vendor) {
+            return [];
+        }
+
+        $vendor = new Vendor($id_vendor);
+        if (!Validate::isLoadedObject($vendor) || !$vendor->id_customer) {
+            return [];
+        }
+
+        $customer = new Customer($vendor->id_customer);
+        if (!Validate::isLoadedObject($customer)) {
+            return [];
+        }
+
+        return [
+            'id' => $customer->id,
+            'name' => $customer->firstname . ' ' . $customer->lastname . ' (' . $customer->email . ')'
+        ];
+    }
+
+    /**
+     * Get supplier by vendor ID
+     *
+     * @param int $id_vendor Vendor ID
+     * @return array Supplier data or empty array
+     */
+    protected function getSupplierByVendor($id_vendor)
+    {
+        if (!$id_vendor) {
+            return [];
+        }
+
+        $vendor = new Vendor($id_vendor);
+        if (!Validate::isLoadedObject($vendor) || !$vendor->id_supplier) {
+            return [];
+        }
+
+        $supplier = new Supplier($vendor->id_supplier);
+        if (!Validate::isLoadedObject($supplier)) {
+            return [];
+        }
+
+        return [
+            'id' => $supplier->id,
+            'name' => $supplier->name
+        ];
     }
 }

@@ -37,6 +37,12 @@ class MultivendorAjaxModuleFrontController extends ModuleFrontController
             case 'getStatusHistory':
                 $this->processGetStatusHistory();
                 break;
+            case 'bulkUpdateVendorStatus':
+                $this->processBulkUpdateVendorStatus();
+                break;
+            case 'exportOrdersCSV':
+                $this->processExportOrdersCSV();
+                break;
             default:
                 die(json_encode(['success' => false, 'message' => 'Unknown action']));
         }
@@ -259,5 +265,171 @@ class MultivendorAjaxModuleFrontController extends ModuleFrontController
             'last_update' => $lineStatus ? date('Y-m-d H:i:s', strtotime($lineStatus['date_upd'])) : null,
             'comment' => $lineStatus ? $lineStatus['comment'] : null
         ];
+    }
+
+    private function processBulkUpdateVendorStatus()
+    {
+        // Check if customer is a vendor
+        $id_customer = $this->context->customer->id;
+        $vendor = Vendor::getVendorByCustomer($id_customer);
+
+        if (!$vendor) {
+            die(json_encode(['success' => false, 'message' => 'Not authorized']));
+        }
+
+        $id_vendor = $vendor['id_vendor'];
+        $id_supplier = $vendor['id_supplier'];
+        $order_detail_ids = Tools::getValue('order_detail_ids', []);
+        $new_status = Tools::getValue('status');
+        $comment = Tools::getValue('comment', 'Bulk status update');
+
+        if (empty($order_detail_ids) || !is_array($order_detail_ids) || empty($new_status)) {
+            die(json_encode(['success' => false, 'message' => 'Missing required parameters']));
+        }
+
+        $success_count = 0;
+        $error_count = 0;
+        $results = [];
+
+        foreach ($order_detail_ids as $id_order_detail) {
+            // Verify this order detail belongs to this vendor's supplier
+            $query = new DbQuery();
+            $query->select('p.id_supplier, od.id_order');
+            $query->from('order_detail', 'od');
+            $query->innerJoin('product', 'p', 'p.id_product = od.product_id');
+            $query->where('od.id_order_detail = ' . (int)$id_order_detail);
+
+            $result = Db::getInstance()->getRow($query);
+
+            if (!$result || (int)$result['id_supplier'] !== (int)$id_supplier) {
+                $error_count++;
+                $results[$id_order_detail] = false;
+                continue;
+            }
+
+            // Update the status
+            $update_result = OrderLineStatus::updateStatus(
+                $id_order_detail,
+                $id_vendor,
+                $new_status,
+                $this->context->customer->id,
+                $comment,
+                false // not admin
+            );
+
+            if ($update_result) {
+                $success_count++;
+                $results[$id_order_detail] = true;
+            } else {
+                $error_count++;
+                $results[$id_order_detail] = false;
+            }
+        }
+
+        die(json_encode([
+            'success' => $success_count > 0,
+            'results' => $results,
+            'success_count' => $success_count,
+            'error_count' => $error_count,
+            'message' => sprintf(
+                '%d orders updated successfully, %d failed',
+                $success_count,
+                $error_count
+            )
+        ]));
+    }
+
+
+
+    /**
+     * Process export orders to CSV
+     * This function directly outputs a CSV file for download
+     */
+    private function processExportOrdersCSV()
+    {
+        // Check if customer is a vendor
+        $id_customer = $this->context->customer->id;
+        $vendor = Vendor::getVendorByCustomer($id_customer);
+
+        if (!$vendor) {
+            // For direct download, we can't return JSON error
+            // Instead, output a simple error message
+            header('Content-Type: text/plain');
+            die('Error: Not authorized');
+        }
+
+        $id_vendor = $vendor['id_vendor'];
+
+        // Get all order lines for this vendor with complete data
+        $query = new DbQuery();
+        $query->select('
+        od.id_order_detail,
+        od.product_name,
+        od.product_reference,
+        od.product_quantity,
+        od.unit_price_tax_incl,
+        od.total_price_tax_incl,
+        o.reference as order_reference,
+        o.date_add as order_date,
+        o.id_order,
+        vod.commission_amount,
+        vod.vendor_amount,
+        COALESCE(ols.status, "Pending") as line_status
+    ');
+        $query->from('vendor_order_detail', 'vod');
+        $query->leftJoin('order_detail', 'od', 'od.id_order_detail = vod.id_order_detail');
+        $query->leftJoin('orders', 'o', 'o.id_order = vod.id_order');
+        $query->leftJoin('order_line_status', 'ols', 'ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor');
+        $query->where('vod.id_vendor = ' . (int)$id_vendor);
+        $query->orderBy('o.date_add DESC');
+
+        $orderLines = Db::getInstance()->executeS($query);
+
+        if (!$orderLines || empty($orderLines)) {
+            // For direct download, output a simple error message
+            header('Content-Type: text/plain');
+            die('Error: No order data found');
+        }
+
+        // Set headers for CSV download
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename=vendor_orders_export_' . date('Y-m-d') . '.csv');
+        // Disable caching
+        header('Cache-Control: no-cache, no-store, must-revalidate');
+        header('Pragma: no-cache');
+        header('Expires: 0');
+
+        // Create output stream
+        $output = fopen('php://output', 'w');
+
+        // Add UTF-8 BOM for Excel compatibility
+        fprintf($output, chr(0xEF) . chr(0xBB) . chr(0xBF));
+
+        // Add CSV headers
+        fputcsv($output, [
+            $this->module->l('Order Reference'),
+            $this->module->l('Product Name'),
+            $this->module->l('SKU'),
+            $this->module->l('Quantity'),
+            $this->module->l('Vendor Amount'),
+            $this->module->l('Status'),
+            $this->module->l('Order Date')
+        ]);
+
+        // Add data rows
+        foreach ($orderLines as $line) {
+            fputcsv($output, [
+                $line['order_reference'],
+                $line['product_name'],
+                $line['product_reference'],
+                $line['product_quantity'],
+                $line['vendor_amount'],
+                $line['line_status'],
+                date('Y-m-d H:i:s', strtotime($line['order_date']))
+            ]);
+        }
+
+        fclose($output);
+        exit; // Important: stop execution after sending the file
     }
 }
