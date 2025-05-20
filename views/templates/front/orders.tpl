@@ -137,6 +137,7 @@
                                             <th>{l s='Product' mod='multivendor'}</th>
                                             <th>{l s='Qty' mod='multivendor'}</th>
                                             <th>{l s='Total' mod='multivendor'}</th>
+                                            <th>{l s='Barcode' mod='multivendor'}</th>
                                             <th>{l s='Status' mod='multivendor'}</th>
                                             <th>{l s='Date' mod='multivendor'}</th>
                                             <th>{l s='Actions' mod='multivendor'}</th>
@@ -160,6 +161,13 @@
                                                 </td>
                                                 <td class="mv-text-center">{$line.product_quantity}</td>
                                                 <td>{($line.total_price_tax_incl - $line.commission_amount)|displayPrice}</td>
+                                                <td class="mv-mpn-verify-column">
+                                                    <input type="text" class="form-control form-control-sm mv-mpn-input"
+                                                        data-order-detail-id="{$line.id_order_detail}"
+                                                        data-product-mpn="{$line.product_mpn}"
+                                                        data-commission-action="{if isset($line.commission_action)}{$line.commission_action}{else}none{/if}"
+                                                        placeholder="{l s='Scan MPN' mod='multivendor'}" autocomplete="off">
+                                                </td>
                                                 <td>
                                                     {if isset($all_statuses[$line.line_status]) && !isset($vendor_statuses[$line.line_status])}
                                                         <span class="mv-status-badge"
@@ -245,6 +253,36 @@
                                 {l s='No order lines found.' mod='multivendor'}
                             </p>
                         {/if}
+                        <div id="pickup-manifest-block" class="mt-4" style="display: none;">
+                            <div class="mv-card">
+                                <div class="mv-card-header">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <h3 class="mv-card-title">{l s='Pickup Manifest' mod='multivendor'} (<span
+                                                id="manifest-count">0</span>)</h3>
+                                        <button id="print-manifest-btn" class="mv-btn mv-btn-primary">
+                                            <i class="mv-icon">🖨️</i> {l s='Print Manifest' mod='multivendor'}
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="mv-card-body">
+                                    <div class="table-responsive">
+                                        <table class="mv-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>{l s='Order Ref' mod='multivendor'}</th>
+                                                    <th>{l s='Product' mod='multivendor'}</th>
+                                                    <th>{l s='MPN' mod='multivendor'}</th>
+                                                    <th>{l s='Quantity' mod='multivendor'}</th>
+                                                    <th>{l s='Verified At' mod='multivendor'}</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="manifest-items">
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </main>
@@ -275,4 +313,6 @@
         const successStatusText = "{l s='orders updated successfully.' mod='multivendor'}";
         const errorStatusText = "{l s='orders failed to update.' mod='multivendor'}";
     </script>
+
+
 {/block}

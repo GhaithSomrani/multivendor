@@ -124,8 +124,8 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
     {
         $query = new DbQuery();
         $query->select('od.id_order_detail, od.product_name, od.product_reference, od.product_quantity, od.unit_price_tax_incl, od.total_price_tax_incl,
-                  o.reference as order_reference, o.date_add as order_date, p.id_supplier,
-                  vod.id_vendor, vod.commission_amount, vod.vendor_amount, vod.id_order,
+                  o.reference as order_reference, o.date_add as order_date, p.id_supplier, od.product_mpn,
+                  vod.id_vendor, vod.commission_amount, vod.vendor_amount, vod.id_order, 
                   COALESCE(ols.status, "Pending") as line_status');
         $query->from('order_detail', 'od');
         $query->innerJoin('orders', 'o', 'o.id_order = od.id_order');
@@ -300,7 +300,6 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
     }
 
     /**
-   /**
      * Get order summary data
      */
     protected function getOrderSummary($id_vendor)

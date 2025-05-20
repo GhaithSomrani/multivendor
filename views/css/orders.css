@@ -350,6 +350,7 @@ textarea.mv-form-control {
     color: white;
     border-color: #6366f1;
 }
+
 .mv-export-buttons {
     display: flex;
     gap: 10px;
@@ -372,26 +373,27 @@ textarea.mv-form-control {
 .mv-btn-export:hover {
     background-color: #45a049;
 }
+
 /* Responsive adjustments */
 @media (max-width: 640px) {
     .mv-table {
         font-size: 12px;
     }
-    
+
     .mv-table th,
     .mv-table td {
         padding: 8px;
     }
-    
+
     .mv-product-name {
         max-width: 150px;
     }
-    
+
     .mv-btn-sm {
         padding: 4px 8px;
         font-size: 11px;
     }
-    
+
 }
 
 .mv-filter-status {
@@ -512,6 +514,59 @@ textarea.mv-form-control {
 .mv-table tbody tr.selected {
     background-color: #f3f4f6;
 }
-#bulk-status-select { 
+
+#bulk-status-select {
     color: #000;
+}
+
+/* MPN Verification Styles */
+.mv-mpn-input.is-valid {
+    background-color: #d4edda !important;
+    border-color: #28a745 !important;
+}
+
+.mv-mpn-verify-column {
+    width: 140px;
+}
+
+/* Pickup Manifest Styles */
+#pickup-manifest-block {
+    margin-top: 30px;
+    border-top: 2px dashed #ddd;
+    padding-top: 20px;
+}
+
+#manifest-items tr {
+    animation: highlight-row 1s ease-in-out;
+}
+
+@keyframes highlight-row {
+    0% {
+        background-color: #d4edda;
+    }
+
+    100% {
+        background-color: transparent;
+    }
+}
+
+/* Notification Styles */
+.temp-notification {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    border-radius: 4px;
+    padding: 12px 16px;
+}
+
+.order-line-status-select {
+  transition: background-color 0.3s ease;
+}
+
+/* Force repaints for status changes */
+.status-updated {
+  animation: status-update-flash 0.5s ease;
+}
+
+@keyframes status-update-flash {
+  0% { opacity: 0.5; }
+  100% { opacity: 1; }
 }

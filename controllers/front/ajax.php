@@ -43,6 +43,9 @@ class MultivendorAjaxModuleFrontController extends ModuleFrontController
             case 'exportOrdersCSV':
                 $this->processExportOrdersCSV();
                 break;
+            case 'getAddCommissionStatus':
+                $this->processGetAddCommissionStatus();
+                break;
             default:
                 die(json_encode(['success' => false, 'message' => 'Unknown action']));
         }
@@ -431,5 +434,40 @@ class MultivendorAjaxModuleFrontController extends ModuleFrontController
 
         fclose($output);
         exit; // Important: stop execution after sending the file
+    }
+    /**
+     * Process get add commission status
+     * Returns the first status that has commission_action = 'add' and is vendor allowed
+     */
+    private function processGetAddCommissionStatus()
+    {
+        try {
+            $query = new DbQuery();
+            $query->select('name, color, position');
+            $query->from('order_line_status_type');
+            $query->where('commission_action = "add"');
+            $query->where('is_vendor_allowed = 1');
+            $query->where('active = 1');
+            $query->orderBy('position ASC');
+
+            $status = Db::getInstance()->getRow($query);
+
+            if ($status) {
+                die(json_encode([
+                    'success' => true,
+                    'status' => $status
+                ]));
+            } else {
+                die(json_encode([
+                    'success' => false,
+                    'message' => 'No suitable status found'
+                ]));
+            }
+        } catch (Exception $e) {
+            die(json_encode([
+                'success' => false,
+                'message' => $e->getMessage()
+            ]));
+        }
     }
 }
