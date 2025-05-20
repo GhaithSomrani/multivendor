@@ -711,10 +711,21 @@ class multivendor extends Module
      */
     public function hookActionAdminControllerSetMedia($params)
     {
-        $this->context->controller->addJS($this->_path . 'views/js/admin.js');
-        $this->context->controller->addCSS($this->_path . 'views/css/admin.css');
-    }
+        $controller = Tools::getValue('controller');
 
+        $allowedControllers = [
+            'AdminOrders',       
+            'AdminVendors',             
+            'AdminVendorCommissions',    
+            'AdminVendorPayments',       
+            'AdminOrderLineStatus'       
+        ];
+
+        if (in_array($controller, $allowedControllers)) {
+            $this->context->controller->addJS($this->_path . 'views/js/admin.js');
+            $this->context->controller->addCSS($this->_path . 'views/css/admin.css');
+        }
+    }
     /**
      * Hook: Add JS/CSS to back office
      */
@@ -728,9 +739,6 @@ class multivendor extends Module
             'adminToken' => Tools::getAdminToken('AdminOrders')
         ]);
 
-        // Add the JavaScript file
-        $this->context->controller->addJS($this->_path . 'views/js/admin.js');
-
-        $this->context->controller->addCSS($this->_path . 'views/css/admin.css');
+      
     }
 }

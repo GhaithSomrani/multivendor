@@ -558,15 +558,131 @@ textarea.mv-form-control {
 }
 
 .order-line-status-select {
-  transition: background-color 0.3s ease;
+    transition: background-color 0.3s ease;
 }
 
 /* Force repaints for status changes */
 .status-updated {
-  animation: status-update-flash 0.5s ease;
+    animation: status-update-flash 0.5s ease;
 }
 
 @keyframes status-update-flash {
-  0% { opacity: 0.5; }
-  100% { opacity: 1; }
+    0% {
+        opacity: 0.5;
+    }
+
+    100% {
+        opacity: 1;
+    }
+}
+
+/* Global MPN Input Styles */
+.mv-global-mpn-container {
+    margin: 15px 20px;
+    background-color: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.mv-input-group {
+    display: flex;
+    position: relative;
+}
+
+.mv-global-mpn-input {
+    flex: 1;
+    padding: 12px 15px;
+    font-size: 16px;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    transition: all 0.3s;
+}
+
+.mv-global-mpn-input:focus {
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+    outline: none;
+}
+
+.mv-input-group-append {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+}
+
+.mv-input-group-text {
+    color: #6c757d;
+    font-size: 18px;
+}
+
+.mv-mpn-status {
+    margin-top: 8px;
+    display: flex;
+    align-items: center;
+}
+
+.mv-status-message {
+    font-size: 14px;
+    color: #6c757d;
+}
+
+/* Result indicator styles */
+.mv-status-message.success {
+    color: #28a745;
+}
+
+.mv-status-message.error {
+    color: #dc3545;
+}
+
+.mv-status-message.searching {
+    color: #fd7e14;
+}
+
+/* Highlight row when found by MPN */
+tr.mv-mpn-found {
+    animation: highlight-found 2s ease-in-out;
+}
+
+@keyframes highlight-found {
+
+    0%,
+    100% {
+        background-color: transparent;
+    }
+
+    50% {
+        background-color: rgba(40, 167, 69, 0.2);
+    }
+}
+
+/* Style for the MPN verified badge */
+.mv-mpn-verified {
+    position: relative;
+}
+
+.mv-mpn-verified::after {
+    content: "✓";
+    position: absolute;
+    top: 0;
+    right: -15px;
+    color: #28a745;
+    font-weight: bold;
+}
+
+/* Responsive styling */
+@media (max-width: 768px) {
+    .mv-global-mpn-container {
+        margin: 10px;
+        padding: 10px;
+    }
+
+    .mv-global-mpn-input {
+        padding: 10px;
+        font-size: 14px;
+    }
 }

@@ -90,6 +90,7 @@
                         </div>
                     </div>
                 {/if}
+
                 {* Orders Table *}
                 <div class="mv-card">
                     <div class="mv-card-header">
@@ -126,6 +127,25 @@
                             </button>
                         </div>
                     </div>
+
+                    {* Global MPN Input at the top of the table *}
+                    <div class="mv-global-mpn-container">
+                        <div class="mv-input-group">
+                            <input type="text" id="global-mpn-input" class="form-control mv-global-mpn-input"
+                                placeholder="{l s='Scan MPN barcode here...' mod='multivendor'}" autocomplete="off">
+                            <div class="mv-input-group-append">
+                                <span class="mv-input-group-text">
+                                    <i class="mv-icon">🔍</i>
+                                </span>
+                            </div>
+                        </div>
+                        <div class="mv-mpn-status">
+                            <span id="mpn-status-message" class="mv-status-message">
+                                {l s='Ready to scan MPN barcode.' mod='multivendor'}
+                            </span>
+                        </div>
+                    </div>
+
                     <div class="mv-card-body">
                         {if $order_lines}
                             <div class="mv-table-container">
@@ -137,7 +157,6 @@
                                             <th>{l s='Product' mod='multivendor'}</th>
                                             <th>{l s='Qty' mod='multivendor'}</th>
                                             <th>{l s='Total' mod='multivendor'}</th>
-                                            <th>{l s='Barcode' mod='multivendor'}</th>
                                             <th>{l s='Status' mod='multivendor'}</th>
                                             <th>{l s='Date' mod='multivendor'}</th>
                                             <th>{l s='Actions' mod='multivendor'}</th>
@@ -146,7 +165,9 @@
                                     <tbody>
                                         {foreach from=$order_lines item=line}
                                             <tr data-id="{$line.id_order_detail}"
-                                                data-status="{$line.line_status|default:'Pending'|lower}">
+                                                data-status="{$line.line_status|default:'Pending'|lower}"
+                                                data-product-mpn="{$line.product_mpn}"
+                                                data-commission-action="{if isset($line.commission_action)}{$line.commission_action}{else}none{/if}">
                                                 <td class="mv-checkbox-col">
                                                     <input type="checkbox" class="mv-row-checkbox" id="row-{$line.id_order_detail}"
                                                         data-id="{$line.id_order_detail}">
@@ -161,13 +182,6 @@
                                                 </td>
                                                 <td class="mv-text-center">{$line.product_quantity}</td>
                                                 <td>{($line.total_price_tax_incl - $line.commission_amount)|displayPrice}</td>
-                                                <td class="mv-mpn-verify-column">
-                                                    <input type="text" class="form-control form-control-sm mv-mpn-input"
-                                                        data-order-detail-id="{$line.id_order_detail}"
-                                                        data-product-mpn="{$line.product_mpn}"
-                                                        data-commission-action="{if isset($line.commission_action)}{$line.commission_action}{else}none{/if}"
-                                                        placeholder="{l s='Scan MPN' mod='multivendor'}" autocomplete="off">
-                                                </td>
                                                 <td>
                                                     {if isset($all_statuses[$line.line_status]) && !isset($vendor_statuses[$line.line_status])}
                                                         <span class="mv-status-badge"
@@ -313,6 +327,4 @@
         const successStatusText = "{l s='orders updated successfully.' mod='multivendor'}";
         const errorStatusText = "{l s='orders failed to update.' mod='multivendor'}";
     </script>
-
-
 {/block}
