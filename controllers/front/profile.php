@@ -19,7 +19,7 @@ class multivendorProfileModuleFrontController extends ModuleFrontController
 
         // Check if customer is a vendor
         $id_customer = $this->context->customer->id;
-        $vendor = Vendor::getVendorByCustomer($id_customer);
+        $vendor = VendorHelper::getVendorByCustomer($id_customer);
 
         if (!$vendor) {
             Tools::redirect('index.php?controller=my-account');

@@ -73,28 +73,6 @@
                                 <span class="mv-commission-detail-label">{l s='Your standard commission rate:' mod='multivendor'}</span>
                                 <span class="mv-commission-detail-value">{$vendor_commission_rate}%</span>
                             </div>
-                            
-                            {if $category_commissions}
-                                <h5 class="mt-3">{l s='Category-specific commission rates:' mod='multivendor'}</h5>
-                                <div class="mv-table-container">
-                                    <table class="mv-table">
-                                        <thead>
-                                            <tr>
-                                                <th>{l s='Category' mod='multivendor'}</th>
-                                                <th>{l s='Commission Rate' mod='multivendor'}</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {foreach from=$category_commissions item=commission}
-                                                <tr>
-                                                    <td>{$commission.category_name}</td>
-                                                    <td>{$commission.commission_rate}%</td>
-                                                </tr>
-                                            {/foreach}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            {/if}
                         </div>
                     </div>
                     

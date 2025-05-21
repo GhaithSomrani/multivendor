@@ -21,7 +21,7 @@ require_once(dirname(__FILE__) . '/classes/OrderLineStatus.php');
 require_once(dirname(__FILE__) . '/classes/OrderLineStatusLog.php');
 require_once(dirname(__FILE__) . '/classes/VendorOrderDetail.php');
 require_once(dirname(__FILE__) . '/classes/OrderLineStatusType.php');
-
+require_once(dirname(__FILE__) . '/classes/VendorHelper.php');
 class multivendor extends Module
 {
     public function __construct()
@@ -475,7 +475,7 @@ class multivendor extends Module
 
             if ($vendor) {
                 // Calculate commission
-                $commission_rate = $this->getCommissionRate($vendor['id_vendor'], $product->id_category_default);
+                $commission_rate = VendorHelper::getCommissionRate($vendor['id_vendor'], $product->id_category_default);
                 $product_price = $detail['unit_price_tax_incl'];
                 $quantity = $detail['product_quantity'];
                 $total_price =  $detail['total_price_tax_incl'];
@@ -515,28 +515,7 @@ class multivendor extends Module
         }
     }
 
-    /**
-     * Get commission rate for a vendor and category
-     */
-    protected function getCommissionRate($id_vendor, $id_category)
-    {
-        // Check if there's a specific category commission
-        $categoryCommission = CategoryCommission::getCommissionRate($id_vendor, $id_category);
-
-        if ($categoryCommission) {
-            return $categoryCommission;
-        }
-
-        // Check if there's a vendor-specific commission
-        $vendorCommission = VendorCommission::getCommissionRate($id_vendor);
-
-        if ($vendorCommission) {
-            return $vendorCommission;
-        }
-
-        // Return default commission
-        return Configuration::get('MV_DEFAULT_COMMISSION', 10);
-    }
+   
 
     /**
      * Hook: Display vendor tabs in customer account
@@ -546,7 +525,7 @@ class multivendor extends Module
         $id_customer = $this->context->customer->id;
 
         // Check if this customer is a vendor
-        $vendor = Vendor::getVendorByCustomer($id_customer);
+        $vendor = VendorHelper::getVendorByCustomer($id_customer);
 
         if ($vendor) {
             $this->context->smarty->assign([
@@ -714,11 +693,11 @@ class multivendor extends Module
         $controller = Tools::getValue('controller');
 
         $allowedControllers = [
-            'AdminOrders',       
-            'AdminVendors',             
-            'AdminVendorCommissions',    
-            'AdminVendorPayments',       
-            'AdminOrderLineStatus'       
+            'AdminOrders',
+            'AdminVendors',
+            'AdminVendorCommissions',
+            'AdminVendorPayments',
+            'AdminOrderLineStatus'
         ];
 
         if (in_array($controller, $allowedControllers)) {
@@ -738,7 +717,5 @@ class multivendor extends Module
             'multivendorAjaxUrl' => $ajaxUrl,
             'adminToken' => Tools::getAdminToken('AdminOrders')
         ]);
-
-      
     }
 }

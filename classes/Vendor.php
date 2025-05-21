@@ -59,21 +59,6 @@ class Vendor extends ObjectModel
         ]
     ];
 
-    /**
-     * Get vendor by customer ID
-     * 
-     * @param int $id_customer Customer ID
-     * @return array|false Vendor data
-     */
-    public static function getVendorByCustomer($id_customer)
-    {
-        $query = new DbQuery();
-        $query->select('*');
-        $query->from('vendor');
-        $query->where('id_customer = ' . (int)$id_customer);
-
-        return Db::getInstance()->getRow($query);
-    }
 
     /**
      * Get vendor by supplier ID

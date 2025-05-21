@@ -8,6 +8,7 @@ if (!defined('_PS_VERSION_')) {
     exit;
 }
 
+
 class MultivendorManageOrdersModuleFrontController extends ModuleFrontController
 {
     public $auth = true;
@@ -18,7 +19,7 @@ class MultivendorManageOrdersModuleFrontController extends ModuleFrontController
         Parent::init();
         // Check if customer is a vendor
         $id_customer = $this->context->customer->id;
-        $vendor = Vendor::getVendorByCustomer($id_customer);
+        $vendor = VendorHelper::getVendorByCustomer($id_customer);
 
         if (!$vendor) {
             Tools::redirect('index.php?controller=my-account');
@@ -37,7 +38,7 @@ class MultivendorManageOrdersModuleFrontController extends ModuleFrontController
         $id_supplier = $this->context->smarty->getTemplateVars('id_supplier');
 
         // Get order lines grouped by status type
-        $orderLinesByStatus = $this->getOrderLinesByStatus($id_vendor);
+        $orderLinesByStatus = VendorHelper::getOrderLinesByStatusGrouped($id_vendor);
 
         // Get status information
         $statusInfo = $this->getStatusInfo();
@@ -87,71 +88,7 @@ class MultivendorManageOrdersModuleFrontController extends ModuleFrontController
         $this->setTemplate('module:multivendor/views/templates/front/manageorders.tpl');
     }
 
-    /**
-     * Get order lines grouped by status type
-     */
-    protected function getOrderLinesByStatus($id_vendor)
-    {
-        // Get the default status
-        $defaultStatus = Db::getInstance()->getRow('
-            SELECT * FROM `' . _DB_PREFIX_ . 'order_line_status_type` 
-            WHERE active = 1 
-            ORDER BY position ASC 
-        ');
-
-        // Get all order lines for this vendor
-        $query = new DbQuery();
-        $query->select('od.id_order_detail, od.product_name, od.product_reference, od.product_quantity,
-                       o.reference as order_reference, o.date_add as order_date, o.id_order,
-                       vod.commission_amount, vod.vendor_amount,
-                       c.firstname, c.lastname,
-                       a.address1, a.city, a.postcode,
-                       COALESCE(ols.status, "' . pSQL($defaultStatus['name']) . '") as line_status,
-                       COALESCE(olst.commission_action, "' . pSQL($defaultStatus['commission_action']) . '") as commission_action,
-                       COALESCE(olst.color, "' . pSQL($defaultStatus['color']) . '") as status_color');
-        $query->from('vendor_order_detail', 'vod');
-        $query->leftJoin('order_detail', 'od', 'od.id_order_detail = vod.id_order_detail');
-        $query->leftJoin('orders', 'o', 'o.id_order = vod.id_order');
-        $query->leftJoin('customer', 'c', 'c.id_customer = o.id_customer');
-        $query->leftJoin('address', 'a', 'a.id_address = o.id_address_delivery');
-        $query->leftJoin('order_line_status', 'ols', 'ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor');
-        $query->leftJoin('order_line_status_type', 'olst', 'olst.name = ols.status');
-        $query->where('vod.id_vendor = ' . (int)$id_vendor);
-        $query->orderBy('o.date_add DESC');
-
-        $orderLines = Db::getInstance()->executeS($query);
-
-        // Group by commission action
-        $grouped = [
-            'no_commission' => [],  // Orders that are cancelled or refunded
-            'pending' => [],        // Orders pending commission action
-            'ready' => []          // Orders ready for shipment (commission will be added)
-        ];
-
-        foreach ($orderLines as $line) {
-            // Check if this is a cancelled or refunded order
-            if ($line['commission_action'] == 'cancel' || $line['commission_action'] == 'refund') {
-                $grouped['no_commission'][] = $line;
-            } elseif ($line['line_status'] == 'Processing' || $line['line_status'] == 'processing') {
-                $grouped['pending'][] = $line;
-            } elseif ($line['line_status'] == 'Shipped' || $line['line_status'] == 'shipped' || 
-                      $line['line_status'] == 'Ready' || $line['line_status'] == 'ready') {
-                $grouped['ready'][] = $line;
-            } else {
-                // Default to pending based on commission action
-                if ($line['commission_action'] == 'add') {
-                    $grouped['pending'][] = $line;
-                } else if ($line['commission_action'] == 'none') {
-                    // Skip orders with no commission action
-                    continue;
-                } else {
-                    $grouped['pending'][] = $line;
-                }
-            }
-        }
-
-        return $grouped;
-    }
+   
 
     /**
      * Get status information for vendor
