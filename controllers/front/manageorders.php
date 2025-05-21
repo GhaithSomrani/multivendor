@@ -53,7 +53,7 @@ class MultivendorManageOrdersModuleFrontController extends ModuleFrontController
         $this->context->controller->addCSS($this->module->getPathUri() . 'views/css/manageorders.css');
         $this->context->controller->addJS($this->module->getPathUri() . 'views/js/manageorders.js');
         $this->context->controller->addCSS($this->module->getPathUri() . 'views/css/dashboard.css');
-        
+
         // Register displayPrice modifier if needed
         if (!is_callable('smartyDisplayPrice')) {
             smartyRegisterFunction(
@@ -88,7 +88,7 @@ class MultivendorManageOrdersModuleFrontController extends ModuleFrontController
         $this->setTemplate('module:multivendor/views/templates/front/manageorders.tpl');
     }
 
-   
+
 
     /**
      * Get status information for vendor
@@ -174,8 +174,9 @@ class MultivendorManageOrdersModuleFrontController extends ModuleFrontController
     protected function ajaxGenerateAwb()
     {
         $id_order_detail = (int)Tools::getValue('id_order_detail');
-        $awbUrl = $this->context->link->getModuleLink('multivendor', 'awb', ['id_order_detail' => $id_order_detail]);
-        
+        // Use the new controller URL
+        $awbUrl = $this->context->link->getModuleLink('multivendor', 'manifest', ['id_order_detail' => $id_order_detail]);
+
         die(json_encode([
             'success' => true,
             'awb_url' => $awbUrl
@@ -188,16 +189,17 @@ class MultivendorManageOrdersModuleFrontController extends ModuleFrontController
     protected function ajaxGenerateMultipleAwb()
     {
         $order_details = Tools::getValue('order_details');
-        
+
         if (!is_array($order_details) || empty($order_details)) {
             die(json_encode([
                 'success' => false,
                 'message' => 'No orders selected'
             ]));
         }
-        
-        $awbUrl = $this->context->link->getModuleLink('multivendor', 'multiawb', ['details' => implode(',', $order_details)]);
-        
+
+        // Use the new controller URL
+        $awbUrl = $this->context->link->getModuleLink('multivendor', 'manifest', ['details' => implode(',', $order_details)]);
+
         die(json_encode([
             'success' => true,
             'awb_url' => $awbUrl

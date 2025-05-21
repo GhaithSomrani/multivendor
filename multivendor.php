@@ -22,6 +22,7 @@ require_once(dirname(__FILE__) . '/classes/OrderLineStatusLog.php');
 require_once(dirname(__FILE__) . '/classes/VendorOrderDetail.php');
 require_once(dirname(__FILE__) . '/classes/OrderLineStatusType.php');
 require_once(dirname(__FILE__) . '/classes/VendorHelper.php');
+require_once(dirname(__FILE__) . '/classes/pdf/VendorManifestPDF.php');
 class multivendor extends Module
 {
     public function __construct()
@@ -80,7 +81,16 @@ class multivendor extends Module
 
         // Create vendor order statuses
         $this->createOrderStatuses();
+        if (!file_exists(_PS_MODULE_DIR_ . $this->name . '/views/templates/pdf/')) {
+            mkdir(_PS_MODULE_DIR_ . $this->name . '/views/templates/pdf/', 0777, true);
+        }
 
+        // Register template files (copy template file to module's pdf directory)
+        $source = _PS_MODULE_DIR_ . $this->name . '/views/templates/pdf/manifest.tpl';
+        if (!file_exists($source)) {
+            // Create template files if they don't exist
+            file_put_contents($source, $this->getDefaultManifestTemplate());
+        }
         return true;
     }
 
@@ -515,7 +525,7 @@ class multivendor extends Module
         }
     }
 
-   
+
 
     /**
      * Hook: Display vendor tabs in customer account
@@ -717,5 +727,34 @@ class multivendor extends Module
             'multivendorAjaxUrl' => $ajaxUrl,
             'adminToken' => Tools::getAdminToken('AdminOrders')
         ]);
+    }
+
+    /**
+     * Get default manifest template
+     */
+    private function getDefaultManifestTemplate()
+    {
+        return '
+    <style>
+        .pickup-header { 
+            background-color: #f8f9fa; 
+            padding: 10px; 
+            margin-bottom: 20px; 
+        }
+        .pickup-title { 
+            font-size: 24px; 
+            font-weight: bold; 
+            text-align: center; 
+        }
+        /* Rest of the CSS styles */
+    </style>
+    
+    <div class="pickup-header">
+        <div class="pickup-title">PICKUP MANIFEST</div>
+        <div style="text-align: center;">Transporter Pickup Document</div>
+    </div>
+    
+    <!-- Rest of the template HTML -->
+    ';
     }
 }
