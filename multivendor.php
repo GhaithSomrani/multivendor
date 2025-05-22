@@ -79,16 +79,13 @@ class multivendor extends Module
             return false;
         }
 
-        // Create vendor order statuses
         $this->createOrderStatuses();
         if (!file_exists(_PS_MODULE_DIR_ . $this->name . '/views/templates/pdf/')) {
             mkdir(_PS_MODULE_DIR_ . $this->name . '/views/templates/pdf/', 0777, true);
         }
 
-        // Register template files (copy template file to module's pdf directory)
         $source = _PS_MODULE_DIR_ . $this->name . '/views/templates/pdf/manifest.tpl';
         if (!file_exists($source)) {
-            // Create template files if they don't exist
             file_put_contents($source, $this->getDefaultManifestTemplate());
         }
         return true;

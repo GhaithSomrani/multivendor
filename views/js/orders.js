@@ -1,5 +1,5 @@
 /**
- * Modified orders.js file with global MPN input functionality
+ * Complete orders.js file with global MPN input functionality and single manifest generation
  */
 
 const verifiedOrderDetails = new Set();
@@ -118,6 +118,23 @@ $(document).ready(function () {
     
     // Handle bulk actions for order selection
     initBulkActions();
+
+    // Handle print manifest button click
+    $('#print-manifest-btn').on('click', function() {
+        printPickupManifest();
+    });
+
+    // Close modal when clicking outside or on close button
+    $(document).on('click', '.mv-modal-backdrop, .mv-modal-close', function() {
+        $('#statusHistoryModal').removeClass('mv-modal-open');
+    });
+
+    // Close modal when pressing Escape key
+    $(document).on('keyup', function(e) {
+        if (e.keyCode === 27) { // Escape key
+            $('#statusHistoryModal').removeClass('mv-modal-open');
+        }
+    });
 });
 
 /**
@@ -306,45 +323,45 @@ function initBulkActions() {
             }
         });
     });
-}
 
-/**
- * Update bulk control elements based on selection state
- */
-function updateBulkControls() {
-    const count = selectedOrders.length;
+    /**
+     * Update bulk control elements based on selection state
+     */
+    function updateBulkControls() {
+        const count = selectedOrders.length;
 
-    $('#selected-count').text(count + ' ' + selectedText);
+        $('#selected-count').text(count + ' ' + selectedText);
 
-    $('#bulk-status-select, #apply-bulk-status').prop('disabled', count === 0);
-}
-
-/**
- * Update row status after bulk update
- */
-function updateRowStatus(id, newStatus) {
-    const row = $(`tr[data-id="${id}"]`);
-    const select = row.find('.order-line-status-select');
-
-    if (select.length) {
-        select.val(newStatus);
-
-        row.attr('data-status', newStatus.toLowerCase());
+        $('#bulk-status-select, #apply-bulk-status').prop('disabled', count === 0);
     }
 
-    row.find('.mv-row-checkbox').prop('checked', false);
-}
+    /**
+     * Update row status after bulk update
+     */
+    function updateRowStatus(id, newStatus) {
+        const row = $(`tr[data-id="${id}"]`);
+        const select = row.find('.order-line-status-select');
 
-/**
- * Reset bulk action controls
- */
-function resetBulkControls() {
-    $('#apply-bulk-status').prop('disabled', true).text(applyText);
-    $('#bulk-status-select').val('');
-    $('.mv-row-checkbox, #select-all-orders').prop('checked', false);
+        if (select.length) {
+            select.val(newStatus);
 
-    selectedOrders = [];
-    updateBulkControls();
+            row.attr('data-status', newStatus.toLowerCase());
+        }
+
+        row.find('.mv-row-checkbox').prop('checked', false);
+    }
+
+    /**
+     * Reset bulk action controls
+     */
+    function resetBulkControls() {
+        $('#apply-bulk-status').prop('disabled', true).text(applyText);
+        $('#bulk-status-select').val('');
+        $('.mv-row-checkbox, #select-all-orders').prop('checked', false);
+
+        selectedOrders = [];
+        updateBulkControls();
+    }
 }
 
 /**
@@ -440,7 +457,7 @@ function updateOrderLineStatus(orderDetailId) {
  */
 function updateStatusInUI(orderDetailId, newStatus, statusColor) {
     const $row = $('tr[data-id="' + orderDetailId + '"]');
-    const $statusCell = $row.find('td:nth-child(6)'); // Changed from 6 to 5 since we removed the Barcode column
+    const $statusCell = $row.find('td:nth-child(6)'); // Status column
     
     const $select = $row.find('.order-line-status-select');
     if ($select.length) {
@@ -695,12 +712,17 @@ function exportTableToCSV() {
 }
 
 /**
- * Print pickup manifest
+ * Print pickup manifest - Updated for single manifest generation
  */
-function printPickupManifest(orderDetailIds) {
-    // Generate the URL for the pickup manifest controller
+function printPickupManifest() {
+    if (verifiedOrderDetails.size === 0) {
+        showNotification('error', 'No items in manifest to print');
+        return;
+    }
+
+    // Generate the URL for the single manifest controller
     const manifestUrl = window.location.origin + window.location.pathname +
-        '?fc=module&module=multivendor&controller=multiawb&details=' +
+        '?fc=module&module=multivendor&controller=manifest&details=' +
         Array.from(verifiedOrderDetails).join(',');
 
     // Open in a new tab/window
