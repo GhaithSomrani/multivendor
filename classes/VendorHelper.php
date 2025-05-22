@@ -1006,4 +1006,20 @@ class VendorHelper
 
         return (int)Db::getInstance()->getValue($query);
     }
+    /**
+     * Verify that the order detail belongs to the vendor
+     */
+    public static function verifyOrderDetailOwnership($id_order_detail , $id_customer)
+    {
+
+        $vendor = self::getVendorByCustomer($id_customer);
+
+        $query = new DbQuery();
+        $query->select('vod.id_vendor');
+        $query->from('vendor_order_detail', 'vod');
+        $query->where('vod.id_order_detail = ' . (int)$id_order_detail);
+        $query->where('vod.id_vendor = ' . $vendor['id_vendor']);
+
+        return (bool)Db::getInstance()->getValue($query);
+    }
 }
