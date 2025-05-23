@@ -93,13 +93,28 @@
     }
 </style>
 
+{* Calculate totals and manifest ID *}
+{assign var=manifest_id value="MANIFEST-"|cat:$current_date|cat:"-"|cat:($manifests|count)}
+{assign var=total_orders value=0}
+{assign var=unique_orders value=array()}
+
+{foreach from=$manifests item=manifest}
+    {if !in_array($manifest.order.id, $unique_orders)}
+        {assign var=unique_orders value=$unique_orders|array_merge:array($manifest.order.id)}
+        {assign var=total_orders value=$total_orders + 1}
+    {/if}
+{/foreach}
+
 <div class="pickup-header">
     <div class="pickup-title">PICKUP MANIFEST</div>
     <div class="pickup-subtitle">Multi-Item Collection Document</div>
     <div style="margin-top: 10px;">
-        <strong>Manifest ID:</strong> MANIFEST-{$manifest_id|escape:'html':'UTF-8'}
+        <strong>Manifest ID:</strong> {$manifest_id|escape:'html':'UTF-8'}
     </div>
 </div>
+
+{* Get vendor info from first manifest item *}
+{assign var=first_manifest value=$manifests[0]}
 
 {* Vendor and Basic Info *}
 <table>
@@ -107,21 +122,24 @@
         <td width="50%">
             <div class="pickup-box">
                 <div class="pickup-label">PICKUP FROM (VENDOR):</div>
-                <strong>{$vendor_info.shop_name|escape:'html':'UTF-8'}</strong><br>
-                {if $vendor_info.description}
-                    {$vendor_info.description|escape:'html':'UTF-8'|truncate:100}<br>
+                <strong>{$first_manifest.vendor.name|escape:'html':'UTF-8'}</strong><br>
+                {if $first_manifest.vendor.email}
+                    Email: {$first_manifest.vendor.email|escape:'html':'UTF-8'}<br>
                 {/if}
-                {if $warehouse_address.address1}
-                    {$warehouse_address.address1|escape:'html':'UTF-8'}<br>
+                {if $first_manifest.shop_address.address1}
+                    {$first_manifest.shop_address.address1|escape:'html':'UTF-8'}<br>
                 {/if}
-                {if $warehouse_address.city && $warehouse_address.postcode}
-                    {$warehouse_address.city|escape:'html':'UTF-8'}, {$warehouse_address.postcode|escape:'html':'UTF-8'}<br>
+                {if $first_manifest.shop_address.address2}
+                    {$first_manifest.shop_address.address2|escape:'html':'UTF-8'}<br>
                 {/if}
-                {if $warehouse_address.country}
-                    {$warehouse_address.country|escape:'html':'UTF-8'}<br>
+                {if $first_manifest.shop_address.city && $first_manifest.shop_address.postcode}
+                    {$first_manifest.shop_address.city|escape:'html':'UTF-8'}, {$first_manifest.shop_address.postcode|escape:'html':'UTF-8'}<br>
                 {/if}
-                {if $warehouse_address.phone}
-                    Phone: {$warehouse_address.phone|escape:'html':'UTF-8'}<br>
+                {if $first_manifest.shop_address.country}
+                    {$first_manifest.shop_address.country|escape:'html':'UTF-8'}<br>
+                {/if}
+                {if $first_manifest.shop_address.phone}
+                    Phone: {$first_manifest.shop_address.phone|escape:'html':'UTF-8'}<br>
                 {/if}
             </div>
         </td>
@@ -131,15 +149,15 @@
                 <table>
                     <tr>
                         <td width="30%"><strong>Date:</strong></td>
-                        <td>{$pickup_date}</td>
+                        <td>{$current_date|default:$first_manifest.date}</td>
                     </tr>
                     <tr>
                         <td><strong>Time:</strong></td>
-                        <td>{$pickup_time}</td>
+                        <td>{$current_time|default:$first_manifest.time}</td>
                     </tr>
                     <tr>
                         <td><strong>Total Items:</strong></td>
-                        <td>{$total_items}</td>
+                        <td>{$manifests|count}</td>
                     </tr>
                     <tr>
                         <td><strong>Total Orders:</strong></td>
@@ -154,19 +172,33 @@
 {* Barcode Section *}
 <div class="pickup-barcode">
     <div style="font-size: 24px; font-weight: bold; font-family: monospace;">
-        MANIFEST-{$manifest_id|escape:'html':'UTF-8'}
+        {$manifest_id|escape:'html':'UTF-8'}
     </div>
     <div style="font-size: 12px; margin-top: 5px;">Scan this barcode for tracking</div>
 </div>
+
+{* Calculate summary values *}
+{assign var=total_packages value=$manifests|count}
+{assign var=total_weight value=0}
+{assign var=total_value value=0}
+
+{foreach from=$manifests item=manifest}
+    {assign var=item_weight value=0.5} {* Default weight if not specified *}
+    {if isset($manifest.orderDetail.product_weight) && $manifest.orderDetail.product_weight > 0}
+        {assign var=item_weight value=($manifest.orderDetail.product_weight * $manifest.orderDetail.product_quantity)}
+    {/if}
+    {assign var=total_weight value=$total_weight + $item_weight}
+    {assign var=total_value value=$total_value + $manifest.orderDetail.total_price_tax_incl}
+{/foreach}
 
 {* Summary Section *}
 <div class="manifest-summary">
     <div class="pickup-label">MANIFEST SUMMARY:</div>
     <table style="width: 100%;">
         <tr>
-            <td width="25%"><strong>Total Packages:</strong> {$summary.total_packages}</td>
-            <td width="25%"><strong>Total Weight:</strong> {$summary.total_weight|string_format:"%.2f"} kg</td>
-            <td width="25%"><strong>Total Value:</strong> {$summary.total_value|string_format:"%.2f"}</td>
+            <td width="25%"><strong>Total Packages:</strong> {$total_packages}</td>
+            <td width="25%"><strong>Total Weight:</strong> {$total_weight|string_format:"%.2f"} kg</td>
+            <td width="25%"><strong>Total Value:</strong> {$total_value|string_format:"%.2f"}</td>
             <td width="25%"><strong>Status:</strong> Ready for Pickup</td>
         </tr>
     </table>
@@ -191,33 +223,36 @@
         <tbody>
             {assign var=item_counter value=1}
             {assign var=total_qty value=0}
-            {assign var=total_weight value=0}
-            {assign var=total_value value=0}
+            {assign var=calculated_total_weight value=0}
+            {assign var=calculated_total_value value=0}
             
             {foreach from=$manifests item=manifest}
                 <tr>
                     <td class="text-center">{$item_counter}</td>
                     <td class="text-center">
                         <strong>{$manifest.order.reference|escape:'html':'UTF-8'}</strong>
-                        <br><small>#{$manifest.orderDetail.id_order_detail}</small>
+                        <br><small>#{$manifest.orderDetail.id}</small>
                     </td>
                     <td class="text-center">
-                        {$manifest.orderDetail.product_reference|escape:'html':'UTF-8'}
+                        {if isset($manifest.orderDetail.product_reference)}
+                            {$manifest.orderDetail.product_reference|escape:'html':'UTF-8'}
+                        {else}
+                            SKU-{$manifest.orderDetail.id}
+                        {/if}
                     </td>
                     <td>
                         {$manifest.orderDetail.product_name|escape:'html':'UTF-8'|truncate:40}
-                        {if $manifest.line_status}
+                        {if isset($manifest.line_status)}
                             <br><small style="color: #666;">Status: {$manifest.line_status}</small>
                         {/if}
                     </td>
                     <td class="text-center">{$manifest.orderDetail.product_quantity}</td>
                     <td class="text-center">
-                        {assign var=item_weight value=($manifest.orderDetail.product_weight * $manifest.orderDetail.product_quantity)}
-                        {if $item_weight > 0}
-                            {$item_weight|string_format:"%.2f"}
-                        {else}
-                            0.50
+                        {assign var=item_weight value=0.5}
+                        {if isset($manifest.orderDetail.product_weight) && $manifest.orderDetail.product_weight > 0}
+                            {assign var=item_weight value=($manifest.orderDetail.product_weight * $manifest.orderDetail.product_quantity)}
                         {/if}
+                        {$item_weight|string_format:"%.2f"}
                     </td>
                     <td>
                         <small>
@@ -236,8 +271,8 @@
                 
                 {* Update totals *}
                 {assign var=total_qty value=$total_qty + $manifest.orderDetail.product_quantity}
-                {assign var=total_weight value=$total_weight + ($manifest.orderDetail.product_weight * $manifest.orderDetail.product_quantity)}
-                {assign var=total_value value=$total_value + $manifest.orderDetail.total_price_tax_incl}
+                {assign var=calculated_total_weight value=$calculated_total_weight + $item_weight}
+                {assign var=calculated_total_value value=$calculated_total_value + $manifest.orderDetail.total_price_tax_incl}
                 {assign var=item_counter value=$item_counter + 1}
             {/foreach}
             
@@ -245,9 +280,9 @@
             <tr class="total-row">
                 <td colspan="4" class="text-right"><strong>TOTALS:</strong></td>
                 <td class="text-center"><strong>{$total_qty}</strong></td>
-                <td class="text-center"><strong>{if $total_weight > 0}{$total_weight|string_format:"%.2f"}{else}Est. {($manifests|count * 0.5)|string_format:"%.2f"}{/if}</strong></td>
-                <td class="text-center"><strong>{$manifests|count} Customers</strong></td>
-                <td class="text-right"><strong>{$total_value|string_format:"%.2f"}</strong></td>
+                <td class="text-center"><strong>{$calculated_total_weight|string_format:"%.2f"}</strong></td>
+                <td class="text-center"><strong>{$total_orders} Orders</strong></td>
+                <td class="text-right"><strong>{$calculated_total_value|string_format:"%.2f"}</strong></td>
             </tr>
         </tbody>
     </table>
@@ -284,7 +319,7 @@
 <div class="pickup-box">
     <div class="pickup-label">SPECIAL INSTRUCTIONS & NOTES:</div>
     <div style="height: 80px; border: 1px solid #ccc; background-color: #fff; margin-top: 10px; padding: 5px;">
-        {if $special_instructions}
+        {if isset($special_instructions) && $special_instructions}
             {$special_instructions|escape:'html':'UTF-8'}
         {else}
             <p style="margin: 5px; font-size: 11px; color: #666; font-style: italic;">
@@ -321,8 +356,3 @@
     </tr>
 </table>
 
-{* Footer *}
-<div style="margin-top: 20px; text-align: center; font-size: 10px; color: #666; border-top: 1px solid #ddd; padding-top: 10px;">
-    <p>This manifest contains {$manifests|count} items from {$total_orders} orders • Generated on {$pickup_date} at {$pickup_time}</p>
-    <p>For support contact: {if $warehouse_address.phone}{$warehouse_address.phone}{else}Customer Service{/if}</p>
-</div>

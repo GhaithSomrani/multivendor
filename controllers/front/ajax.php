@@ -78,8 +78,8 @@ class MultivendorAjaxModuleFrontController extends ModuleFrontController
         $id_order_detail = (int)Tools::getValue('id_order_detail');
         $id_vendor = (int)Tools::getValue('id_vendor');
         $new_status = Tools::getValue('status');
-        $employee_id = (isset($this->context->employee) && $this->context->employee->id) 
-            ? $this->context->employee->id 
+        $employee_id = (isset($this->context->employee) && $this->context->employee->id)
+            ? $this->context->employee->id
             : 1; // Default to admin ID 1 if no employee context
 
         $result = VendorHelper::updateOrderLineStatusAsAdmin($id_order_detail, $id_vendor, $new_status, $employee_id);
@@ -132,15 +132,15 @@ class MultivendorAjaxModuleFrontController extends ModuleFrontController
     private function processExportOrdersCSV()
     {
         $id_customer = $this->context->customer->id;
-        
+
         $result = VendorHelper::exportVendorOrdersToCSV($id_customer, $this->module);
-        
+
         // If it's not a success response, display error
         if (is_array($result) && isset($result['success']) && !$result['success']) {
             header('Content-Type: text/plain');
             die('Error: ' . $result['message']);
         }
-        
+
         // If it reached here, the CSV has been sent
         exit;
     }
@@ -152,5 +152,44 @@ class MultivendorAjaxModuleFrontController extends ModuleFrontController
     {
         $result = VendorHelper::getAddCommissionStatus();
         die(json_encode($result));
+    }
+
+    /**
+     * Generate manifest URL
+     */
+    private function processGetManifestUrl()
+    {
+        $order_detail_ids = Tools::getValue('order_detail_ids', []);
+
+        if (empty($order_detail_ids) || !is_array($order_detail_ids)) {
+            die(json_encode(['success' => false, 'message' => 'No order details provided']));
+        }
+
+        // Verify that all order details belong to this vendor
+        $id_customer = $this->context->customer->id;
+        $vendor = VendorHelper::getVendorByCustomer($id_customer);
+
+        if (!$vendor) {
+            die(json_encode(['success' => false, 'message' => 'Not authorized']));
+        }
+
+        // Verify ownership of all order details
+        foreach ($order_detail_ids as $id_order_detail) {
+            if (!VendorHelper::verifyOrderDetailOwnership($id_order_detail, $id_customer)) {
+                die(json_encode(['success' => false, 'message' => 'Not authorized for order detail: ' . $id_order_detail]));
+            }
+        }
+
+        // Generate the correct URL
+        $url = $this->context->link->getModuleLink(
+            'multivendor',
+            'manifest',
+            ['details' => implode(',', $order_detail_ids)]
+        );
+
+        die(json_encode([
+            'success' => true,
+            'url' => $url
+        ]));
     }
 }
