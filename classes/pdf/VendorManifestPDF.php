@@ -1,7 +1,7 @@
 <?php
 
 /**
- * VendorManifestPDF Class
+ * Fixed VendorManifestPDF Class with proper SVG barcode support
  */
 if (!defined('_PS_VERSION_')) {
     exit;
@@ -29,9 +29,8 @@ class VendorManifestPDF extends HTMLTemplate
         $this->objects = $objects;
         $this->template = $template;
         $this->smarty = $smarty;
-        $this->filename = isset($objects['filename']) ? $objects['filename'] : 'document.pdf';
+        $this->filename = isset($objects['filename']) ? $objects['filename'] : 'manifest.pdf';
         $this->context = Context::getContext();
-
         $this->pdf = new TCPDF($orientation, 'mm', 'A4', true, 'UTF-8');
         $this->setupPdf();
     }
@@ -41,17 +40,21 @@ class VendorManifestPDF extends HTMLTemplate
      */
     protected function setupPdf()
     {
-        $this->pdf->SetCreator('PrestaShop');
+        $this->pdf->SetCreator('PrestaShop Multivendor');
         $this->pdf->SetAuthor('Multivendor Module');
         $this->pdf->SetTitle('Pickup Manifest');
+        $this->pdf->SetSubject('Vendor Pickup Manifest');
+        $this->pdf->SetKeywords('pickup, manifest, vendor, prestashop');
 
         $this->pdf->setPrintHeader(false);
         $this->pdf->setPrintFooter(false);
 
         $this->pdf->SetMargins(10, 10, 10);
-        $this->pdf->SetAutoPageBreak(true, 10);
+        $this->pdf->SetAutoPageBreak(true, 15);
 
         $this->pdf->SetFont('helvetica', '', 10);
+
+        $this->pdf->setImageScale(PDF_IMAGE_SCALE_RATIO);
     }
 
     /**
@@ -61,22 +64,40 @@ class VendorManifestPDF extends HTMLTemplate
      */
     public function getContent()
     {
-        $manifests = $this->objects['manifests'];
-        $content = '';
-
-        foreach ($manifests as $index => $manifest) {
-            $this->context->smarty->assign($manifest);
-
-            $this->context->smarty->assign([
-                'current_date' => date('Y-m-d'),
-                'current_time' => date('H:i:s')
-            ]);
-
-            $template_path = 'module:multivendor/views/templates/pdf/' . $this->template . '.tpl';
-            $content .= $this->context->smarty->fetch($template_path);
+        $shop_address = Configuration::get('PS_SHOP_NAME') . "\n";
+        $shop_address .= Configuration::get('PS_SHOP_ADDR1');
+        if (Configuration::get('PS_SHOP_ADDR2')) {
+            $shop_address .= ' ' . Configuration::get('PS_SHOP_ADDR2');
+        }
+        $shop_address .= "\n" . Configuration::get('PS_SHOP_CODE') . ' ' . Configuration::get('PS_SHOP_CITY');
+        if (Configuration::get('PS_SHOP_COUNTRY')) {
+            $shop_address .= "\n" . Configuration::get('PS_SHOP_COUNTRY');
         }
 
-        return $content;
+        $this->assignCommonHeaderData();
+
+        $manifest = $this->objects['manifests'];
+
+
+
+        $this->context->smarty->assign([
+            'manifests' => $manifest,
+            'current_date' => date('Y-m-d'),
+            'current_time' => date('H:i:s'),
+            'shop_address' => $shop_address,
+            'shop_phone' => Configuration::get('PS_SHOP_PHONE'),
+            'shop_fax' => Configuration::get('PS_SHOP_FAX'),
+            'shop_details' => Configuration::get('PS_SHOP_DETAILS'),
+            'free_text' => Configuration::get('PS_SHOP_FREE_TEXT')
+        ]);
+
+        $template_path = _PS_MODULE_DIR_ . 'multivendor/views/templates/pdf/' . $this->template . '.tpl';
+
+        if (!file_exists($template_path)) {
+            throw new Exception('Template file not found: ' . $template_path);
+        }
+
+        return $this->context->smarty->fetch($template_path);
     }
 
     /**
@@ -100,41 +121,18 @@ class VendorManifestPDF extends HTMLTemplate
     }
 
     /**
-     * Generate PDF and output it
+     * Generate PDF and output it with enhanced barcode support
      *
      * @param bool $display Whether to display the PDF
      * @return string PDF content
      */
     public function render($display = true)
     {
-        $manifests = $this->objects['manifests'];
-        
-        // $headerContent = self::getFooter();
-        $footerContent = self::getHeader();
+        $this->pdf->AddPage();
 
-        foreach ($manifests as $index => $manifest) {
-            $this->pdf->AddPage();
+        $content = $this->getContent();
 
-            if (!empty($headerContent)) {
-                $this->pdf->writeHTML($headerContent, true, false, true, false, '');
-            }
-
-            $this->context->smarty->assign($manifest);
-
-            $this->context->smarty->assign([
-                'current_date' => date('Y-m-d'),
-                'current_time' => date('H:i:s')
-            ]);
-
-            $template_path = 'module:multivendor/views/templates/pdf/' . $this->template . '.tpl';
-            $content = $this->context->smarty->fetch($template_path);
-
-            $this->pdf->writeHTML($content, true, false, true, false, '');
-
-            if (!empty($footerContent)) {
-                $this->pdf->writeHTML($footerContent, true, false, true, false, '');
-            }
-        }
+        $this->pdf->writeHTML($content, true, false, true, false, '');
 
         if ($display) {
             $this->pdf->Output($this->filename, 'D');
@@ -143,6 +141,4 @@ class VendorManifestPDF extends HTMLTemplate
             return $this->pdf->Output($this->filename, 'S');
         }
     }
-
-
 }

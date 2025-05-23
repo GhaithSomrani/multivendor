@@ -40,7 +40,7 @@ class MultivendorManifestModuleFrontController extends ModuleFrontController
                 die('Access denied for order detail: ' . $id_order_detail);
             }
 
-            $this->generateSingleManifest($id_order_detail);
+            $this->generateManifest([$id_order_detail]);
         } elseif (!empty($details)) {
             $orderDetailIds = explode(',', $details);
             $orderDetailIds = array_map('intval', $orderDetailIds);
@@ -56,7 +56,7 @@ class MultivendorManifestModuleFrontController extends ModuleFrontController
                 }
             }
 
-            $this->generateMultipleManifest($orderDetailIds);
+            $this->generateManifest($orderDetailIds);
         } else {
             die('No order details specified');
         }
@@ -77,56 +77,58 @@ class MultivendorManifestModuleFrontController extends ModuleFrontController
     }
 
     /**
-     * Generate a single pickup manifest PDF
+     * Generate manifest PDF
      */
-    protected function generateSingleManifest($id_order_detail)
-    {
-        $pdfData = $this->getPdfData([$id_order_detail]);
-
-        $pdf = new VendorManifestPDF($pdfData, 'manifest', $this->context->smarty);
-        $pdf->render();
-    }
-
-    /**
-     * Generate multiple pickup manifests in a single PDF
-     */
-    protected function generateMultipleManifest($orderDetailIds)
+    protected function generateManifest($orderDetailIds)
     {
         $manifestData = $this->getPdfData($orderDetailIds);
-        
 
-        $pdf = new VendorManifestPDF($manifestData, 'manifest', $this->context->smarty);
-        $pdf->render();
+        try {
+            $pdf = new VendorManifestPDF($manifestData, 'manifest', $this->context->smarty);
+            $pdf->render();
+        } catch (Exception $e) {
+            die('Error generating manifest: ' . $e->getMessage());
+        }
     }
+    /**
+     * Generate barcode for MPN
+     * 
+     * @param string $mpn MPN code
+     * @return string Base64 encoded barcode image
+     */
 
-  
-
+    // Islem look here 
+    protected function generateBarcode($mpn)
+    {
+        if (empty($mpn)) {
+            return '';
+        }
+        $barcode = new TCPDFBarcode($mpn, 'C128');
+        $barcodeImage = $barcode->getBarcodeHTML(2, 40, 'black');
+        return  $barcodeImage;
+    }
     /**
      * Prepare data for PDF generation
      */
     protected function getPdfData($orderDetailIds)
     {
         $vendor = new Vendor($this->vendor['id_vendor']);
-        $supplier = new Supplier($vendor->id_supplier);
         $manifestData = [];
-
         foreach ($orderDetailIds as $id_order_detail) {
             $orderDetail = new OrderDetail($id_order_detail);
             $order = new Order($orderDetail->id_order);
-            
-            // Get customer address for delivery
-            $address = new Address($order->id_address_delivery);
-            $customer = new Customer($order->id_customer);
-
+            $lineStatus = OrderLineStatus::getByOrderDetailAndVendor($id_order_detail, $this->vendor['id_vendor']);
+            $currentStatus = $lineStatus ? $lineStatus['status'] : 'Pending';
+            $vendorOrderDetail = VendorOrderDetail::getByOrderDetailAndVendor($id_order_detail, $this->vendor['id_vendor']);
+            $vendorAmount = $vendorOrderDetail ? $vendorOrderDetail['vendor_amount'] : 0;
+            // Islem look here 
+            $barcode = $this->generateBarcode($orderDetail->product_mpn);
             $manifestData[] = [
                 'vendor' => [
                     'id' => $vendor->id,
+                    'name' => $vendor->shop_name,
+                ],
 
-                ],
-                'supplier' => [
-                    'id' => $supplier->id,
-                    'name' => $supplier->name
-                ],
                 'order' => [
                     'id' => $order->id,
                     'reference' => $order->reference,
@@ -137,28 +139,20 @@ class MultivendorManifestModuleFrontController extends ModuleFrontController
                 'orderDetail' => [
                     'id' => $orderDetail->id,
                     'product_name' => $orderDetail->product_name,
+                    'product_reference' => $orderDetail->product_reference,
                     'product_quantity' => $orderDetail->product_quantity,
                     'unit_price_tax_incl' => $orderDetail->unit_price_tax_incl,
-                    'total_price_tax_incl' => $orderDetail->total_price_tax_incl
+                    'total_price_tax_incl' => $orderDetail->total_price_tax_incl,
+                    'product_weight' => $orderDetail->product_weight ?: 0.5,
+                    'product_mpn' => $orderDetail->product_mpn,
+                    'barcode' => $barcode,
+
                 ],
-                'customer' => [
-                    'firstname' => $customer->firstname,
-                    'lastname' => $customer->lastname,
-                    'email' => $customer->email
-                ],
-                'delivery_address' => [
-                    'firstname' => $address->firstname,
-                    'lastname' => $address->lastname,
-                    'address1' => $address->address1,
-                    'address2' => $address->address2,
-                    'city' => $address->city,
-                    'postcode' => $address->postcode,
-                    'phone' => $address->phone,
-                    'phone_mobile' => $address->phone_mobile
-                ],
+                'vendor_amount' => $vendorAmount,
                 'pickup_id' => 'PU-' . $order->reference . '-' . $id_order_detail,
                 'date' => date('Y-m-d'),
                 'time' => date('H:i'),
+                'line_status' => $currentStatus,
                 'shop_address' => [
                     'address1' => Configuration::get('PS_SHOP_ADDR1'),
                     'address2' => Configuration::get('PS_SHOP_ADDR2'),
