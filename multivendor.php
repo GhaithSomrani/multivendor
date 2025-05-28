@@ -22,7 +22,7 @@ require_once(dirname(__FILE__) . '/classes/OrderLineStatusLog.php');
 require_once(dirname(__FILE__) . '/classes/VendorOrderDetail.php');
 require_once(dirname(__FILE__) . '/classes/OrderLineStatusType.php');
 require_once(dirname(__FILE__) . '/classes/VendorHelper.php');
-require_once(dirname(__FILE__) . '/classes/pdf/VendorManifestPDF.php'); 
+require_once(dirname(__FILE__) . '/classes/pdf/HTMLTemplateVendorManifestPDF.php'); 
 class multivendor extends Module
 {
     public function __construct()

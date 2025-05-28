@@ -162,4 +162,20 @@ class OrderLineStatusType extends ObjectModel
                 return true;
         }
     }
+
+    // public function delete()
+    // {
+    //     if ($IsAssignToOrder) {
+    //         $query = new DbQuery();
+    //         $query->select('COUNT(*)');
+    //         $query->from('order_line_status');
+    //         $query->where('id_order_line_status_type = ' . (int)$this->id);
+    //         $count = Db::getInstance()->getValue($query);
+
+    //         if ($count > 0) {
+    //             throw new PrestaShopException('Cannot delete status type that is assigned to order lines.');
+    //         }
+    //     } 
+    //     return parent::delete() ;
+    // }
 }

@@ -1,9 +1,5 @@
 <?php
 
-/**
- * Unified Pickup Manifest Generation Controller
- */
-
 if (!defined('_PS_VERSION_')) {
     exit;
 }
@@ -19,154 +15,91 @@ class MultivendorManifestModuleFrontController extends ModuleFrontController
         parent::init();
 
         $id_customer = $this->context->customer->id;
-        $vendor = VendorHelper::getVendorByCustomer($id_customer);
+        $this->vendor = VendorHelper::getVendorByCustomer($id_customer);
 
-        if (!$vendor) {
+        if (!$this->vendor) {
             Tools::redirect('index.php?controller=my-account');
         }
-
-        $this->vendor = $vendor;
     }
 
     public function initContent()
     {
-        parent::initContent();
+        // DON'T call parent::initContent() - this prevents template rendering
+        // parent::initContent(); 
 
         $id_order_detail = (int)Tools::getValue('id_order_detail');
         $details = Tools::getValue('details', '');
 
         if (!empty($id_order_detail)) {
-            if (!$this->verifyOrderDetailOwnership($id_order_detail)) {
-                die('Access denied for order detail: ' . $id_order_detail);
-            }
-
-            $this->generateManifest([$id_order_detail]);
+            $this->validateAndGenerate([$id_order_detail]);
         } elseif (!empty($details)) {
-            $orderDetailIds = explode(',', $details);
-            $orderDetailIds = array_map('intval', $orderDetailIds);
-            $orderDetailIds = array_filter($orderDetailIds);
-
+            $orderDetailIds = array_filter(array_map('intval', explode(',', $details)));
             if (empty($orderDetailIds)) {
-                die('Invalid order details');
+                die($this->module->l('Invalid order details'));
             }
-
-            foreach ($orderDetailIds as $detailId) {
-                if (!$this->verifyOrderDetailOwnership($detailId)) {
-                    die('Access denied for order detail: ' . $detailId);
-                }
-            }
-
-            $this->generateManifest($orderDetailIds);
+            $this->validateAndGenerate($orderDetailIds);
         } else {
-            die('No order details specified');
+            die($this->module->l('No order details specified'));
         }
     }
 
-    /**
-     * Verify that the order detail belongs to the vendor
-     */
+    protected function validateAndGenerate(array $orderDetailIds)
+    {
+        foreach ($orderDetailIds as $detailId) {
+            if (!$this->verifyOrderDetailOwnership($detailId)) {
+                die($this->module->l('Access denied for order detail:') . ' ' . $detailId);
+            }
+        }
+        $this->generateManifest($orderDetailIds);
+    }
+
     protected function verifyOrderDetailOwnership($id_order_detail)
     {
-        $query = new DbQuery();
-        $query->select('vod.id_vendor');
-        $query->from('vendor_order_detail', 'vod');
-        $query->where('vod.id_order_detail = ' . (int)$id_order_detail);
-        $query->where('vod.id_vendor = ' . (int)$this->vendor['id_vendor']);
-
-        return (bool)Db::getInstance()->getValue($query);
+        return (bool)Db::getInstance()->getValue(
+            (new DbQuery())
+                ->select('vod.id_vendor')
+                ->from('vendor_order_detail', 'vod')
+                ->where('vod.id_order_detail = ' . (int)$id_order_detail)
+                ->where('vod.id_vendor = ' . (int)$this->vendor['id_vendor'])
+        );
     }
 
-    /**
-     * Generate manifest PDF
-     */
     protected function generateManifest($orderDetailIds)
     {
-        $manifestData = $this->getPdfData($orderDetailIds);
-
         try {
-            $pdf = new VendorManifestPDF($manifestData, 'manifest', $this->context->smarty);
-            $pdf->render();
+            // Pass only the order detail IDs and vendor info to the PDF template
+            $pdfData = [
+                'orderDetailIds' => $orderDetailIds,
+                'vendor' => $this->vendor,
+                'filename' => 'Pickup_Manifest_' . date('YmdHis') . '.pdf'
+            ];
+            
+            $pdf = new PDF([$pdfData], 'VendorManifestPDF', $this->context->smarty);
+            $pdf->render(true);
+            
+            // Make sure to exit after PDF is rendered to prevent further processing
+            exit;
+            
         } catch (Exception $e) {
-            die('Error generating manifest: ' . $e->getMessage());
+            die($this->module->l('Error generating manifest:') . ' ' . $e->getMessage());
         }
     }
-    /**
-     * Generate barcode for MPN
-     * 
-     * @param string $mpn MPN code
-     * @return string Base64 encoded barcode image
-     */
 
-    // Islem look here 
+    // Alternative approach - override the display method to prevent template rendering
+    public function display()
+    {
+        // Don't call parent::display() to prevent template rendering
+        // The PDF will be generated in initContent()
+    }
+
+    // Keep this method as it might be used by the template class
     protected function generateBarcode($mpn)
     {
         if (empty($mpn)) {
             return '';
         }
+
         $barcode = new TCPDFBarcode($mpn, 'C128');
-        $barcodeImage = $barcode->getBarcodeHTML(2, 40, 'black');
-        return  $barcodeImage;
-    }
-    /**
-     * Prepare data for PDF generation
-     */
-    protected function getPdfData($orderDetailIds)
-    {
-        $vendor = new Vendor($this->vendor['id_vendor']);
-        $manifestData = [];
-        foreach ($orderDetailIds as $id_order_detail) {
-            $orderDetail = new OrderDetail($id_order_detail);
-            $order = new Order($orderDetail->id_order);
-            $lineStatus = OrderLineStatus::getByOrderDetailAndVendor($id_order_detail, $this->vendor['id_vendor']);
-            $currentStatus = $lineStatus ? $lineStatus['status'] : 'Pending';
-            $vendorOrderDetail = VendorOrderDetail::getByOrderDetailAndVendor($id_order_detail, $this->vendor['id_vendor']);
-            $vendorAmount = $vendorOrderDetail ? $vendorOrderDetail['vendor_amount'] : 0;
-            // Islem look here 
-            $barcode = $this->generateBarcode($orderDetail->product_mpn);
-            $manifestData[] = [
-                'vendor' => [
-                    'id' => $vendor->id,
-                    'name' => $vendor->shop_name,
-                ],
-
-                'order' => [
-                    'id' => $order->id,
-                    'reference' => $order->reference,
-                    'date_add' => $order->date_add,
-                    'total_paid' => $order->total_paid,
-                    'currency' => new Currency($order->id_currency)
-                ],
-                'orderDetail' => [
-                    'id' => $orderDetail->id,
-                    'product_name' => $orderDetail->product_name,
-                    'product_reference' => $orderDetail->product_reference,
-                    'product_quantity' => $orderDetail->product_quantity,
-                    'unit_price_tax_incl' => $orderDetail->unit_price_tax_incl,
-                    'total_price_tax_incl' => $orderDetail->total_price_tax_incl,
-                    'product_weight' => $orderDetail->product_weight ?: 0.5,
-                    'product_mpn' => $orderDetail->product_mpn,
-                    'barcode' => $barcode,
-
-                ],
-                'vendor_amount' => $vendorAmount,
-                'pickup_id' => 'PU-' . $order->reference . '-' . $id_order_detail,
-                'date' => date('Y-m-d'),
-                'time' => date('H:i'),
-                'line_status' => $currentStatus,
-                'shop_address' => [
-                    'address1' => Configuration::get('PS_SHOP_ADDR1'),
-                    'address2' => Configuration::get('PS_SHOP_ADDR2'),
-                    'city' => Configuration::get('PS_SHOP_CITY'),
-                    'postcode' => Configuration::get('PS_SHOP_CODE'),
-                    'country' => Configuration::get('PS_SHOP_COUNTRY'),
-                    'phone' => Configuration::get('PS_SHOP_PHONE')
-                ]
-            ];
-        }
-
-        return [
-            'manifests' => $manifestData,
-            'filename' => 'Pickup_Manifest_' . date('YmdHis') . '.pdf'
-        ];
+        return $barcode->getBarcodeHTML(1, 15, 'black');
     }
 }
