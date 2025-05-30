@@ -68,7 +68,8 @@ class AdminOrderLineStatusController  extends ModuleAdminController
                 'title' => $this->l('Position'),
                 'filter_key' => 'a!position',
                 'position' => 'position',
-                'align' => 'center'
+                'align' => 'center',
+                'class' => 'pointer dragHandle'
             ],
             'active' => [
                 'title' => $this->l('Active'),
@@ -107,8 +108,109 @@ class AdminOrderLineStatusController  extends ModuleAdminController
         return isset($actions[$action]) ? $actions[$action] : $action;
     }
 
+    public function ajaxProcessUpdatePositions()
+    {
+        $way = (int)Tools::getValue('way');
+        $id = (int)Tools::getValue('id');
+        $positions = Tools::getValue($this->table);
+
+        if (is_array($positions)) {
+            // Update all positions based on the new order
+            foreach ($positions as $position => $value) {
+                $pos = explode('_', $value);
+
+                if (isset($pos[2])) {
+                    $item_id = (int)$pos[2];
+                    $new_position = (int)$position;
+
+                    // Update each item with its new position
+                    Db::getInstance()->execute(
+                        '
+                    UPDATE `' . _DB_PREFIX_ . $this->table . '` 
+                    SET `position` = ' . $new_position . ' 
+                    WHERE `' . $this->identifier . '` = ' . $item_id
+                    );
+                }
+            }
+        } else {
+            // Single item position change (using way parameter)
+            $object = new $this->className($id);
+            if (Validate::isLoadedObject($object)) {
+                $current_position = $object->position;
+
+                if ($way == 1) {
+                    // Move up (decrease position)
+                    $new_position = $current_position - 1;
+
+                    // Find item currently at that position and swap
+                    $other_item = Db::getInstance()->getRow(
+                        '
+                    SELECT `' . $this->identifier . '`, `position` 
+                    FROM `' . _DB_PREFIX_ . $this->table . '` 
+                    WHERE `position` = ' . (int)$new_position
+                    );
+
+                    if ($other_item) {
+                        // Swap positions
+                        Db::getInstance()->execute(
+                            '
+                        UPDATE `' . _DB_PREFIX_ . $this->table . '` 
+                        SET `position` = ' . (int)$current_position . ' 
+                        WHERE `' . $this->identifier . '` = ' . (int)$other_item[$this->identifier]
+                        );
+                    }
+
+                    Db::getInstance()->execute(
+                        '
+                    UPDATE `' . _DB_PREFIX_ . $this->table . '` 
+                    SET `position` = ' . (int)$new_position . ' 
+                    WHERE `' . $this->identifier . '` = ' . (int)$id
+                    );
+                } elseif ($way == 0) {
+                    // Move down (increase position)
+                    $new_position = $current_position + 1;
+
+                    // Find item currently at that position and swap
+                    $other_item = Db::getInstance()->getRow(
+                        '
+                    SELECT `' . $this->identifier . '`, `position` 
+                    FROM `' . _DB_PREFIX_ . $this->table . '` 
+                    WHERE `position` = ' . (int)$new_position
+                    );
+
+                    if ($other_item) {
+                        // Swap positions
+                        Db::getInstance()->execute(
+                            '
+                        UPDATE `' . _DB_PREFIX_ . $this->table . '` 
+                        SET `position` = ' . (int)$current_position . ' 
+                        WHERE `' . $this->identifier . '` = ' . (int)$other_item[$this->identifier]
+                        );
+                    }
+
+                    Db::getInstance()->execute(
+                        '
+                    UPDATE `' . _DB_PREFIX_ . $this->table . '` 
+                    SET `position` = ' . (int)$new_position . ' 
+                    WHERE `' . $this->identifier . '` = ' . (int)$id
+                    );
+                }
+            }
+        }
+
+        die('OK');
+    }
+
     public function renderForm()
     {
+        $position = Db::getInstance()->getValue(
+            '
+            SELECT `position` 
+            FROM `' . _DB_PREFIX_ . $this->table . '` 
+            WHERE `' . $this->identifier . '` = ' . (int)$this->object->id
+        );
+        $this->fields_value['position'] = $position ? $position : 1;
+        // Your existing renderForm code...
         $this->fields_form = [
             'legend' => [
                 'title' => $this->l('Order Line Status'),
@@ -201,7 +303,8 @@ class AdminOrderLineStatusController  extends ModuleAdminController
                     'type' => 'text',
                     'label' => $this->l('Position'),
                     'name' => 'position',
-                    'required' => false
+                    'hint' => $this->l('Position in the status list (lower numbers appear first)'),
+                    'class' => 'fixed-width-sm'
                 ],
                 [
                     'type' => 'switch',
@@ -229,6 +332,21 @@ class AdminOrderLineStatusController  extends ModuleAdminController
         return parent::renderForm();
     }
 
+    public function postProcess()
+    {
+        if (Tools::isSubmit('submitAdd' . $this->table) && !Tools::getValue('id_order_line_status_type')) {
+            $position = (int)Tools::getValue('position');
+
+            if ($position <= 0) {
+                $max_position = Db::getInstance()->getValue(
+                    'SELECT MAX(position) FROM `' . _DB_PREFIX_ . $this->table . '`'
+                );
+                $_POST['position'] = $max_position + 1;
+            }
+        }
+
+        return parent::postProcess();
+    }
     public function initPageHeaderToolbar()
     {
         if (empty($this->display)) {
@@ -240,5 +358,80 @@ class AdminOrderLineStatusController  extends ModuleAdminController
         }
 
         parent::initPageHeaderToolbar();
+    }
+    /**
+     * Process delete with proper error handling
+     */
+
+    public function processDelete()
+    {
+        $id = Tools::getValue('id_order_line_status_type');
+        $status = new OrderLineStatusType($id);
+
+        if (!Validate::isLoadedObject($status)) {
+            $this->errors[] = $this->l('Invalid status ID');
+            return false;
+        }
+        if (Validate::isLoadedObject($object = $this->loadObject())) {
+            // Simple check - count how many order lines use this status
+            $count = Db::getInstance()->getValue(
+                '
+            SELECT COUNT(*) 
+            FROM `' . _DB_PREFIX_ . 'order_line_status` 
+            WHERE `status` = "' . pSQL($status->name) . '"'
+            );
+
+            if ($count > 0) {
+                $this->errors[] = sprintf('Cannot delete "%s" (used by %d order lines)', $status->name, $count);
+                return false;
+            }
+        }
+
+        return parent::processDelete();
+    }
+
+
+    /**
+     * Process bulk delete with proper error handling
+     */
+    public function processBulkDelete()
+    {
+        if (is_array($this->boxes) && !empty($this->boxes)) {
+            $errors = [];
+            $success = 0;
+
+            foreach ($this->boxes as $id) {
+                $status = new OrderLineStatusType($id);
+                if (Validate::isLoadedObject($status)) {
+                    // Check if used
+                    $count = Db::getInstance()->getValue(
+                        '
+                    SELECT COUNT(*) 
+                    FROM `' . _DB_PREFIX_ . 'order_line_status` 
+                    WHERE `status` = "' . pSQL($status->name) . '"'
+                    );
+
+                    if ($count > 0) {
+                        $errors[] = sprintf('Cannot delete "%s" (used by %d order lines)', $status->name, $count);
+                    } else {
+                        if ($status->delete()) {
+                            $success++;
+                        }
+                    }
+                }
+            }
+
+            if ($success > 0) {
+                $this->confirmations[] = sprintf('%d status(es) deleted successfully.', $success);
+            }
+
+            foreach ($errors as $error) {
+                $this->errors[] = $error;
+            }
+
+            return $success > 0;
+        }
+
+        return parent::processBulkDelete();
     }
 }

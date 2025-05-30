@@ -35,21 +35,21 @@ $sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'vendor_commission` (
     `date_add` datetime NOT NULL,
     `date_upd` datetime NOT NULL,
     PRIMARY KEY (`id_vendor_commission`),
-    KEY `id_vendor` (`id_vendor`)
+    UNIQUE KEY `unique_id_vendor` (`id_vendor`)
 ) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8;';
-
+ 
 // Create Category Commission table
-$sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'category_commission` (
-    `id_category_commission` int(10) unsigned NOT NULL AUTO_INCREMENT,
-    `id_category` int(10) unsigned NOT NULL,
-    `id_vendor` int(10) unsigned NOT NULL,
-    `commission_rate` decimal(20,6) NOT NULL DEFAULT "0.000000",
-    `date_add` datetime NOT NULL,
-    `date_upd` datetime NOT NULL,
-    PRIMARY KEY (`id_category_commission`),
-    UNIQUE KEY `id_category_vendor` (`id_category`,`id_vendor`),
-    KEY `id_vendor` (`id_vendor`)
-) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8;';
+// $sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'category_commission` (
+//     `id_category_commission` int(10) unsigned NOT NULL AUTO_INCREMENT,
+//     `id_category` int(10) unsigned NOT NULL,
+//     `id_vendor` int(10) unsigned NOT NULL,
+//     `commission_rate` decimal(20,6) NOT NULL DEFAULT "0.000000",
+//     `date_add` datetime NOT NULL,
+//     `date_upd` datetime NOT NULL,
+//     PRIMARY KEY (`id_category_commission`),
+//     UNIQUE KEY `id_category_vendor` (`id_category`,`id_vendor`),
+//     KEY `id_vendor` (`id_vendor`)
+// ) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8;';
 
 // Create Vendor Transaction table
 $sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'vendor_transaction` (
@@ -179,17 +179,16 @@ $sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'order_line_status_type`
             PRIMARY KEY (`id_order_line_status_type`)
         ) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8;';
 
-// Add default order line status types
-$sql[] = 'INSERT INTO `' . _DB_PREFIX_ . 'order_line_status_type` 
-            (`name`, `color`, `is_vendor_allowed`, `is_admin_allowed`, `affects_commission`, `commission_action`, `position`, `active`, `date_add`, `date_upd`) 
-            VALUES 
-            ("Pending", "#FFDD99", 1, 1, 0, "none", 1, 1, NOW(), NOW()),
-            ("Processing", "#8AAAE5", 1, 1, 0, "none", 2, 1, NOW(), NOW()),
-            ("Shipped", "#32CD32", 1, 1, 1, "add", 3, 1, NOW(), NOW()),
-            ("Delivered", "#228B22", 0, 1, 0, "none", 4, 1, NOW(), NOW()),
-            ("Cancelled", "#DC143C", 1, 1, 1, "cancel", 5, 1, NOW(), NOW()),
-            ("Refunded", "#B22222", 0, 1, 1, "refund", 6, 1, NOW(), NOW())
-            ON DUPLICATE KEY UPDATE `date_upd` = VALUES(`date_upd`)';
+// $sql[] = 'INSERT INTO `' . _DB_PREFIX_ . 'order_line_status_type` 
+//             (`name`, `color`, `is_vendor_allowed`, `is_admin_allowed`, `affects_commission`, `commission_action`, `position`, `active`, `date_add`, `date_upd`) 
+//             VALUES 
+//             ("Pending", "#FFDD99", 1, 1, 0, "none", 1, 1, NOW(), NOW()),
+//             ("Processing", "#8AAAE5", 1, 1, 0, "none", 2, 1, NOW(), NOW()),
+//             ("Shipped", "#32CD32", 1, 1, 1, "add", 3, 1, NOW(), NOW()),
+//             ("Delivered", "#228B22", 0, 1, 0, "none", 4, 1, NOW(), NOW()),
+//             ("Cancelled", "#DC143C", 1, 1, 1, "cancel", 5, 1, NOW(), NOW()),
+//             ("Refunded", "#B22222", 0, 1, 1, "refund", 6, 1, NOW(), NOW())
+//             ON DUPLICATE KEY UPDATE `date_upd` = VALUES(`date_upd`)';
 
 
 

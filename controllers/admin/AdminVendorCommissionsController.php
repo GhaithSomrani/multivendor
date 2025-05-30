@@ -36,15 +36,17 @@ class AdminVendorCommissionsController extends ModuleAdminController
                 'title' => $this->l('ID'),
                 'align' => 'center',
                 'class' => 'fixed-width-xs'
+
             ],
             'vendor_name' => [
                 'title' => $this->l('Vendor'),
                 'filter_key' => 'vendor!shop_name',
                 'havingFilter' => true
+
             ],
             'commission_rate' => [
                 'title' => $this->l('Commission Rate (%)'),
-                'type' => 'price',
+                'type' => 'percentage',
                 'filter_key' => 'a!commission_rate'
             ],
             'date_add' => [
@@ -68,15 +70,11 @@ class AdminVendorCommissionsController extends ModuleAdminController
                 'class_name' => 'AdminVendorCommissions',
                 'name' => $this->l('Vendor Commissions')
             ],
-            [
-                'class_name' => 'AdminCategoryCommissions',
-                'name' => $this->l('Category Commissions')
-            ]
+          
         ];
 
         // Add custom actions
         $this->addRowAction('edit');
-        $this->addRowAction('delete');
     }
 
     /**
@@ -109,14 +107,19 @@ class AdminVendorCommissionsController extends ModuleAdminController
                         'id' => 'id',
                         'name' => 'name'
                     ],
-                    'required' => true
+                    'required' => true,
+                    'disabled' => (bool)$this->object->id,
+                    'desc' => $this->object->id ? $this->l('Vendor cannot be changed when editing a commission') : null
+
                 ],
                 [
                     'type' => 'text',
                     'label' => $this->l('Commission Rate (%)'),
                     'name' => 'commission_rate',
                     'suffix' => '%',
-                    'required' => true
+                    'required' => true,
+                    'desc' => $this->l('Commission rate must be between 0% and 100%. Use 0% for no commission.')
+
                 ],
                 [
                     'type' => 'textarea',
@@ -133,6 +136,7 @@ class AdminVendorCommissionsController extends ModuleAdminController
         return parent::renderForm();
     }
 
+
     /**
      * Process save
      */
@@ -141,6 +145,10 @@ class AdminVendorCommissionsController extends ModuleAdminController
         if (Tools::isSubmit('submitAdd' . $this->table)) {
             $id_vendor = (int)Tools::getValue('id_vendor');
             $commission_rate = (float)Tools::getValue('commission_rate');
+            if ($commission_rate <= 0 || $commission_rate > 100) {
+                $this->errors[] = $this->l('Commission Rate must be between 0% and 100%.');
+                return false;
+            }
             $comment = Tools::getValue('comment');
 
             // Get current commission rate
@@ -172,134 +180,9 @@ class AdminVendorCommissionsController extends ModuleAdminController
 
         parent::initContent();
 
-        // Add category commissions tab
-        if (!$this->display) {
-            $this->content .= $this->renderCategoryCommissionsTab();
-            $this->content .= $this->renderCommissionHistoryTab();
-        }
+    
     }
 
-    /**
-     * Render category commissions tab
-     */
-    protected function renderCategoryCommissionsTab()
-    {
-        // Get category commissions
-        $query = new DbQuery();
-        $query->select('cc.*, v.shop_name, cl.name as category_name');
-        $query->from('category_commission', 'cc');
-        $query->leftJoin('vendor', 'v', 'v.id_vendor = cc.id_vendor');
-        $query->leftJoin('category_lang', 'cl', 'cl.id_category = cc.id_category AND cl.id_lang = ' . (int)$this->context->language->id);
-        $query->orderBy('cc.date_add DESC');
-
-        $categoryCommissions = Db::getInstance()->executeS($query);
-
-        // Get vendors
-        $vendors = Vendor::getAllVendors();
-        $vendorsArray = [];
-        foreach ($vendors as $vendor) {
-            $vendorsArray[$vendor['id_vendor']] = $vendor['shop_name'];
-        }
-
-        // Get categories
-        $categories = Category::getCategories((int)$this->context->language->id, true, false);
-        $categoriesArray = [];
-        foreach ($categories as $category) {
-            $categoriesArray[$category['id_category']] = $category['name'];
-        }
-
-        $this->context->smarty->assign([
-            'category_commissions' => $categoryCommissions,
-            'vendors' => $vendorsArray,
-            'categories' => $categoriesArray,
-            'category_commission_url' => $this->context->link->getAdminLink('AdminVendorCommissions') . '&action=addCategoryCommission'
-        ]);
-
-        return $this->context->smarty->fetch(_PS_MODULE_DIR_ . 'multivendor/views/templates/admin/category_commissions.tpl');
-    }
-
-    /**
-     * Render commission history tab
-     */
-    protected function renderCommissionHistoryTab()
-    {
-        // Get commission logs
-        $query = new DbQuery();
-        $query->select('vcl.*, v.shop_name, CONCAT(e.firstname, " ", e.lastname) as employee_name, cl.name as category_name');
-        $query->from('vendor_commission_log', 'vcl');
-        $query->leftJoin('vendor', 'v', 'v.id_vendor = vcl.id_vendor');
-        $query->leftJoin('employee', 'e', 'e.id_employee = vcl.changed_by');
-        $query->leftJoin('category_lang', 'cl', 'cl.id_category = vcl.id_category AND cl.id_lang = ' . (int)$this->context->language->id);
-        $query->orderBy('vcl.date_add DESC');
-        $query->limit(50);
-
-        $commissionLogs = Db::getInstance()->executeS($query);
-
-        $this->context->smarty->assign([
-            'commission_logs' => $commissionLogs
-        ]);
-
-        return $this->context->smarty->fetch(_PS_MODULE_DIR_ . 'multivendor/views/templates/admin/commission_logs.tpl');
-    }
-
-    /**
-     * Process AJAX actions
-     */
-    public function ajaxProcessAddCategoryCommission()
-    {
-        $id_vendor = (int)Tools::getValue('id_vendor');
-        $id_category = (int)Tools::getValue('id_category');
-        $commission_rate = (float)Tools::getValue('commission_rate');
-        $comment = Tools::getValue('comment');
-
-        // Check if this category commission already exists
-        $existingCommission = Db::getInstance()->getRow(
-            '
-            SELECT * FROM `' . _DB_PREFIX_ . 'category_commission`
-            WHERE `id_vendor` = ' . (int)$id_vendor . ' AND `id_category` = ' . (int)$id_category
-        );
-
-        if ($existingCommission) {
-            // Update existing commission
-            $oldRate = (float)$existingCommission['commission_rate'];
-
-            $success = Db::getInstance()->update('category_commission', [
-                'commission_rate' => $commission_rate,
-                'date_upd' => date('Y-m-d H:i:s')
-            ], '`id_category_commission` = ' . (int)$existingCommission['id_category_commission']);
-
-            // Log the change
-            CategoryCommission::logCommissionRateChange(
-                $id_vendor,
-                $id_category,
-                $oldRate,
-                $commission_rate,
-                $this->context->employee->id,
-                $comment
-            );
-        } else {
-            // Create new category commission
-            $success = Db::getInstance()->insert('category_commission', [
-                'id_vendor' => $id_vendor,
-                'id_category' => $id_category,
-                'commission_rate' => $commission_rate,
-                'date_add' => date('Y-m-d H:i:s'),
-                'date_upd' => date('Y-m-d H:i:s')
-            ]);
-
-            // Log the change
-            CategoryCommission::logCommissionRateChange(
-                $id_vendor,
-                $id_category,
-                Configuration::get('MV_DEFAULT_COMMISSION', 10),
-                $commission_rate,
-                $this->context->employee->id,
-                $comment
-            );
-        }
-
-        die(json_encode([
-            'success' => (bool)$success
-        ]));
-    }
+    
+  
 }

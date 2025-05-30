@@ -5,7 +5,7 @@
 {extends file='page.tpl'}
 
 {block name='page_title'}
-    {l s='Vendor Dashboard' mod='multivendor'}
+    {l s='Tableau de bord vendeur' mod='multivendor'}
 {/block}
 
 {block name='page_content'}
@@ -13,9 +13,9 @@
         {if $status != 1}
             <div class="mv-alert mv-alert-warning">
                 {if $status == 0}
-                    {l s='Your vendor account is pending approval.' mod='multivendor'}
+                    {l s='Votre compte vendeur est en attente d\'approbation.' mod='multivendor'}
                 {else}
-                    {l s='Your vendor account has been rejected.' mod='multivendor'}
+                    {l s='Votre compte vendeur a été rejeté.' mod='multivendor'}
                 {/if}
             </div>
         {/if}
@@ -27,15 +27,11 @@
                         <nav class="mv-nav">
                             <a class="mv-nav-link mv-nav-link-active" href="{$vendor_dashboard_url}">
                                 <i class="mv-icon">📊</i>
-                                <span>{l s='Dashboard' mod='multivendor'}</span>
+                                <span>{l s='Tableau de bord' mod='multivendor'}</span>
                             </a>
                             <a class="mv-nav-link" href="{$vendor_orders_url}">
                                 <i class="mv-icon">🛒</i>
-                                <span>{l s='Orders' mod='multivendor'}</span>
-                            </a>
-                            <a class="mv-nav-link" href="{$vendor_manage_orders_url}">
-                                <i class="mv-icon">📦</i>
-                                <span>{l s='Manage Orders' mod='multivendor'}</span>
+                                <span>{l s='Commandes' mod='multivendor'}</span>
                             </a>
                             <a class="mv-nav-link" href="{$vendor_commissions_url}">
                                 <i class="mv-icon">💰</i>
@@ -50,62 +46,62 @@
                 {* Date Filter Form *}
                 <div class="mv-card mv-date-filter-card">
                     <div class="mv-card-header">
-                        <h3 class="mv-card-title">{l s='Data Filter' mod='multivendor'}</h3>
-                        <span class="mv-active-filter">{l s='Current Filter:' mod='multivendor'} {$filter_label}</span>
+                        <h3 class="mv-card-title">{l s='Filtre de données' mod='multivendor'}</h3>
+                        <span class="mv-active-filter">{l s='Filtre actuel :' mod='multivendor'} {$filter_label}</span>
                     </div>
                     <div class="mv-card-body">
                         <form action="{$vendor_dashboard_url}" method="post" class="mv-date-filter-form">
                             <div class="mv-date-filter-options">
                                 <div class="mv-date-option">
                                     <input type="radio" id="filter-all" name="date_filter_type" value="all" {if $date_filter_type == 'all'}checked{/if}>
-                                    <label for="filter-all">{l s='All Time' mod='multivendor'}</label>
+                                    <label for="filter-all">{l s='Tout le temps' mod='multivendor'}</label>
                                 </div>
                                 
                                 <div class="mv-date-option">
                                     <input type="radio" id="filter-today" name="date_filter_type" value="today" {if $date_filter_type == 'today'}checked{/if}>
-                                    <label for="filter-today">{l s='Today' mod='multivendor'}</label>
+                                    <label for="filter-today">{l s='Aujourd\'hui' mod='multivendor'}</label>
                                 </div>
                                 
                                 <div class="mv-date-option">
                                     <input type="radio" id="filter-yesterday" name="date_filter_type" value="yesterday" {if $date_filter_type == 'yesterday'}checked{/if}>
-                                    <label for="filter-yesterday">{l s='Yesterday' mod='multivendor'}</label>
+                                    <label for="filter-yesterday">{l s='Hier' mod='multivendor'}</label>
                                 </div>
                                 
                                 <div class="mv-date-option">
                                     <input type="radio" id="filter-this-week" name="date_filter_type" value="this_week" {if $date_filter_type == 'this_week'}checked{/if}>
-                                    <label for="filter-this-week">{l s='This Week' mod='multivendor'}</label>
+                                    <label for="filter-this-week">{l s='Cette semaine' mod='multivendor'}</label>
                                 </div>
                                 
                                 <div class="mv-date-option">
                                     <input type="radio" id="filter-last-week" name="date_filter_type" value="last_week" {if $date_filter_type == 'last_week'}checked{/if}>
-                                    <label for="filter-last-week">{l s='Last Week' mod='multivendor'}</label>
+                                    <label for="filter-last-week">{l s='Semaine dernière' mod='multivendor'}</label>
                                 </div>
                                 
                                 <div class="mv-date-option">
                                     <input type="radio" id="filter-this-month" name="date_filter_type" value="this_month" {if $date_filter_type == 'this_month'}checked{/if}>
-                                    <label for="filter-this-month">{l s='This Month' mod='multivendor'}</label>
+                                    <label for="filter-this-month">{l s='Ce mois' mod='multivendor'}</label>
                                 </div>
                                 
                                 <div class="mv-date-option">
                                     <input type="radio" id="filter-last-month" name="date_filter_type" value="last_month" {if $date_filter_type == 'last_month'}checked{/if}>
-                                    <label for="filter-last-month">{l s='Last Month' mod='multivendor'}</label>
+                                    <label for="filter-last-month">{l s='Mois dernier' mod='multivendor'}</label>
                                 </div>
                                 
                                 <div class="mv-date-option">
                                     <input type="radio" id="filter-custom" name="date_filter_type" value="custom" {if $date_filter_type == 'custom'}checked{/if}>
-                                    <label for="filter-custom">{l s='Custom Range' mod='multivendor'}</label>
+                                    <label for="filter-custom">{l s='Plage personnalisée' mod='multivendor'}</label>
                                 </div>
                             </div>
                             
                             <div class="mv-custom-date-range" id="customDateRange" style="{if $date_filter_type != 'custom'}display: none;{/if}">
                                 <div class="mv-date-inputs">
                                     <div class="mv-date-field">
-                                        <label for="custom-start-date">{l s='From' mod='multivendor'}</label>
+                                        <label for="custom-start-date">{l s='Du' mod='multivendor'}</label>
                                         <input type="date" id="custom-start-date" name="custom_start_date" 
                                                max="{$current_date}" value="{$start_date|default:$current_date}">
                                     </div>
                                     <div class="mv-date-field">
-                                        <label for="custom-end-date">{l s='To' mod='multivendor'}</label>
+                                        <label for="custom-end-date">{l s='Au' mod='multivendor'}</label>
                                         <input type="date" id="custom-end-date" name="custom_end_date" 
                                                max="{$current_date}" value="{$end_date|default:$current_date}">
                                     </div>
@@ -114,7 +110,7 @@
                             
                             <div class="mv-filter-actions">
                                 <button type="submit" name="submitDateFilter" class="mv-btn mv-btn-primary">
-                                    <i class="mv-icon">🔍</i> {l s='Apply Filter' mod='multivendor'}
+                                    <i class="mv-icon">🔍</i> {l s='Appliquer le filtre' mod='multivendor'}
                                 </button>
                             </div>
                         </form>
@@ -124,21 +120,21 @@
                 <div class="mv-stats-grid">
                     <div class="mv-stat-card">
                         <div class="mv-stat-content">
-                            <h6 class="mv-stat-label">{l s='Order Quantity' mod='multivendor'}</h6>
+                            <h6 class="mv-stat-label">{l s='Quantité de commandes' mod='multivendor'}</h6>
                             <h3 class="mv-stat-value">{$indicators.order_quantity}</h3>
                             <p class="mv-stat-description">{$filter_label}</p>
                         </div>
                     </div>
                     <div class="mv-stat-card">
                         <div class="mv-stat-content">
-                            <h6 class="mv-stat-label">{l s='Total CA' mod='multivendor'}</h6>
+                            <h6 class="mv-stat-label">{l s='CA Total' mod='multivendor'}</h6>
                             <h3 class="mv-stat-value">{Tools::displayPrice($indicators.total_ca)}</h3>
                             <p class="mv-stat-description">{$filter_label}</p>
                         </div>
                     </div>
                     <div class="mv-stat-card">
                         <div class="mv-stat-content">
-                            <h6 class="mv-stat-label">{l s='Products by Reference' mod='multivendor'}</h6>
+                            <h6 class="mv-stat-label">{l s='Produits par référence' mod='multivendor'}</h6>
                             <h3 class="mv-stat-value">{$indicators.total_products_by_ref}</h3>
                             <p class="mv-stat-description">{$filter_label}</p>
                         </div>
@@ -148,7 +144,7 @@
                 <div class="mv-charts-row">
                     <div class="mv-card mv-chart-card">
                         <div class="mv-card-header">
-                            <h3 class="mv-card-title">{l s='Daily Sales' mod='multivendor'} - {$filter_label}</h3>
+                            <h3 class="mv-card-title">{l s='Ventes quotidiennes' mod='multivendor'} - {$filter_label}</h3>
                         </div>
                         <div class="mv-card-body">
                             <canvas id="filteredDaysChart" class="mv-chart"></canvas>
@@ -157,7 +153,7 @@
                     
                     <div class="mv-card mv-chart-card">
                         <div class="mv-card-header">
-                            <h3 class="mv-card-title">{l s='Monthly Sales' mod='multivendor'}</h3>
+                            <h3 class="mv-card-title">{l s='Ventes mensuelles' mod='multivendor'}</h3>
                         </div>
                         <div class="mv-card-body">
                             <canvas id="salesChart" class="mv-chart"></canvas>
@@ -169,7 +165,7 @@
                     <div class="mv-grid-col">
                         <div class="mv-card">
                             <div class="mv-card-header">
-                                <h3 class="mv-card-title">{l s='Recent Order Lines' mod='multivendor'}</h3>
+                                <h3 class="mv-card-title">{l s='Lignes de commande récentes' mod='multivendor'}</h3>
                             </div>
                             <div class="mv-card-body">
                                 {if $recent_order_lines}
@@ -177,11 +173,11 @@
                                         <table class="mv-table">
                                             <thead>
                                                 <tr>
-                                                    <th>{l s='Order #' mod='multivendor'}</th>
-                                                    <th>{l s='Product' mod='multivendor'}</th>
-                                                    <th>{l s='Qty' mod='multivendor'}</th>
+                                                    <th>{l s='Commande #' mod='multivendor'}</th>
+                                                    <th>{l s='Produit' mod='multivendor'}</th>
+                                                    <th>{l s='Qté' mod='multivendor'}</th>
                                                     <th>{l s='Total' mod='multivendor'}</th>
-                                                    <th>{l s='Status' mod='multivendor'}</th>
+                                                    <th>{l s='Statut' mod='multivendor'}</th>
                                                     <th>{l s='Date' mod='multivendor'}</th>
                                                 </tr>
                                             </thead>
@@ -198,7 +194,7 @@
                                                         <td>{Tools::displayPrice($line.vendor_amount)}</td>
                                                         <td>
                                                             <span class="mv-status-badge" style="background-color: {$line.status_color};">
-                                                                {$line.line_status|default:'Pending'|capitalize}
+                                                                {$line.line_status|default:'En attente'|capitalize}
                                                             </span>
                                                         </td>
                                                         <td>{$line.order_date|date_format:'%Y-%m-%d'}</td>
@@ -209,11 +205,11 @@
                                     </div>
                                     <div class="mv-text-center">
                                         <a href="{$vendor_orders_url}" class="mv-btn mv-btn-outline">
-                                            {l s='View All Order Lines' mod='multivendor'}
+                                            {l s='Voir toutes les lignes de commande' mod='multivendor'}
                                         </a>
                                     </div>
                                 {else}
-                                    <p class="mv-empty-state">{l s='No recent order lines.' mod='multivendor'}</p>
+                                    <p class="mv-empty-state">{l s='Aucune ligne de commande récente.' mod='multivendor'}</p>
                                 {/if}
                             </div>
                         </div>
@@ -224,7 +220,7 @@
                     <div class="mv-grid-col">
                         <div class="mv-card">
                             <div class="mv-card-header">
-                                <h3 class="mv-card-title">{l s='Top Selling Products' mod='multivendor'} - {$filter_label}</h3>
+                                <h3 class="mv-card-title">{l s='Produits les plus vendus' mod='multivendor'} - {$filter_label}</h3>
                             </div>
                             <div class="mv-card-body">
                                 {if $top_products}
@@ -232,9 +228,9 @@
                                         <table class="mv-table">
                                             <thead>
                                                 <tr>
-                                                    <th>{l s='Product' mod='multivendor'}</th>
-                                                    <th>{l s='Quantity' mod='multivendor'}</th>
-                                                    <th>{l s='Sales' mod='multivendor'}</th>
+                                                    <th>{l s='Produit' mod='multivendor'}</th>
+                                                    <th>{l s='Quantité' mod='multivendor'}</th>
+                                                    <th>{l s='Ventes' mod='multivendor'}</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -249,7 +245,7 @@
                                         </table>
                                     </div>
                                 {else}
-                                    <p class="mv-empty-state">{l s='No sales data available.' mod='multivendor'}</p>
+                                    <p class="mv-empty-state">{l s='Aucune donnée de vente disponible.' mod='multivendor'}</p>
                                 {/if}
                             </div>
                         </div>
@@ -291,7 +287,7 @@
                     {/foreach}
                 ],
                 datasets: [{
-                    label: '{l s='Daily Sales' mod='multivendor'}',
+                    label: '{l s='Ventes quotidiennes' mod='multivendor'}',
                     data: [
                         {foreach from=$filtered_daily_sales item=day}
                             {$day.sales},
@@ -351,7 +347,7 @@
                     {/foreach}
                 ],
                 datasets: [{
-                    label: '{l s='Monthly Sales' mod='multivendor'}',
+                    label: '{l s='Ventes mensuelles' mod='multivendor'}',
                     data: [
                         {foreach from=$monthly_sales item=month}
                             {$month.sales},

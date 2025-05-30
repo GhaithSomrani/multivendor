@@ -294,12 +294,16 @@ class AdminVendorsController extends ModuleAdminController
     {
         if (Tools::isSubmit('submitAdd' . $this->table)) {
             // Get values from form
-            $commission_rate = (float)Tools::getValue('commission_rate');
-            if (empty($commission_rate) || $commission_rate <= 0) {
-                $this->errors[] = $this->l('Commission Rate is required and must be greater than zero.');
+            try {
+                $commission_rate = (int)Tools::getValue('commission_rate');
+            } catch (Exception $e) {
+                $this->errors[] = $this->l('Invalid commission rate value.');
                 return false;
             }
-
+            if ($commission_rate <= 0 || $commission_rate > 100) {
+                $this->errors[] = $this->l('Commission Rate must be between 0% and 100%.');
+                return false;
+            }
             // Create or update vendor commission after saving vendor
             $result = parent::postProcess();
 
@@ -370,19 +374,7 @@ class AdminVendorsController extends ModuleAdminController
         if (!$query || $query == '' || strlen($query) < 3) {
             die(json_encode([]));
         }
-
-        $customers = Db::getInstance()->executeS('
-        SELECT c.id_customer, c.firstname, c.lastname, c.email
-        FROM `' . _DB_PREFIX_ . 'customer` c
-        WHERE (
-            LOWER(c.firstname) LIKE LOWER("%' . pSQL($query) . '%") 
-            OR LOWER(c.lastname) LIKE LOWER("%' . pSQL($query) . '%") 
-            OR LOWER(c.email) LIKE LOWER("%' . pSQL($query) . '%")
-        )
-        ORDER BY c.firstname, c.lastname
-        LIMIT 20
-    ');
-
+        $customers = VendorHelper::getAvailableCustomer($query);
         die(json_encode($customers));
     }
 
@@ -396,17 +388,11 @@ class AdminVendorsController extends ModuleAdminController
         if (!$query || $query == '' || strlen($query) < 3) {
             die(json_encode([]));
         }
-        $suppliers = Db::getInstance()->executeS('
-        SELECT s.id_supplier, s.name
-        FROM `' . _DB_PREFIX_ . 'supplier` s
-        WHERE LOWER(s.name) LIKE LOWER("%' . pSQL($query) . '%")
-        ORDER BY s.name
-        LIMIT 20
-    ');
+
+        $suppliers = VendorHelper::getAvailableSupplier($query);
 
         die(json_encode($suppliers));
     }
-
     /**
      * Get customer by vendor ID
      *

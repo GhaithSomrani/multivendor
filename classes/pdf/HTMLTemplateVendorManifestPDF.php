@@ -62,7 +62,7 @@ class HTMLTemplateVendorManifestPDF extends HTMLTemplate
                 $orderDetail = new OrderDetail($id_order_detail);
                 $order = new Order($orderDetail->id_order);
                 $lineStatus = null;
-                $vendorOrderDetail = null;
+                $vendorOrderDetail = (float)OrderHelper::getVendorAmountByOrderDetail($id_order_detail);
                 $currency = new Currency($order->id_currency);
 
                 $manifestItem = [
@@ -88,7 +88,7 @@ class HTMLTemplateVendorManifestPDF extends HTMLTemplate
                         'product_mpn' => $orderDetail->product_mpn ?: '',
                         'barcode' => $this->generateBarcode($orderDetail->product_mpn),
                     ],
-                    'vendor_amount' => $vendorOrderDetail ? (float)$vendorOrderDetail['vendor_amount'] : 0,
+                    'vendor_amount' => $vendorOrderDetail,
                     'pickup_id' => 'PU-' . $order->reference . '-' . $id_order_detail,
                     'date' => date('Y-m-d'),
                     'time' => date('H:i'),

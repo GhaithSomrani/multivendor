@@ -1,4 +1,4 @@
-$(document).ready(function() {
+$(document).ready(function () {
     replaceSelectWithAutocomplete('id_customer', 'searchCustomers');
 
     replaceSelectWithAutocomplete('id_supplier', 'searchSuppliers');
@@ -28,7 +28,7 @@ function replaceSelectWithAutocomplete(selectName, ajaxAction) {
     container.append(textInput, hiddenInput, resultsContainer);
     selectElement.hide();
 
-    textInput.on('keyup', function() {
+    textInput.on('keyup', function () {
         var query = $(this).val();
         if (query.length < 3) {
             resultsContainer.hide();
@@ -43,13 +43,13 @@ function replaceSelectWithAutocomplete(selectName, ajaxAction) {
                 q: query
             },
             dataType: 'json',
-            success: function(data) {
+            success: function (data) {
                 resultsContainer.empty();
 
                 if (data.length === 0) {
                     resultsContainer.append('<div class="list-group-item">No results found</div>');
                 } else {
-                    $.each(data, function(i, item) {
+                    $.each(data, function (i, item) {
                         var displayText = '';
                         var itemId = '';
 
@@ -64,7 +64,7 @@ function replaceSelectWithAutocomplete(selectName, ajaxAction) {
                         var listItem = $('<a href="#" class="list-group-item">' + displayText + '</a>');
 
                         listItem.data('id', itemId);
-                        listItem.on('click', function(e) {
+                        listItem.on('click', function (e) {
                             e.preventDefault();
                             hiddenInput.val($(this).data('id'));
                             textInput.val($(this).text());
@@ -80,7 +80,7 @@ function replaceSelectWithAutocomplete(selectName, ajaxAction) {
         });
     });
 
-    $(document).on('click', function(e) {
+    $(document).on('click', function (e) {
         if (!$(e.target).closest('#search_' + selectName + ', #' + selectName + '_results').length) {
             resultsContainer.hide();
         }
@@ -92,7 +92,7 @@ function replaceSelectWithAutocomplete(selectName, ajaxAction) {
  */
 
 
-$(document).ready(function() {
+$(document).ready(function () {
     console.log('Multivendor module admin-orders.js loaded');
 
     // Check if the AJAX URL is defined
@@ -126,7 +126,7 @@ $(document).ready(function() {
             headerRow.find('th:contains("Total")').before('<th class="cellProductLineStatus"><p>Line Status</p></th>');
 
             // For each product row, insert the status cell
-            $('#orderProductsTable tbody tr.cellProduct').each(function() {
+            $('#orderProductsTable tbody tr.cellProduct').each(function () {
                 const productId = $(this).attr('id').replace('orderProduct_', '');
 
                 // Create the status cell with loading placeholder
@@ -146,7 +146,7 @@ $(document).ready(function() {
     }
 
     // Event handler for status change
-    $(document).on('change', '.order-line-status-select', function() {
+    $(document).on('change', '.order-line-status-select', function () {
         const orderDetailId = $(this).data('order-detail-id');
         const vendorId = $(this).data('vendor-id');
         const newStatus = $(this).val();
@@ -169,35 +169,36 @@ $(document).ready(function() {
                 token: adminToken
             },
             dataType: 'json',
-            success: function(response) {
+            success: function (response) {
                 console.log('Status data received:', response);
                 if (response.success) {
-                    $('#orderProductsTable tbody tr.cellProduct').each(function() {
+                    $('#orderProductsTable tbody tr.cellProduct').each(function () {
                         const orderDetailId = $(this).attr('id').replace('orderProduct_', '');
                         const placeholder = $('.js-line-status-placeholder[data-order-detail-id="' + orderDetailId + '"]');
 
                         if (response.statusData && response.statusData[orderDetailId]) {
                             const data = response.statusData[orderDetailId];
+                            if (data.vendor_name) {
+                                let html = '<select class="form-control order-line-status-select" ';
+                                html += 'data-order-detail-id="' + orderDetailId + '" ';
+                                html += 'data-vendor-id="' + data.id_vendor + '">';
 
-                            let html = '<select class="form-control order-line-status-select" ';
-                            html += 'data-order-detail-id="' + orderDetailId + '" ';
-                            html += 'data-vendor-id="' + data.id_vendor + '">';
+                                $.each(response.availableStatuses, function (i, status) {
+                                    html += '<option value="' + status.name + '" ';
+                                    if (data.status === status.name) {
+                                        html += 'selected ';
+                                    }
+                                    html += 'style="background-color: ' + status.color + '">';
+                                    html += status.name;
+                                    html += '</option>';
+                                });
+                                html += '</select>';
+                                html += '<div class="text-muted small mt-1">';
+                                html += data.vendor_name ? data.vendor_name : 'No vendor';
+                                html += '</div>';
+                                placeholder.html(html);
 
-                            $.each(response.availableStatuses, function(i, status) {
-                                html += '<option value="' + status.name + '" ';
-                                if (data.status === status.name) {
-                                    html += 'selected ';
-                                }
-                                html += 'style="background-color: ' + status.color + '">';
-                                html += status.name;
-                                html += '</option>';
-                            });
-                            html += '</select>';
-                            html += '<div class="text-muted small mt-1">';
-                            html += data.vendor_name ? data.vendor_name : 'No vendor';
-                            html += '</div>';
-
-                            placeholder.html(html);
+                            }
                         } else {
                             placeholder.html('<span class="badge badge-secondary">Not a vendor product</span>');
                         }
@@ -207,7 +208,7 @@ $(document).ready(function() {
                     $('.js-line-status-placeholder').html('<span class="badge badge-danger">Error loading status</span>');
                 }
             },
-            error: function(xhr, status, error) {
+            error: function (xhr, status, error) {
                 console.error('AJAX Error:', status, error);
                 console.log('Response text:', xhr.responseText);
                 $('.js-line-status-placeholder').html('<span class="badge badge-danger">Error loading status</span>');
@@ -234,7 +235,7 @@ $(document).ready(function() {
                 token: adminToken
             },
             dataType: 'json',
-            success: function(response) {
+            success: function (response) {
                 console.log('Update response:', response);
                 if (response.success) {
                     showSuccessMessage('Status updated successfully');
@@ -243,7 +244,7 @@ $(document).ready(function() {
                     showErrorMessage('Error updating status: ' + (response.message || 'Unknown error'));
                 }
             },
-            error: function(xhr, status, error) {
+            error: function (xhr, status, error) {
                 console.error('AJAX Error:', status, error);
                 console.log('Response text:', xhr.responseText);
                 showErrorMessage('Error communicating with server: ' + error);

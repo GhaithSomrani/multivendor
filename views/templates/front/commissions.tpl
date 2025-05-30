@@ -5,7 +5,7 @@
     {extends file='page.tpl'}
     
     {block name='page_title'}
-        {l s='My Commissions' mod='multivendor'}
+        {l s='Mes Commissions' mod='multivendor'}
     {/block}
     
     {block name='page_content'}
@@ -18,15 +18,11 @@
                             <nav class="mv-nav">
                             <a class="mv-nav-link" href="{$vendor_dashboard_url}">
                                 <i class="mv-icon">📊</i>
-                                <span>{l s='Dashboard' mod='multivendor'}</span>
+                                <span>{l s='Tableau de bord' mod='multivendor'}</span>
                             </a>
                             <a class="mv-nav-link" href="{$vendor_orders_url}">
                                 <i class="mv-icon">🛒</i>
-                                <span>{l s='Orders' mod='multivendor'}</span>
-                            </a>
-                            <a class="mv-nav-link " href="{$vendor_manage_orders_url}">
-                                <i class="mv-icon">📦</i>
-                                <span>{l s='Manage Orders' mod='multivendor'}</span>
+                                <span>{l s='Commandes' mod='multivendor'}</span>
                             </a>
                             <a class="mv-nav-link mv-nav-link-active"  href="{$vendor_commissions_url}">
                                 <i class="mv-icon">💰</i>
@@ -42,35 +38,35 @@
                     <div class="mv-commission-summary">
                       
                         <div class="mv-summary-card mv-summary-card-add">
-                            <h6 class="mv-stat-label">{l s='Commissions Earned' mod='multivendor'}</h6>
+                            <h6 class="mv-stat-label">{l s='Commissions gagnées' mod='multivendor'}</h6>
                             <h3 class="mv-stat-value">{Tools::displayPrice($commission_summary.total_commission_added)}</h3>
-                            <p class="mv-stat-description">{l s='Total commissions added' mod='multivendor'}</p>
+                            <p class="mv-stat-description">{l s='Total des commissions ajoutées' mod='multivendor'}</p>
                         </div>
                         <div class="mv-summary-card mv-summary-card-paid">
-                            <h6 class="mv-stat-label">{l s='Paid Amount' mod='multivendor'}</h6>
+                            <h6 class="mv-stat-label">{l s='Montant payé' mod='multivendor'}</h6>
                             <h3 class="mv-stat-value">{Tools::displayPrice($commission_summary.paid_commission)}</h3>
-                            <p class="mv-stat-description">{l s='Total paid to you' mod='multivendor'}</p>
+                            <p class="mv-stat-description">{l s='Total payé à vous' mod='multivendor'}</p>
                         </div>
                         <div class="mv-summary-card mv-summary-card-pending">
-                            <h6 class="mv-stat-label">{l s='Pending Amount' mod='multivendor'}</h6>
+                            <h6 class="mv-stat-label">{l s='Montant en attente' mod='multivendor'}</h6>
                             <h3 class="mv-stat-value">{Tools::displayPrice($commission_summary.pending_amount)}</h3>
-                            <p class="mv-stat-description">{l s='Earned - Paid' mod='multivendor'}</p>
+                            <p class="mv-stat-description">{l s='Gagné - Payé' mod='multivendor'}</p>
                         </div>
                             <div class="mv-summary-card mv-summary-card-refund">
-                            <h6 class="mv-stat-label">{l s='Commissions Refunded' mod='multivendor'}</h6>
+                            <h6 class="mv-stat-label">{l s='Commissions remboursées' mod='multivendor'}</h6>
                             <h3 class="mv-stat-value">-{Tools::displayPrice($commission_summary.total_commission_refunded)}</h3>
-                            <p class="mv-stat-description">{l s='Total refunds' mod='multivendor'}</p>
+                            <p class="mv-stat-description">{l s='Total des remboursements' mod='multivendor'}</p>
                         </div>
                     </div>
                     
                     {* Commission Rates Card *}
                     <div class="mv-card">
                         <div class="mv-card-header">
-                            <h3 class="mv-card-title">{l s='Commission Rates' mod='multivendor'}</h3>
+                            <h3 class="mv-card-title">{l s='Taux de commission' mod='multivendor'}</h3>
                         </div>
                         <div class="mv-card-body">
                             <div class="mv-commission-detail">
-                                <span class="mv-commission-detail-label">{l s='Your standard commission rate:' mod='multivendor'}</span>
+                                <span class="mv-commission-detail-label">{l s='Votre taux de commission standard :' mod='multivendor'}</span>
                                 <span class="mv-commission-detail-value">{$vendor_commission_rate}%</span>
                             </div>
                         </div>
@@ -79,7 +75,7 @@
                     {* Commission Transactions Card *}
                     <div class="mv-card">
                         <div class="mv-card-header">
-                            <h3 class="mv-card-title">{l s='Commission Transactions' mod='multivendor'}</h3>
+                            <h3 class="mv-card-title">{l s='Transactions de commission' mod='multivendor'}</h3>
                         </div>
                         <div class="mv-card-body">
                             {if $transactions}
@@ -87,12 +83,12 @@
                                     <table class="mv-table">
                                         <thead>
                                             <tr>
-                                                <th>{l s='Order' mod='multivendor'}</th>
+                                                <th>{l s='Commande' mod='multivendor'}</th>
                                                 <th>{l s='Date' mod='multivendor'}</th>
-                                                <th>{l s='Product' mod='multivendor'}</th>
+                                                <th>{l s='Produit' mod='multivendor'}</th>
                                                 <th>{l s='Action' mod='multivendor'}</th>
-                                                <th>{l s='Your Amount' mod='multivendor'}</th>
-                                                <th>{l s='Status' mod='multivendor'}</th>
+                                                <th>{l s='Votre montant' mod='multivendor'}</th>
+                                                <th>{l s='Statut' mod='multivendor'}</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -113,7 +109,7 @@
                                                     </td>
                                                     <td>
                                                         <span class="mv-action-type mv-action-{$transaction.commission_action}">
-                                                            {$transaction.commission_action}
+                                                            {if $transaction.commission_action == 'refund'}remboursement{else}{$transaction.commission_action}{/if}
                                                         </span>
                                                     </td>
                                                    
@@ -178,7 +174,7 @@
                                 {/if}
                             {else}
                                 <div class="mv-empty-state">
-                                    {l s='No commission transactions found.' mod='multivendor'}
+                                    {l s='Aucune transaction de commission trouvée.' mod='multivendor'}
                                 </div>
                             {/if}
                         </div>
@@ -187,7 +183,7 @@
                     {* Payment History Card *}
                     <div class="mv-card">
                         <div class="mv-card-header">
-                            <h3 class="mv-card-title">{l s='Payment History' mod='multivendor'}</h3>
+                            <h3 class="mv-card-title">{l s='Historique des paiements' mod='multivendor'}</h3>
                         </div>
                         <div class="mv-card-body">
                             {if $payments}
@@ -200,7 +196,7 @@
                                                     <span class="mv-payment-date">{$payment.date_add|date_format:'%Y-%m-%d'}</span>
                                                     <span class="mv-payment-amount">{$payment.amount|displayPrice}</span>
                                                     <span class="mv-payment-method">{$payment.payment_method|capitalize}</span>
-                                                    <span class="mv-payment-reference">{l s='Ref:' mod='multivendor'} {$payment.reference}</span>
+                                                    <span class="mv-payment-reference">{l s='Réf :' mod='multivendor'} {$payment.reference}</span>
                                                     <span class="mv-status-badge mv-status-{$payment.status}">
                                                         {$payment.status|capitalize}
                                                     </span>
@@ -216,11 +212,11 @@
                                                     <table class="mv-table mv-payment-details-table">
                                                         <thead>
                                                             <tr>
-                                                                <th>{l s='Order' mod='multivendor'}</th>
-                                                                <th>{l s='Product' mod='multivendor'}</th>
+                                                                <th>{l s='Commande' mod='multivendor'}</th>
+                                                                <th>{l s='Produit' mod='multivendor'}</th>
                                                                 <th>{l s='SKU' mod='multivendor'}</th>
-                                                                <th>{l s='Qty' mod='multivendor'}</th>
-                                                                <th>{l s='Amount' mod='multivendor'}</th>
+                                                                <th>{l s='Qté' mod='multivendor'}</th>
+                                                                <th>{l s='Montant' mod='multivendor'}</th>
                                                                 <th>{l s='Date' mod='multivendor'}</th>
                                                             </tr>
                                                         </thead>
@@ -233,14 +229,14 @@
                                                                                 #{$detail.order_reference}
                                                                             </a>
                                                                         {else}
-                                                                            <span class="text-muted">{l s='Order #' mod='multivendor'}{$detail.id_order}</span>
+                                                                            <span class="text-muted">{l s='Commande #' mod='multivendor'}{$detail.id_order}</span>
                                                                         {/if}
                                                                     </td>
                                                                     <td>
                                                                         {if $detail.product_name}
                                                                             {$detail.product_name|truncate:40:'...'}
                                                                         {else}
-                                                                            <span class="text-muted">{l s='Product details not available' mod='multivendor'}</span>
+                                                                            <span class="text-muted">{l s='Détails du produit non disponibles' mod='multivendor'}</span>
                                                                         {/if}
                                                                     </td>
                                                                     <td>{$detail.product_reference|default:'-'}</td>
@@ -258,14 +254,14 @@
                                                         </tbody>
                                                         <tfoot>
                                                             <tr>
-                                                                <td colspan="4" class="mv-text-right"><strong>{l s='Total:' mod='multivendor'}</strong></td>
+                                                                <td colspan="4" class="mv-text-right"><strong>{l s='Total :' mod='multivendor'}</strong></td>
                                                                 <td><strong>{$payment.amount|displayPrice}</strong></td>
                                                                 <td></td>
                                                             </tr>
                                                         </tfoot>
                                                     </table>
                                                 {else}
-                                                    <p class="mv-empty-state">{l s='No order details available for this payment.' mod='multivendor'}</p>
+                                                    <p class="mv-empty-state">{l s='Aucun détail de commande disponible pour ce paiement.' mod='multivendor'}</p>
                                                 {/if}
                                             </div>
                                         </div>
@@ -273,7 +269,7 @@
                                 </div>
                             {else}
                                 <div class="mv-empty-state">
-                                    {l s='No payment history found.' mod='multivendor'}
+                                    {l s='Aucun historique de paiement trouvé.' mod='multivendor'}
                                 </div>
                             {/if}
                         </div>

@@ -31,38 +31,19 @@ class MultivendorManifestModuleFrontController extends ModuleFrontController
         $details = Tools::getValue('details', '');
 
         if (!empty($id_order_detail)) {
-            $this->validateAndGenerate([$id_order_detail]);
+        $this->generateManifest([$id_order_detail]);
         } elseif (!empty($details)) {
             $orderDetailIds = array_filter(array_map('intval', explode(',', $details)));
             if (empty($orderDetailIds)) {
                 die($this->module->l('Invalid order details'));
             }
-            $this->validateAndGenerate($orderDetailIds);
+        $this->generateManifest($orderDetailIds);
         } else {
             die($this->module->l('No order details specified'));
         }
     }
 
-    protected function validateAndGenerate(array $orderDetailIds)
-    {
-        foreach ($orderDetailIds as $detailId) {
-            if (!$this->verifyOrderDetailOwnership($detailId)) {
-                die($this->module->l('Access denied for order detail:') . ' ' . $detailId);
-            }
-        }
-        $this->generateManifest($orderDetailIds);
-    }
-
-    protected function verifyOrderDetailOwnership($id_order_detail)
-    {
-        return (bool)Db::getInstance()->getValue(
-            (new DbQuery())
-                ->select('vod.id_vendor')
-                ->from('vendor_order_detail', 'vod')
-                ->where('vod.id_order_detail = ' . (int)$id_order_detail)
-                ->where('vod.id_vendor = ' . (int)$this->vendor['id_vendor'])
-        );
-    }
+   
 
     protected function generateManifest($orderDetailIds)
     {

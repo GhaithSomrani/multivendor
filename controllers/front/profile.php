@@ -17,16 +17,18 @@ class multivendorProfileModuleFrontController extends ModuleFrontController
     {
         parent::init();
 
-        // Check if customer is a vendor
-        $id_customer = $this->context->customer->id;
-        $vendor = VendorHelper::getVendorByCustomer($id_customer);
+        $access_result = VendorHelper::validateVendorAccess($this->context->customer->id);
 
-        if (!$vendor) {
-            Tools::redirect('index.php?controller=my-account');
+        if (!$access_result['has_access']) {
+            if ($access_result['status'] === 'not_vendor') {
+                Tools::redirect('index.php?controller=my-account');
+            } else {
+                // Redirect to dashboard which will show verification page
+                Tools::redirect($this->context->link->getModuleLink('multivendor', 'dashboard'));
+            }
         }
 
-        // Set vendor ID for later use
-        $this->context->smarty->assign('id_vendor', $vendor['id_vendor']);
+        $this->context->smarty->assign('id_vendor', $access_result['vendor']['id_vendor']);
     }
 
     public function initContent()

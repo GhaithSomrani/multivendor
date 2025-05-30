@@ -5,7 +5,7 @@
 {extends file='page.tpl'}
 
 {block name='page_title'}
-    {l s='My Order Lines' mod='multivendor'}
+    {l s='Mes lignes de commande' mod='multivendor'}
 {/block}
 
 {block name='page_content'}
@@ -17,15 +17,11 @@
                         <nav class="mv-nav">
                             <a class="mv-nav-link" href="{$vendor_dashboard_url}">
                                 <i class="mv-icon">📊</i>
-                                <span>{l s='Dashboard' mod='multivendor'}</span>
+                                <span>{l s='Tableau de bord' mod='multivendor'}</span>
                             </a>
                             <a class="mv-nav-link mv-nav-link-active" href="{$vendor_orders_url}">
                                 <i class="mv-icon">🛒</i>
-                                <span>{l s='Orders' mod='multivendor'}</span>
-                            </a>
-                            <a class="mv-nav-link " href="{$vendor_manage_orders_url}">
-                                <i class="mv-icon">📦</i>
-                                <span>{l s='Manage Orders' mod='multivendor'}</span>
+                                <span>{l s='Commandes' mod='multivendor'}</span>
                             </a>
                             <a class="mv-nav-link" href="{$vendor_commissions_url}">
                                 <i class="mv-icon">💰</i>
@@ -42,23 +38,23 @@
                 <div class="mv-stats-grid">
                     <div class="mv-stat-card">
                         <div class="mv-stat-content">
-                            <h6 class="mv-stat-label">{l s='Total Order Lines' mod='multivendor'}</h6>
+                            <h6 class="mv-stat-label">{l s='Total des lignes de commande' mod='multivendor'}</h6>
                             <h3 class="mv-stat-value">{$order_summary.total_lines}</h3>
-                            <p class="mv-stat-description">{l s='All time' mod='multivendor'}</p>
+                            <p class="mv-stat-description">{l s='Tout le temps' mod='multivendor'}</p>
                         </div>
                     </div>
                     <div class="mv-stat-card">
                         <div class="mv-stat-content">
-                            <h6 class="mv-stat-label">{l s='Revenue (Last 28 Days)' mod='multivendor'}</h6>
+                            <h6 class="mv-stat-label">{l s='Revenus (28 derniers jours)' mod='multivendor'}</h6>
                             <h3 class="mv-stat-value">{Tools::displayPrice($order_summary.total_revenue)}</h3>
-                            <p class="mv-stat-description">{l s='Your earnings after commission' mod='multivendor'}</p>
+                            <p class="mv-stat-description">{l s='Vos gains après commission' mod='multivendor'}</p>
                         </div>
                     </div>
                     <div class="mv-stat-card">
                         <div class="mv-stat-content">
-                            <h6 class="mv-stat-label">{l s="Today's Orders" mod='multivendor'}</h6>
+                            <h6 class="mv-stat-label">{l s='Commandes d\'aujourd\'hui' mod='multivendor'}</h6>
                             <h3 class="mv-stat-value">{$order_summary.todays_orders}</h3>
-                            <p class="mv-stat-description">{l s='New order lines' mod='multivendor'}</p>
+                            <p class="mv-stat-description">{l s='Nouvelles lignes de commande' mod='multivendor'}</p>
                         </div>
                     </div>
                 </div>
@@ -67,7 +63,7 @@
                 {if $order_summary.status_breakdown}
                     <div class="mv-card">
                         <div class="mv-card-header">
-                            <h3 class="mv-card-title">{l s='Order Status Overview' mod='multivendor'}</h3>
+                            <h3 class="mv-card-title">{l s='Aperçu des statuts de commande' mod='multivendor'}</h3>
                         </div>
                         <div class="mv-card-body">
                             <div class="mv-status-breakdown">
@@ -75,7 +71,7 @@
                                 <div class="mv-status-item">
                                     <span class="mv-status-badge mv-filter-status active" data-status="all"
                                         style="background-color: #6c757d;">
-                                        {l s='All' mod='multivendor'} : {$order_summary.total_lines}
+                                        {l s='Tout' mod='multivendor'} : {$order_summary.total_lines}
                                     </span>
                                 </div>
                                 {foreach from=$order_summary.status_breakdown item=statusData}
@@ -94,12 +90,12 @@
                 {* Orders Table *}
                 <div class="mv-card">
                     <div class="mv-card-header">
-                        <h3 class="mv-card-title">{l s='Order Lines' mod='multivendor'}</h3>
+                        <h3 class="mv-card-title">{l s='Lignes de commande' mod='multivendor'}</h3>
                         <div class="mv-card-actions">
                             <div class="mv-export-buttons">
                                 <button class="mv-btn mv-btn-export" onclick="exportTableToCSV()">
                                     <i class="mv-icon">📥</i>
-                                    {l s='Export CSV' mod='multivendor'}
+                                    {l s='Exporter CSV' mod='multivendor'}
                                 </button>
                             </div>
                         </div>
@@ -109,13 +105,13 @@
                             <div class="mv-checkbox">
                                 <input type="checkbox" id="select-all-orders" class="mv-checkbox-input">
                                 <label for="select-all-orders"
-                                    class="mv-checkbox-label">{l s='Select All' mod='multivendor'}</label>
+                                    class="mv-checkbox-label">{l s='Tout sélectionner' mod='multivendor'}</label>
                             </div>
-                            <span class="mv-selected-count" id="selected-count">0 {l s='selected' mod='multivendor'}</span>
+                            <span class="mv-selected-count" id="selected-count">0 {l s='sélectionné(s)' mod='multivendor'}</span>
                         </div>
                         <div class="mv-bulk-controls">
                             <select id="bulk-status-select" class="mv-status-select" disabled>
-                                <option value="">{l s='Change status to...' mod='multivendor'}</option>
+                                <option value="">{l s='Changer le statut à...' mod='multivendor'}</option>
                                 {foreach from=$vendor_statuses key=status_key item=status_label}
                                     <option value="{$status_key}">
                                         {$status_label|escape:'html':'UTF-8'|capitalize}
@@ -123,7 +119,7 @@
                                 {/foreach}
                             </select>
                             <button id="apply-bulk-status" class="mv-btn mv-btn-primary" disabled>
-                                {l s='Apply' mod='multivendor'}
+                                {l s='Appliquer' mod='multivendor'}
                             </button>
                         </div>
                     </div>
@@ -132,7 +128,7 @@
                     <div class="mv-global-mpn-container">
                         <div class="mv-input-group">
                             <input type="text" id="global-mpn-input" class="form-control mv-global-mpn-input"
-                                placeholder="{l s='Scan MPN barcode here...' mod='multivendor'}" autocomplete="off">
+                                placeholder="{l s='Scannez le code-barres MPN ici...' mod='multivendor'}" autocomplete="off">
                             <div class="mv-input-group-append">
                                 <span class="mv-input-group-text">
                                     <i class="mv-icon">🔍</i>
@@ -141,7 +137,7 @@
                         </div>
                         <div class="mv-mpn-status">
                             <span id="mpn-status-message" class="mv-status-message">
-                                {l s='Ready to scan MPN barcode.' mod='multivendor'}
+                                {l s='Prêt à scanner le code-barres MPN.' mod='multivendor'}
                             </span>
                         </div>
                     </div>
@@ -153,11 +149,11 @@
                                     <thead>
                                         <tr>
                                             <th class="mv-checkbox-col"></th>
-                                            <th>{l s='Reference' mod='multivendor'}</th>
-                                            <th>{l s='Product' mod='multivendor'}</th>
-                                            <th>{l s='Qty' mod='multivendor'}</th>
+                                            <th>{l s='Référence' mod='multivendor'}</th>
+                                            <th>{l s='Produit' mod='multivendor'}</th>
+                                            <th>{l s='Qté' mod='multivendor'}</th>
                                             <th>{l s='Total' mod='multivendor'}</th>
-                                            <th>{l s='Status' mod='multivendor'}</th>
+                                            <th>{l s='Statut' mod='multivendor'}</th>
                                             <th>{l s='Date' mod='multivendor'}</th>
                                             <th>{l s='Actions' mod='multivendor'}</th>
                                         </tr>
@@ -165,7 +161,7 @@
                                     <tbody>
                                         {foreach from=$order_lines item=line}
                                             <tr data-id="{$line.id_order_detail}"
-                                                data-status="{$line.line_status|default:'Pending'|lower}"
+                                                data-status="{$line.line_status|default:'En attente'|lower}"
                                                 data-product-mpn="{$line.product_mpn}"
                                                 data-commission-action="{if isset($line.commission_action)}{$line.commission_action}{else}none{/if}">
                                                 <td class="mv-checkbox-col">
@@ -192,10 +188,10 @@
                                                         <select class="mv-status-select order-line-status-select"
                                                             id="status-select-{$line.id_order_detail}"
                                                             data-order-detail-id="{$line.id_order_detail}"
-                                                            data-original-status="{$line.line_status|default:'Pending'}">
+                                                            data-original-status="{$line.line_status|default:'En attente'}">
                                                             {foreach from=$vendor_statuses key=status_key item=status_label}
                                                                 <option value="{$status_key}"
-                                                                    {if ($line.line_status|default:'Pending') == $status_key}selected{/if}
+                                                                    {if ($line.line_status|default:'En attente') == $status_key}selected{/if}
                                                                     style="background-color: {$status_colors[$status_key]}; color: white;">
                                                                     {$status_label|escape:'html':'UTF-8'|capitalize}
                                                                 </option>
@@ -207,7 +203,7 @@
                                                 <td>
                                                     <button class="mv-btn-icon view-status-history"
                                                         data-order-detail-id="{$line.id_order_detail}"
-                                                        title="{l s='View History' mod='multivendor'}">
+                                                        title="{l s='Voir l\'historique' mod='multivendor'}">
                                                         <i class="mv-icon">📜</i>
                                                     </button>
                                                 </td>
@@ -264,17 +260,17 @@
                             {/if}
                         {else}
                             <p class="mv-empty-state">
-                                {l s='No order lines found.' mod='multivendor'}
+                                {l s='Aucune ligne de commande trouvée.' mod='multivendor'}
                             </p>
                         {/if}
                         <div id="pickup-manifest-block" class="mt-4" style="display: none;">
                             <div class="mv-card">
                                 <div class="mv-card-header">
                                     <div class="d-flex justify-content-between align-items-center">
-                                        <h3 class="mv-card-title">{l s='Pickup Manifest' mod='multivendor'} (<span
+                                        <h3 class="mv-card-title">{l s='Manifeste de collecte' mod='multivendor'} (<span
                                                 id="manifest-count">0</span>)</h3>
                                         <button id="print-manifest-btn" class="mv-btn mv-btn-primary">
-                                            <i class="mv-icon">🖨️</i> {l s='Print Manifest' mod='multivendor'}
+                                            <i class="mv-icon">🖨️</i> {l s='Imprimer le manifeste' mod='multivendor'}
                                         </button>
                                     </div>
                                 </div>
@@ -283,11 +279,11 @@
                                         <table class="mv-table">
                                             <thead>
                                                 <tr>
-                                                    <th>{l s='Order Ref' mod='multivendor'}</th>
-                                                    <th>{l s='Product' mod='multivendor'}</th>
+                                                    <th>{l s='Réf. commande' mod='multivendor'}</th>
+                                                    <th>{l s='Produit' mod='multivendor'}</th>
                                                     <th>{l s='MPN' mod='multivendor'}</th>
-                                                    <th>{l s='Quantity' mod='multivendor'}</th>
-                                                    <th>{l s='Verified At' mod='multivendor'}</th>
+                                                    <th>{l s='Quantité' mod='multivendor'}</th>
+                                                    <th>{l s='Vérifié à' mod='multivendor'}</th>
                                                 </tr>
                                             </thead>
                                             <tbody id="manifest-items">
@@ -308,7 +304,7 @@
         <div class="mv-modal-backdrop" onclick="$('#statusHistoryModal').removeClass('mv-modal-open')"></div>
         <div class="mv-modal-content">
             <div class="mv-modal-header">
-                <h5 class="mv-modal-title">{l s='Status History' mod='multivendor'}</h5>
+                <h5 class="mv-modal-title">{l s='Historique des statuts' mod='multivendor'}</h5>
                 <button class="mv-modal-close" onclick="$('#statusHistoryModal').removeClass('mv-modal-open')">×</button>
             </div>
             <div class="mv-modal-body" id="statusHistoryContent">
@@ -319,12 +315,12 @@
 
     <script>
         // Translation strings for JavaScript
-        const bulkStatusChangeConfirmText = "{l s='Are you sure you want to change the status of the selected orders?' mod='multivendor'}";
-        const bulkChangeComment = "{l s='Status changed via bulk action' mod='multivendor'}";
-        const processingText = "{l s='Processing...' mod='multivendor'}";
-        const applyText = "{l s='Apply' mod='multivendor'}";
-        const selectedText = "{l s='selected' mod='multivendor'}";
-        const successStatusText = "{l s='orders updated successfully.' mod='multivendor'}";
-        const errorStatusText = "{l s='orders failed to update.' mod='multivendor'}";
+        const bulkStatusChangeConfirmText = "{l s='Êtes-vous sûr de vouloir changer le statut des commandes sélectionnées ?' mod='multivendor'}";
+        const bulkChangeComment = "{l s='Statut modifié via l\'action groupée' mod='multivendor'}";
+        const processingText = "{l s='Traitement...' mod='multivendor'}";
+        const applyText = "{l s='Appliquer' mod='multivendor'}";
+        const selectedText = "{l s='sélectionné(s)' mod='multivendor'}";
+        const successStatusText = "{l s='commandes mises à jour avec succès.' mod='multivendor'}";
+        const errorStatusText = "{l s='commandes n\'ont pas pu être mises à jour.' mod='multivendor'}";
     </script>
 {/block}

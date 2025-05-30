@@ -83,35 +83,19 @@ class VendorHelper
     }
 
     /**
-     * Calculate commission rate for a vendor and product/category
+     * Calculate commission rate for a vendor 
      * 
      * @param int $id_vendor Vendor ID
-     * @param int $id_category Category ID (if product ID not provided)
-     * @param int $id_product Product ID (optional)
      * @return float Commission rate percentage
      */
-    public static function getCommissionRate($id_vendor, $id_product = null)
+    public static function getCommissionRate($id_vendor)
     {
-        $cacheKey = "commission_rate_{$id_vendor}_" . "p{$id_product}";
-
-        if (self::getCachedData($cacheKey)) {
-            return self::getCachedData($cacheKey);
-        }
-
-
-
-        // Check for vendor-specific commission
-        $vendorCommission = VendorCommission::getCommissionRate($id_vendor);
-        if ($vendorCommission !== null) {
-            self::setCachedData($cacheKey, $vendorCommission);
+        try {
+            $vendorCommission = VendorCommission::getCommissionRate($id_vendor);
             return $vendorCommission;
+        } catch (Exception $e) {
+            PrestaShopLogger::addLog('Error getting commission rate: ' . $e->getMessage(), 3, null, 'Vendor', $id_vendor);
         }
-
-        // Return default commission
-        $defaultCommission = (float)Configuration::get('MV_DEFAULT_COMMISSION', 10);
-        self::setCachedData($cacheKey, $defaultCommission);
-
-        return $defaultCommission;
     }
 
     /**
@@ -405,7 +389,7 @@ class VendorHelper
                 ) as count
             FROM ' . _DB_PREFIX_ . 'order_line_status_type lstype
             WHERE lstype.active = 1
-            ORDER BY lstype.position ASC';
+            ORDER BY lstype.color ASC';
 
         $results = Db::getInstance()->executeS($query);
 
@@ -511,7 +495,7 @@ class VendorHelper
             return false;
         }
 
-        $commission_rate = self::getCommissionRate($id_vendor, $product->id_category_default);
+        $commission_rate = self::getCommissionRate($id_vendor);
         $product_price = $orderDetail->unit_price_tax_incl;
         $quantity = $orderDetail->product_quantity;
         $total_price = $product_price * $quantity;
@@ -1009,7 +993,7 @@ class VendorHelper
     /**
      * Verify that the order detail belongs to the vendor
      */
-    public static function verifyOrderDetailOwnership($id_order_detail , $id_customer)
+    public static function verifyOrderDetailOwnership($id_order_detail, $id_customer)
     {
 
         $vendor = self::getVendorByCustomer($id_customer);
@@ -1021,5 +1005,109 @@ class VendorHelper
         $query->where('vod.id_vendor = ' . $vendor['id_vendor']);
 
         return (bool)Db::getInstance()->getValue($query);
+    }
+
+    /**
+     * Get the list of the available customers that are not vendors
+     */
+    public static function getAvailableCustomer($query)
+    {
+        $customers = Db::getInstance()->executeS('
+        SELECT c.id_customer, c.firstname, c.lastname, c.email
+        FROM `' . _DB_PREFIX_ . 'customer` c
+        LEFT JOIN `' . _DB_PREFIX_ . 'vendor` v ON c.id_customer = v.id_customer
+        WHERE (
+            LOWER(c.firstname) LIKE LOWER("%' . pSQL($query) . '%") 
+            OR LOWER(c.lastname) LIKE LOWER("%' . pSQL($query) . '%") 
+            OR LOWER(c.email) LIKE LOWER("%' . pSQL($query) . '%")
+        )
+        AND v.id_customer IS NULL
+        AND c.active = 1
+        ORDER BY c.firstname, c.lastname
+        LIMIT 20
+    ');
+        return $customers;
+    }
+
+    /**
+     * Get the list of the available suppliers that are not vendors
+     */
+    public static function getAvailableSupplier($query)
+    {
+        $suppliers = Db::getInstance()->executeS('
+        SELECT s.id_supplier, s.name
+        FROM `' . _DB_PREFIX_ . 'supplier` s
+        LEFT JOIN `' . _DB_PREFIX_ . 'vendor` v ON s.id_supplier = v.id_supplier
+        WHERE LOWER(s.name) LIKE LOWER("%' . pSQL($query) . '%")
+        AND v.id_supplier IS NULL
+        AND s.active = 1
+        ORDER BY s.name
+        LIMIT 20
+    ');
+        return $suppliers;
+    }
+
+    /**
+     * Validate vendor access - checks both existence and active status
+     */
+    public static function validateVendorAccess($id_customer)
+    {
+        $vendor = self::getVendorByCustomer($id_customer);
+
+        if (!$vendor) {
+            return [
+                'has_access' => false,
+                'vendor' => null,
+                'status' => 'not_vendor',
+                'message' => 'Customer is not a vendor'
+            ];
+        }
+
+        $status = (int)$vendor['status'];
+
+        switch ($status) {
+            case 1: // Active
+                return [
+                    'has_access' => true,
+                    'vendor' => $vendor,
+                    'status' => 'active',
+                    'message' => 'Vendor is active'
+                ];
+
+            case 0: // Pending
+                return [
+                    'has_access' => false,
+                    'vendor' => $vendor,
+                    'status' => 'pending',
+                    'message' => 'Vendor account is pending approval'
+                ];
+
+            case 2: // Rejected
+                return [
+                    'has_access' => false,
+                    'vendor' => $vendor,
+                    'status' => 'rejected',
+                    'message' => 'Vendor account has been rejected'
+                ];
+
+            default:
+                return [
+                    'has_access' => false,
+                    'vendor' => $vendor,
+                    'status' => 'unknown',
+                    'message' => 'Unknown vendor status'
+                ];
+        }
+    }
+
+    /**
+     * Check if vendor is active
+     */
+    public static function isVendorActive($id_vendor)
+    {
+        $status = Db::getInstance()->getValue(
+            'SELECT status FROM ' . _DB_PREFIX_ . 'vendor WHERE id_vendor = ' . (int)$id_vendor
+        );
+        return ((int)$status === 1);
     }
 }

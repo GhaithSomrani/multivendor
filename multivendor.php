@@ -14,7 +14,6 @@ if (!defined('_PS_VERSION_')) {
 
 require_once(dirname(__FILE__) . '/classes/Vendor.php');
 require_once(dirname(__FILE__) . '/classes/VendorCommission.php');
-require_once(dirname(__FILE__) . '/classes/CategoryCommission.php');
 require_once(dirname(__FILE__) . '/classes/VendorTransaction.php');
 require_once(dirname(__FILE__) . '/classes/VendorPayment.php');
 require_once(dirname(__FILE__) . '/classes/OrderLineStatus.php');
@@ -22,7 +21,9 @@ require_once(dirname(__FILE__) . '/classes/OrderLineStatusLog.php');
 require_once(dirname(__FILE__) . '/classes/VendorOrderDetail.php');
 require_once(dirname(__FILE__) . '/classes/OrderLineStatusType.php');
 require_once(dirname(__FILE__) . '/classes/VendorHelper.php');
-require_once(dirname(__FILE__) . '/classes/pdf/HTMLTemplateVendorManifestPDF.php'); 
+require_once(dirname(__FILE__) . '/classes/pdf/HTMLTemplateVendorManifestPDF.php');
+require_once(dirname(__FILE__) . '/classes/OrderHelper.php');
+
 class multivendor extends Module
 {
     public function __construct()
@@ -73,6 +74,12 @@ class multivendor extends Module
             !$this->registerHook('actionValidateOrder') ||
             !$this->registerHook('displayBackOfficeHeader') ||
             !$this->registerHook('actionAdminControllerSetMedia') ||
+            !$this->registerHook('actionOrderDetailAdd') ||
+            !$this->registerHook('actionOrderDetailUpdate') ||
+            !$this->registerHook('actionOrderDetailDelete') ||
+            !$this->registerHook('actionObjectOrderDetailAddAfter') ||
+            !$this->registerHook('actionObjectOrderDetailUpdateAfter') ||
+            !$this->registerHook('actionObjectOrderDetailDeleteAfter') ||
             !$this->installTab()  ||
             !$this->installOverrides()
         ) {
@@ -191,6 +198,7 @@ class multivendor extends Module
         return true;
     }
 
+
     /**
      * Create custom order statuses for vendors
      * 
@@ -290,6 +298,27 @@ class multivendor extends Module
     public function getContent()
     {
         $output = '';
+        if (Tools::isSubmit('resetStatus')) {
+            if (OrderHelper::resetOrderLineStatuses()) {
+                $output .= $this->displayConfirmation($this->l('Order line statuses have been reset to default French statuses'));
+            } else {
+                $output .= $this->displayError($this->l('Error occurred while resetting statuses'));
+            }
+        }
+        // Handle sync action
+        if (Tools::isSubmit('syncOrderDetails')) {
+            $results = OrderHelper::synchronizeOrderDetailsWithVendors();
+            $output .= $this->displayConfirmation(
+                sprintf(
+                    $this->l('Synchronization completed: %d processed, %d created, %d updated, %d skipped, %d errors'),
+                    $results['processed'],
+                    $results['created'],
+                    $results['updated'],
+                    $results['skipped'],
+                    $results['errors']
+                )
+            );
+        }
 
         if (Tools::isSubmit('submit' . $this->name)) {
             // Process configuration form
@@ -304,12 +333,14 @@ class multivendor extends Module
 
         return $output . $this->renderConfigForm();
     }
-
     /**
      * Render configuration form
      */
     protected function renderConfigForm()
     {
+        $stats = OrderHelper::getVendorOrderDetailsStats();
+        $statusCount = OrderHelper::getStatusTotalCount();
+
         $fields_form = [
             'form' => [
                 'legend' => [
@@ -342,12 +373,63 @@ class multivendor extends Module
                                 'label' => $this->l('No')
                             ]
                         ]
+                    ],
+                    [
+                        'type' => 'html',
+                        'name' => 'stats_display',
+                        'html_content' => '
+                        <div class="alert alert-info">
+                            <h4>' . $this->l('Vendor Order Statistics') . '</h4>
+                            <p><strong>' . $this->l('Total Order Details:') . '</strong> ' . (int)$stats['total_order_details'] . '</p>
+                            <p><strong>' . $this->l('Total Commission:') . '</strong> ' . Tools::displayPrice($stats['total_commission']) . '</p>
+                            <p><strong>' . $this->l('Total Vendor Amount:') . '</strong> ' . Tools::displayPrice($stats['total_vendor_amount']) . '</p>
+                            <p><strong>' . $this->l('Average Commission Rate:') . '</strong> ' . number_format($stats['avg_commission_rate'], 2) . '%</p>
+                        </div>
+                        <div class="alert alert-warning">
+                            <h4>' . $this->l('Synchronization') . '</h4>
+                            <p>' . $this->l('If you have existing orders that were created before installing this module, you can synchronize them with vendor order details.') . '</p>
+                            <button type="submit" name="syncOrderDetails" class="btn btn-warning">
+                                <i class="icon-refresh"></i> ' . $this->l('Synchronize Existing Orders') . '
+                            </button>
+                        </div>
+                    '
+                    ],
+                    [
+                        'type' => 'html',
+                        'name' => 'reset_status_section',
+                        'html_content' => '
+                        <div class="alert alert-info">
+                            <h4><i class="icon-info"></i> ' . $this->l('Order Status Information') . '</h4>
+                            <p><strong>' . $this->l('Current Status Count:') . '</strong> ' . $statusCount . ' ' . $this->l('status types configured') . '</p>
+                            <p>' . $this->l('You can manage individual statuses in the "Order Line Statuses" tab or reset all to defaults below.') . '</p>
+                        </div>
+                        <div class="alert alert-warning">
+                            <h4><i class="icon-warning"></i> ' . $this->l('Reset Order Status Types') . '</h4>
+                            <p>' . $this->l('Reset all order line statuses to default French statuses with proper commission settings.') . '</p>
+                            <p><strong>' . $this->l('Warning:') . '</strong> ' . $this->l('This action will delete all existing custom statuses and cannot be undone.') . '</p>
+                            <button type="submit" name="resetStatus" class="btn btn-warning" onclick="return confirm(\'' . $this->l('Are you sure you want to reset all order line statuses? This action cannot be undone.') . '\');">
+                                <i class="icon-refresh"></i> ' . $this->l('Reset to Default French Statuses') . '
+                            </button>
+                        </div>
+                        <style>
+                        .btn-warning {
+                            background-color: #f0ad4e !important;
+                            border-color: #eea236 !important;
+                            color: #fff !important;
+                        }
+                        .btn-warning:hover {
+                            background-color: #ec971f !important;
+                            border-color: #d58512 !important;
+                        }
+                        </style>
+                    '
                     ]
                 ],
                 'submit' => [
                     'title' => $this->l('Save'),
                     'class' => 'btn btn-default pull-right'
-                ]
+                ],
+
             ]
         ];
 
@@ -391,6 +473,7 @@ class multivendor extends Module
             $this->processCommissionForOrder($id_order, $orderStatusPermission['commission_action']);
         }
     }
+
 
     /**
      * Get order status permission record
@@ -456,13 +539,9 @@ class multivendor extends Module
         $order = $params['order'];
         $cart = $params['cart'];
 
-        $defaultStatus = Db::getInstance()->getValue('
-            SELECT name FROM `' . _DB_PREFIX_ . 'order_line_status_type` 
-            WHERE active = 1 
-            ORDER BY position ASC ');
-        if (!$defaultStatus) {
-            $defaultStatus = 'Pending';
-        }
+        $defaultStatus = OrderHelper::getDefaultOrderLineStatus();
+
+
 
         // Get order details
         $orderDetails = OrderDetail::getList($order->id);
@@ -476,7 +555,7 @@ class multivendor extends Module
 
             if ($vendor) {
                 // Calculate commission
-                $commission_rate = VendorHelper::getCommissionRate($vendor['id_vendor'], $product->id_category_default);
+                $commission_rate = VendorHelper::getCommissionRate($vendor['id_vendor']);
                 $product_price = $detail['unit_price_tax_incl'];
                 $quantity = $detail['product_quantity'];
                 $total_price =  $detail['total_price_tax_incl'];
@@ -608,7 +687,65 @@ class multivendor extends Module
 
 
 
+    /**
+     * Hook: When an order detail is added from admin
+     */
+    public function hookActionOrderDetailAdd($params)
+    {
+        if (isset($params['order_detail'])) {
+            OrderHelper::processOrderDetailForVendor($params['order_detail']);
+        }
+    }
 
+    /**
+     * Hook: When an order detail is added (alternative hook)
+     */
+    public function hookActionObjectOrderDetailAddAfter($params)
+    {
+        if (isset($params['object'])) {
+            OrderHelper::processOrderDetailForVendor($params['object']);
+        }
+    }
+
+    /**
+     * Hook: When an order detail is updated from admin
+     */
+    public function hookActionOrderDetailUpdate($params)
+    {
+        if (isset($params['order_detail'])) {
+            OrderHelper::updateOrderDetailForVendor($params['order_detail']);
+        }
+    }
+
+    /**
+     * Hook: When an order detail is updated (alternative hook)
+     */
+    public function hookActionObjectOrderDetailUpdateAfter($params)
+    {
+        if (isset($params['object'])) {
+            OrderHelper::updateOrderDetailForVendor($params['object']);
+        }
+    }
+
+    /**
+     * Hook: When an order detail is deleted from admin
+     */
+    public function hookActionOrderDetailDelete($params)
+    {
+        if (isset($params['order_detail'])) {
+            OrderHelper::deleteOrderDetailForVendor($params['order_detail']);
+        }
+    }
+
+    /**
+     * Hook: When an order detail is deleted (alternative hook)
+     */
+    public function hookActionObjectOrderDetailDeleteAfter($params)
+    {
+        if (isset($params['object'])) {
+            OrderHelper::deleteOrderDetailForVendor($params['object']);
+        }
+    }
     /**
      * Get order line statuses for admin
      */

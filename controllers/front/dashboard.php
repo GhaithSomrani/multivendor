@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Vendor Dashboard controller
  */
@@ -22,6 +23,13 @@ class multivendorDashboardModuleFrontController extends ModuleFrontController
         $id_customer = $this->context->customer->id;
         $vendor = VendorHelper::getVendorByCustomer($id_customer);
 
+        if ((int)$vendor['status'] !== 1) {
+            // Vendor is not active, show verification page
+            $this->showVendorVerificationPage($vendor);
+            return;
+        }
+
+
         if (!$vendor) {
             Tools::redirect('index.php?controller=my-account');
         }
@@ -35,15 +43,17 @@ class multivendorDashboardModuleFrontController extends ModuleFrontController
         parent::initContent();
 
         $id_vendor = $this->context->smarty->getTemplateVars('id_vendor');
+        if (!$id_vendor) {
+            return;
+        }
         $vendor = new Vendor($id_vendor);
-        $id_supplier = $vendor->id_supplier;
         $this->context->smarty->assign('currency', $this->context->currency);
 
         // Process date filter form if submitted
         $start_date = null;
         $end_date = null;
         $date_filter_active = false;
-        $filter_label = $this->l('All Time');
+        $filter_label = $this->l('Tout le temps');
         $date_filter_type = 'this_month'; // Default filter type
 
         if (Tools::isSubmit('submitDateFilter')) {
@@ -52,49 +62,49 @@ class multivendorDashboardModuleFrontController extends ModuleFrontController
             switch ($date_filter_type) {
                 case 'all':
                     // No date filtering, use all time
-                    $filter_label = $this->l('All Time');
+                    $filter_label = $this->l('Tout le temps');
                     break;
 
                 case 'today':
                     $start_date = date('Y-m-d');
                     $end_date = date('Y-m-d');
                     $date_filter_active = true;
-                    $filter_label = $this->l('Today');
+                    $filter_label = $this->l('Aujourd\'hui');
                     break;
 
                 case 'yesterday':
                     $start_date = date('Y-m-d', strtotime('-1 day'));
                     $end_date = date('Y-m-d', strtotime('-1 day'));
                     $date_filter_active = true;
-                    $filter_label = $this->l('Yesterday');
+                    $filter_label = $this->l('Hier');
                     break;
 
                 case 'this_week':
                     $start_date = date('Y-m-d', strtotime('monday this week'));
                     $end_date = date('Y-m-d');
                     $date_filter_active = true;
-                    $filter_label = $this->l('This Week');
+                    $filter_label = $this->l('Cette semaine');
                     break;
 
                 case 'last_week':
                     $start_date = date('Y-m-d', strtotime('monday last week'));
                     $end_date = date('Y-m-d', strtotime('sunday last week'));
                     $date_filter_active = true;
-                    $filter_label = $this->l('Last Week');
+                    $filter_label = $this->l('La semaine dernière');
                     break;
 
                 case 'this_month':
                     $start_date = date('Y-m-01');
                     $end_date = date('Y-m-d');
                     $date_filter_active = true;
-                    $filter_label = $this->l('This Month');
+                    $filter_label = $this->l('Ce mois-ci');
                     break;
 
                 case 'last_month':
                     $start_date = date('Y-m-01', strtotime('first day of last month'));
                     $end_date = date('Y-m-t', strtotime('last day of last month'));
                     $date_filter_active = true;
-                    $filter_label = $this->l('Last Month');
+                    $filter_label = $this->l('Mois dernier');
                     break;
 
                 case 'custom':
@@ -105,7 +115,7 @@ class multivendorDashboardModuleFrontController extends ModuleFrontController
                         $start_date = $custom_start;
                         $end_date = $custom_end;
                         $date_filter_active = true;
-                        $filter_label = sprintf($this->l('From %s to %s'), $custom_start, $custom_end);
+                        $filter_label = sprintf($this->l('De %s à %s'), $custom_start, $custom_end);
                     }
                     break;
             }
@@ -114,7 +124,7 @@ class multivendorDashboardModuleFrontController extends ModuleFrontController
             $start_date = date('Y-m-01');
             $end_date = date('Y-m-d');
             $date_filter_active = true;
-            $filter_label = $this->l('This Month');
+            $filter_label = $this->l('Ce mois-ci');
         }
 
         $dashboardStats = VendorHelper::getDashboardStats($id_vendor, $start_date, $end_date);
@@ -159,7 +169,7 @@ class multivendorDashboardModuleFrontController extends ModuleFrontController
             'current_date' => date('Y-m-d'),
             'date_filter_type' => $date_filter_type
         ]);
-        
+
         $this->context->controller->addCSS($this->module->getPathUri() . 'views/css/dashboard.css');
         $this->setTemplate('module:multivendor/views/templates/front/dashboard.tpl');
     }
@@ -196,5 +206,33 @@ class multivendorDashboardModuleFrontController extends ModuleFrontController
                     LIMIT ' . (int)$limit;
 
         return Db::getInstance()->executeS($query);
+    }
+
+    /**
+     * Show vendor verification page for inactive vendors
+     */
+    protected function showVendorVerificationPage($vendor)
+    {
+        $status_messages = [
+            0 => $this->l('Your vendor account is pending approval. Please wait for admin verification.'),
+            2 => $this->l('Your vendor account has been rejected. Please contact support for more information.')
+        ];
+
+        $status_titles = [
+            0 => $this->l('Account Pending'),
+            2 => $this->l('Account Rejected')
+        ];
+
+        $this->context->smarty->assign([
+            'vendor' => $vendor,
+            'status_message' => $status_messages[$vendor['status']] ?? $this->l('Account status unknown'),
+            'status_title' => $status_titles[$vendor['status']] ?? $this->l('Account Status'),
+            'is_pending' => (int)$vendor['status'] === 0,
+            'is_rejected' => (int)$vendor['status'] === 2,
+            'support_email' => Configuration::get('PS_SHOP_EMAIL'),
+            'shop_name' => Configuration::get('PS_SHOP_NAME')
+        ]);
+
+        $this->setTemplate('module:multivendor/views/templates/front/vendor_verification.tpl');
     }
 }
