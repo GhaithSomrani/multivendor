@@ -11,7 +11,7 @@ if (!defined('_PS_VERSION_')) {
 $sql = array();
 
 // Create Vendor table
-$sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'vendor` (
+$sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'mv_vendor` (
     `id_vendor` int(10) unsigned NOT NULL AUTO_INCREMENT,
     `id_customer` int(10) unsigned NOT NULL,
     `id_supplier` int(10) unsigned NOT NULL,
@@ -28,7 +28,7 @@ $sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'vendor` (
 ) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8;';
 
 // Create Vendor Commission table
-$sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'vendor_commission` (
+$sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'mv_vendor_commission` (
     `id_vendor_commission` int(10) unsigned NOT NULL AUTO_INCREMENT,
     `id_vendor` int(10) unsigned NOT NULL,
     `commission_rate` decimal(20,6) NOT NULL DEFAULT "0.000000",
@@ -52,7 +52,7 @@ $sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'vendor_commission` (
 // ) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8;';
 
 // Create Vendor Transaction table
-$sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'vendor_transaction` (
+$sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'mv_vendor_transaction` (
     `id_vendor_transaction` int(10) unsigned NOT NULL AUTO_INCREMENT,
     `id_vendor` int(10) unsigned NOT NULL,
     `id_order` int(10) unsigned NOT NULL,
@@ -71,7 +71,7 @@ $sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'vendor_transaction` (
 ) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8;';
 
 // Create Vendor Payment table
-$sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'vendor_payment` (
+$sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'mv_vendor_payment` (
     `id_vendor_payment` int(10) unsigned NOT NULL AUTO_INCREMENT,
     `id_vendor` int(10) unsigned NOT NULL,
     `amount` decimal(20,6) NOT NULL DEFAULT "0.000000",
@@ -84,7 +84,7 @@ $sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'vendor_payment` (
 ) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8;';
 
 // Create Vendor Commission Log table
-$sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'vendor_commission_log` (
+$sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'mv_vendor_commission_log` (
     `id_vendor_commission_log` int(10) unsigned NOT NULL AUTO_INCREMENT,
     `id_vendor` int(10) unsigned NOT NULL,
     `id_category` int(10) unsigned DEFAULT NULL,
@@ -98,7 +98,7 @@ $sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'vendor_commission_log` 
 ) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8;';
 
 // Create Order Line Status table
-$sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'order_line_status` (
+$sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'mv_order_line_status` (
     `id_order_line_status` int(10) unsigned NOT NULL AUTO_INCREMENT,
     `id_order_detail` int(10) unsigned NOT NULL,
     `id_vendor` int(10) unsigned NOT NULL,
@@ -112,7 +112,7 @@ $sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'order_line_status` (
 ) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8;';
 
 // Create Order Line Status Log table
-$sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'order_line_status_log` (
+$sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'mv_order_line_status_log` (
     `id_order_line_status_log` int(10) unsigned NOT NULL AUTO_INCREMENT,
     `id_order_detail` int(10) unsigned NOT NULL,
     `id_vendor` int(10) unsigned NOT NULL,
@@ -127,7 +127,7 @@ $sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'order_line_status_log` 
 ) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8;';
 
 // Create Vendor Order Detail table
-$sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'vendor_order_detail` (
+$sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'mv_vendor_order_detail` (
     `id_vendor_order_detail` int(10) unsigned NOT NULL AUTO_INCREMENT,
     `id_order_detail` int(10) unsigned NOT NULL,
     `id_vendor` int(10) unsigned NOT NULL,
@@ -143,7 +143,7 @@ $sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'vendor_order_detail` (
 ) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8;';
 
 // Create Order Status Permission table
-$sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'order_status_permission` (
+$sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'mv_order_status_permission` (
     `id_order_status_permission` int(10) unsigned NOT NULL AUTO_INCREMENT,
     `id_order_status` int(10) unsigned NOT NULL,
     `is_vendor_allowed` tinyint(1) unsigned NOT NULL DEFAULT "0",
@@ -164,7 +164,7 @@ $sql[] = 'INSERT INTO `' . _DB_PREFIX_ . 'configuration` (`name`, `value`, `date
           ("MV_ALLOW_VENDOR_REGISTRATION", "1", NOW(), NOW())
           ON DUPLICATE KEY UPDATE `value` = VALUES(`value`), `date_upd` = VALUES(`date_upd`)';
 
-$sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'order_line_status_type` (
+$sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'mv_order_line_status_type` (
             `id_order_line_status_type` int(10) unsigned NOT NULL AUTO_INCREMENT,
             `name` varchar(64) NOT NULL,
             `color` varchar(32) DEFAULT NULL,
@@ -179,7 +179,7 @@ $sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'order_line_status_type`
             PRIMARY KEY (`id_order_line_status_type`)
         ) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8;';
 
-// $sql[] = 'INSERT INTO `' . _DB_PREFIX_ . 'order_line_status_type` 
+// $sql[] = 'INSERT INTO `' . _DB_PREFIX_ . 'mv_order_line_status_type` 
 //             (`name`, `color`, `is_vendor_allowed`, `is_admin_allowed`, `affects_commission`, `commission_action`, `position`, `active`, `date_add`, `date_upd`) 
 //             VALUES 
 //             ("Pending", "#FFDD99", 1, 1, 0, "none", 1, 1, NOW(), NOW()),

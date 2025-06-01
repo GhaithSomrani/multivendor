@@ -30,7 +30,7 @@ class VendorPayment extends ObjectModel
      * @see ObjectModel::$definition
      */
     public static $definition = [
-        'table' => 'vendor_payment',
+        'table' => 'mv_vendor_payment',
         'primary' => 'id_vendor_payment',
         'fields' => [
             'id_vendor' => ['type' => self::TYPE_INT, 'validate' => 'isUnsignedId', 'required' => true],
@@ -54,7 +54,7 @@ class VendorPayment extends ObjectModel
     {
         $query = new DbQuery();
         $query->select('*');
-        $query->from('vendor_payment');
+        $query->from('mv_vendor_payment');
         $query->where('id_vendor = ' . (int)$id_vendor);
         $query->orderBy('date_add DESC');
 
@@ -75,7 +75,7 @@ class VendorPayment extends ObjectModel
     {
         $query = new DbQuery();
         $query->select('SUM(amount)');
-        $query->from('vendor_payment');
+        $query->from('mv_vendor_payment');
         $query->where('id_vendor = ' . (int)$id_vendor);
         $query->where('status = "completed"');
 
@@ -98,7 +98,7 @@ class VendorPayment extends ObjectModel
                o.reference as order_reference, 
                o.date_add as order_date,
                o.id_order
-        FROM ' . _DB_PREFIX_ . 'vendor_transaction vt
+        FROM ' . _DB_PREFIX_ . 'mv_vendor_transaction vt
         LEFT JOIN ' . _DB_PREFIX_ . 'order_detail od ON od.id_order_detail = vt.order_detail_id  
         LEFT JOIN ' . _DB_PREFIX_ . 'orders o ON o.id_order = vt.id_order
         WHERE vt.id_vendor_payment = ' . (int)$id_vendor_payment . '

@@ -40,7 +40,7 @@ class VendorHelper
 
         $query = new DbQuery();
         $query->select('*');
-        $query->from('vendor');
+        $query->from('mv_vendor');
         $query->where('id_customer = ' . (int)$id_customer);
 
         $result = Db::getInstance()->getRow($query);
@@ -121,13 +121,13 @@ class VendorHelper
                        COALESCE(ols.status, "' . pSQL($defaultStatus['name']) . '") as line_status,
                        COALESCE(olst.commission_action, "' . pSQL($defaultStatus['commission_action']) . '") as commission_action,
                        COALESCE(olst.color, "' . pSQL($defaultStatus['color']) . '") as status_color');
-        $query->from('vendor_order_detail', 'vod');
+        $query->from('mv_vendor_order_detail', 'vod');
         $query->leftJoin('order_detail', 'od', 'od.id_order_detail = vod.id_order_detail');
         $query->leftJoin('orders', 'o', 'o.id_order = vod.id_order');
         $query->leftJoin('customer', 'c', 'c.id_customer = o.id_customer');
         $query->leftJoin('address', 'a', 'a.id_address = o.id_address_delivery');
-        $query->leftJoin('order_line_status', 'ols', 'ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor');
-        $query->leftJoin('order_line_status_type', 'olst', 'olst.name = ols.status');
+        $query->leftJoin('mv_order_line_status', 'ols', 'ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor');
+        $query->leftJoin('mv_order_line_status_type', 'olst', 'olst.name = ols.status');
         $query->where('vod.id_vendor = ' . (int)$id_vendor);
         $query->orderBy('o.date_add DESC');
 
@@ -177,13 +177,13 @@ class VendorHelper
                        COALESCE(ols.status, "' . pSQL($defaultStatus['name']) . '") as line_status,
                        COALESCE(olst.commission_action, "' . pSQL($defaultStatus['commission_action']) . '") as commission_action,
                        COALESCE(olst.color, "' . pSQL($defaultStatus['color']) . '") as status_color');
-        $query->from('vendor_order_detail', 'vod');
+        $query->from('mv_vendor_order_detail', 'vod');
         $query->leftJoin('order_detail', 'od', 'od.id_order_detail = vod.id_order_detail');
         $query->leftJoin('orders', 'o', 'o.id_order = vod.id_order');
         $query->leftJoin('customer', 'c', 'c.id_customer = o.id_customer');
         $query->leftJoin('address', 'a', 'a.id_address = o.id_address_delivery');
-        $query->leftJoin('order_line_status', 'ols', 'ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor');
-        $query->leftJoin('order_line_status_type', 'olst', 'olst.name = ols.status');
+        $query->leftJoin('mv_order_line_status', 'ols', 'ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor');
+        $query->leftJoin('mv_order_line_status_type', 'olst', 'olst.name = ols.status');
         $query->where('vod.id_vendor = ' . (int)$id_vendor);
         $query->orderBy('o.date_add DESC');
         $orderLines = Db::getInstance()->executeS($query);
@@ -212,12 +212,12 @@ class VendorHelper
                 COUNT(DISTINCT od.product_reference) as total_products_by_ref,
                 (
                     SELECT COUNT(DISTINCT vod2.id_order_detail) 
-                    FROM ' . _DB_PREFIX_ . 'vendor_order_detail vod2
+                    FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod2
                     LEFT JOIN ' . _DB_PREFIX_ . 'orders o2 ON o2.id_order = vod2.id_order
                     WHERE vod2.id_vendor = ' . (int)$id_vendor . '
                     AND DATE(o2.date_add) = CURDATE()
                 ) as todays_orders
-            FROM ' . _DB_PREFIX_ . 'vendor_order_detail vod
+            FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod
             LEFT JOIN ' . _DB_PREFIX_ . 'orders o ON o.id_order = vod.id_order
             LEFT JOIN ' . _DB_PREFIX_ . 'order_detail od ON vod.id_order_detail = od.id_order_detail
             WHERE vod.id_vendor = ' . (int)$id_vendor . $dateFilter;
@@ -249,7 +249,7 @@ class VendorHelper
                 MONTH(o.date_add) as month_num,
                 MONTHNAME(o.date_add) as month,
                 IFNULL(SUM(vod.vendor_amount), 0) as sales
-            FROM ' . _DB_PREFIX_ . 'vendor_order_detail vod
+            FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod
             LEFT JOIN ' . _DB_PREFIX_ . 'orders o ON o.id_order = vod.id_order
             WHERE vod.id_vendor = ' . (int)$id_vendor . '
             AND YEAR(o.date_add) = ' . (int)$year . '
@@ -299,7 +299,7 @@ class VendorHelper
                 DATE(o.date_add) as date,
                 DATE_FORMAT(o.date_add, "%b %d") as formatted_date,
                 IFNULL(SUM(vod.vendor_amount), 0) as sales
-            FROM ' . _DB_PREFIX_ . 'vendor_order_detail vod
+            FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod
             LEFT JOIN ' . _DB_PREFIX_ . 'orders o ON o.id_order = vod.id_order
             WHERE vod.id_vendor = ' . (int)$id_vendor . '
             AND DATE(o.date_add) BETWEEN "' . pSQL($start_date) . '" AND "' . pSQL($end_date) . '"
@@ -376,8 +376,8 @@ class VendorHelper
                 lstype.is_vendor_allowed,
                 (
                     SELECT COUNT(*)
-                    FROM ' . _DB_PREFIX_ . 'vendor_order_detail vod
-                    LEFT JOIN ' . _DB_PREFIX_ . 'order_line_status ols 
+                    FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod
+                    LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status ols 
                         ON ols.id_order_detail = vod.id_order_detail 
                         AND ols.id_vendor = vod.id_vendor
                     WHERE vod.id_vendor = ' . (int)$id_vendor . '
@@ -387,7 +387,7 @@ class VendorHelper
                         (ols.status IS NULL AND lstype.name = "' . pSQL($defaultStatus) . '")
                     )
                 ) as count
-            FROM ' . _DB_PREFIX_ . 'order_line_status_type lstype
+            FROM ' . _DB_PREFIX_ . 'mv_order_line_status_type lstype
             WHERE lstype.active = 1
             ORDER BY lstype.color ASC';
 
@@ -412,7 +412,7 @@ class VendorHelper
         }
 
         $defaultStatus = Db::getInstance()->getValue('
-            SELECT name FROM `' . _DB_PREFIX_ . 'order_line_status_type` 
+            SELECT name FROM `' . _DB_PREFIX_ . 'mv_order_line_status_type` 
             WHERE active = 1 
             ORDER BY position ASC 
         ');
@@ -827,10 +827,10 @@ class VendorHelper
             vod.vendor_amount,
             COALESCE(ols.status, "Pending") as line_status
         ');
-        $query->from('vendor_order_detail', 'vod');
+        $query->from('mv_vendor_order_detail', 'vod');
         $query->leftJoin('order_detail', 'od', 'od.id_order_detail = vod.id_order_detail');
         $query->leftJoin('orders', 'o', 'o.id_order = vod.id_order');
-        $query->leftJoin('order_line_status', 'ols', 'ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor');
+        $query->leftJoin('mv_order_line_status', 'ols', 'ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor');
         $query->where('vod.id_vendor = ' . (int)$id_vendor);
         $query->orderBy('o.date_add DESC');
 
@@ -886,7 +886,7 @@ class VendorHelper
         try {
             $query = new DbQuery();
             $query->select('*');
-            $query->from('order_line_status_type');
+            $query->from('mv_order_line_status_type');
             $query->where('commission_action = "add"');
             $query->where('is_vendor_allowed = 1');
             $query->where('active = 1');
@@ -916,14 +916,14 @@ class VendorHelper
     /**
      * Get transactions with commission action details
      * This method gets all vendor order details and determines their commission status
-     * based on either existing order_line_status or the default status from order_line_status_type
+     * based on either existing mv_order_line_status or the default status from mv_order_line_status_type
      */
     public static function getTransactionsWithCommissionDetails($id_vendor, $limit = null, $offset = null)
     {
         // Get the default status and its commission action
         $defaultStatus = Db::getInstance()->getRow(
             '
-            SELECT * FROM `' . _DB_PREFIX_ . 'order_line_status_type` 
+            SELECT * FROM `' . _DB_PREFIX_ . 'mv_order_line_status_type` 
             WHERE active = 1 
             ORDER BY position ASC '
         );
@@ -935,11 +935,11 @@ class VendorHelper
                        COALESCE(ols.status, "' . pSQL($defaultStatus['name']) . '") as line_status,
                        COALESCE(olst.commission_action, "' . pSQL($defaultStatus['commission_action']) . '") as commission_action,
                        COALESCE(olst.color, "' . pSQL($defaultStatus['color']) . '") as status_color');
-        $query->from('vendor_order_detail', 'vod');
+        $query->from('mv_vendor_order_detail', 'vod');
         $query->leftJoin('order_detail', 'od', 'od.id_order_detail = vod.id_order_detail');
         $query->leftJoin('orders', 'o', 'o.id_order = vod.id_order');
-        $query->leftJoin('order_line_status', 'ols', 'ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor');
-        $query->leftJoin('order_line_status_type', 'olst', 'olst.name = ols.status');
+        $query->leftJoin('mv_order_line_status', 'ols', 'ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor');
+        $query->leftJoin('mv_order_line_status_type', 'olst', 'olst.name = ols.status');
         $query->where('vod.id_vendor = ' . (int)$id_vendor);
 
         // Filter to show only transactions with add or refund actions
@@ -968,17 +968,17 @@ class VendorHelper
         // Get the default status and its commission action
         $defaultStatus = Db::getInstance()->getRow(
             '
-            SELECT * FROM `' . _DB_PREFIX_ . 'order_line_status_type` 
+            SELECT * FROM `' . _DB_PREFIX_ . 'mv_order_line_status_type` 
             WHERE active = 1 
             ORDER BY position ASC '
         );
 
         $query = new DbQuery();
         $query->select('COUNT(DISTINCT od.id_order_detail)');
-        $query->from('vendor_order_detail', 'vod');
+        $query->from('mv_vendor_order_detail', 'vod');
         $query->leftJoin('order_detail', 'od', 'od.id_order_detail = vod.id_order_detail');
-        $query->leftJoin('order_line_status', 'ols', 'ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor');
-        $query->leftJoin('order_line_status_type', 'olst', 'olst.name = ols.status');
+        $query->leftJoin('mv_order_line_status', 'ols', 'ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor');
+        $query->leftJoin('mv_order_line_status_type', 'olst', 'olst.name = ols.status');
         $query->where('vod.id_vendor = ' . (int)$id_vendor);
 
         // Filter to count only transactions with add or refund actions
@@ -1000,7 +1000,7 @@ class VendorHelper
 
         $query = new DbQuery();
         $query->select('vod.id_vendor');
-        $query->from('vendor_order_detail', 'vod');
+        $query->from('mv_vendor_order_detail', 'vod');
         $query->where('vod.id_order_detail = ' . (int)$id_order_detail);
         $query->where('vod.id_vendor = ' . $vendor['id_vendor']);
 
@@ -1015,7 +1015,7 @@ class VendorHelper
         $customers = Db::getInstance()->executeS('
         SELECT c.id_customer, c.firstname, c.lastname, c.email
         FROM `' . _DB_PREFIX_ . 'customer` c
-        LEFT JOIN `' . _DB_PREFIX_ . 'vendor` v ON c.id_customer = v.id_customer
+        LEFT JOIN `' . _DB_PREFIX_ . 'mv_vendor` v ON c.id_customer = v.id_customer
         WHERE (
             LOWER(c.firstname) LIKE LOWER("%' . pSQL($query) . '%") 
             OR LOWER(c.lastname) LIKE LOWER("%' . pSQL($query) . '%") 
@@ -1037,7 +1037,7 @@ class VendorHelper
         $suppliers = Db::getInstance()->executeS('
         SELECT s.id_supplier, s.name
         FROM `' . _DB_PREFIX_ . 'supplier` s
-        LEFT JOIN `' . _DB_PREFIX_ . 'vendor` v ON s.id_supplier = v.id_supplier
+        LEFT JOIN `' . _DB_PREFIX_ . 'mv_vendor` v ON s.id_supplier = v.id_supplier
         WHERE LOWER(s.name) LIKE LOWER("%' . pSQL($query) . '%")
         AND v.id_supplier IS NULL
         AND s.active = 1
@@ -1106,7 +1106,7 @@ class VendorHelper
     public static function isVendorActive($id_vendor)
     {
         $status = Db::getInstance()->getValue(
-            'SELECT status FROM ' . _DB_PREFIX_ . 'vendor WHERE id_vendor = ' . (int)$id_vendor
+            'SELECT status FROM ' . _DB_PREFIX_ . 'mv_vendor WHERE id_vendor = ' . (int)$id_vendor
         );
         return ((int)$status === 1);
     }

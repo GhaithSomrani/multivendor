@@ -13,7 +13,7 @@ class AdminOrderLineStatusController  extends ModuleAdminController
     public function __construct()
     {
         $this->bootstrap = true;
-        $this->table = 'order_line_status_type';
+        $this->table = 'mv_order_line_status_type';
         $this->className = 'OrderLineStatusType';
         $this->lang = false;
         $this->identifier = 'id_order_line_status_type';
@@ -377,7 +377,7 @@ class AdminOrderLineStatusController  extends ModuleAdminController
             $count = Db::getInstance()->getValue(
                 '
             SELECT COUNT(*) 
-            FROM `' . _DB_PREFIX_ . 'order_line_status` 
+            FROM `' . _DB_PREFIX_ . 'mv_order_line_status` 
             WHERE `status` = "' . pSQL($status->name) . '"'
             );
 
@@ -407,7 +407,7 @@ class AdminOrderLineStatusController  extends ModuleAdminController
                     $count = Db::getInstance()->getValue(
                         '
                     SELECT COUNT(*) 
-                    FROM `' . _DB_PREFIX_ . 'order_line_status` 
+                    FROM `' . _DB_PREFIX_ . 'mv_order_line_status` 
                     WHERE `status` = "' . pSQL($status->name) . '"'
                     );
 

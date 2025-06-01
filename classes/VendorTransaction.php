@@ -44,7 +44,7 @@ class VendorTransaction extends ObjectModel
      * @see ObjectModel::$definition
      */
     public static $definition = [
-        'table' => 'vendor_transaction',
+        'table' => 'mv_vendor_transaction',
         'primary' => 'id_vendor_transaction',
         'fields' => [
             'id_vendor' => ['type' => self::TYPE_INT, 'validate' => 'isUnsignedId', 'required' => true],
@@ -73,7 +73,7 @@ class VendorTransaction extends ObjectModel
     {
         $query = new DbQuery();
         $query->select('vt.*, o.reference');
-        $query->from('vendor_transaction', 'vt');
+        $query->from('mv_vendor_transaction', 'vt');
         $query->leftJoin('orders', 'o', 'o.id_order = vt.id_order');
         $query->where('vt.id_vendor = ' . (int)$id_vendor);
 
@@ -100,7 +100,7 @@ class VendorTransaction extends ObjectModel
     {
         $query = new DbQuery();
         $query->select('SUM(vendor_amount)');
-        $query->from('vendor_transaction');
+        $query->from('mv_vendor_transaction');
         $query->where('id_vendor = ' . (int)$id_vendor);
         $query->where('status = "pending"');
 
@@ -122,7 +122,7 @@ class VendorTransaction extends ObjectModel
         // Get the default status
         $defaultStatus = Db::getInstance()->getRow(
             '
-        SELECT * FROM `' . _DB_PREFIX_ . 'order_line_status_type` 
+        SELECT * FROM `' . _DB_PREFIX_ . 'mv_order_line_status_type` 
         WHERE active = 1 
         ORDER BY position ASC '
         );
@@ -134,11 +134,11 @@ class VendorTransaction extends ObjectModel
         SELECT DISTINCT vod.*, od.id_order_detail, od.product_name, vod.id_order as id_order,
                COALESCE(ols.status, "' . pSQL($defaultStatus['name']) . '") as line_status,
                COALESCE(olst.commission_action, "' . pSQL($defaultAction) . '") as commission_action
-        FROM ' . _DB_PREFIX_ . 'vendor_order_detail vod
+        FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod
         LEFT JOIN ' . _DB_PREFIX_ . 'order_detail od ON od.id_order_detail = vod.id_order_detail
-        LEFT JOIN ' . _DB_PREFIX_ . 'order_line_status ols ON ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor
-        LEFT JOIN ' . _DB_PREFIX_ . 'order_line_status_type olst ON olst.name = ols.status
-        LEFT JOIN ' . _DB_PREFIX_ . 'vendor_transaction vt ON vt.id_order = vod.id_order 
+        LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status ols ON ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor
+        LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status_type olst ON olst.name = ols.status
+        LEFT JOIN ' . _DB_PREFIX_ . 'mv_vendor_transaction vt ON vt.id_order = vod.id_order 
             AND vt.id_vendor = vod.id_vendor 
             AND vt.transaction_type = "commission"
             AND vt.order_detail_id = vod.id_order_detail

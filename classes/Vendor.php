@@ -44,7 +44,7 @@ class Vendor extends ObjectModel
      * @see ObjectModel::$definition
      */
     public static $definition = [
-        'table' => 'vendor',
+        'table' => 'mv_vendor',
         'primary' => 'id_vendor',
         'fields' => [
             'id_customer' => ['type' => self::TYPE_INT, 'validate' => 'isUnsignedId', 'required' => true],
@@ -70,7 +70,7 @@ class Vendor extends ObjectModel
     {
         $query = new DbQuery();
         $query->select('*');
-        $query->from('vendor');
+        $query->from('mv_vendor');
         $query->where('id_supplier = ' . (int)$id_supplier);
 
         return Db::getInstance()->getRow($query);
@@ -85,7 +85,7 @@ class Vendor extends ObjectModel
     {
         $query = new DbQuery();
         $query->select('v.*, c.firstname, c.lastname, c.email, s.name as supplier_name');
-        $query->from('vendor', 'v');
+        $query->from('mv_vendor', 'v');
         $query->leftJoin('customer', 'c', 'c.id_customer = v.id_customer');
         $query->leftJoin('supplier', 's', 's.id_supplier = v.id_supplier');
         $query->where('v.status = 1');
@@ -102,7 +102,7 @@ class Vendor extends ObjectModel
     {
         $query = new DbQuery();
         $query->select('v.*, c.firstname, c.lastname, c.email, s.name as supplier_name');
-        $query->from('vendor', 'v');
+        $query->from('mv_vendor', 'v');
         $query->leftJoin('customer', 'c', 'c.id_customer = v.id_customer');
         $query->leftJoin('supplier', 's', 's.id_supplier = v.id_supplier');
 
@@ -121,7 +121,7 @@ class Vendor extends ObjectModel
     {
         $query = new DbQuery();
         $query->select('DISTINCT vod.id_order, o.reference, o.total_paid, o.date_add, osl.name as status');
-        $query->from('vendor_order_detail', 'vod');
+        $query->from('mv_vendor_order_detail', 'vod');
         $query->leftJoin('orders', 'o', 'o.id_order = vod.id_order');
         $query->leftJoin('order_state_lang', 'osl', 'osl.id_order_state = o.current_state AND osl.id_lang = ' . (int)Context::getContext()->language->id);
         $query->where('vod.id_vendor = ' . (int)$id_vendor);
@@ -141,7 +141,7 @@ class Vendor extends ObjectModel
     {
         $query = new DbQuery();
         $query->select('COUNT(DISTINCT id_order)');
-        $query->from('vendor_order_detail');
+        $query->from('mv_vendor_order_detail');
         $query->where('id_vendor = ' . (int)$id_vendor);
 
         return (int)Db::getInstance()->getValue($query);
@@ -158,9 +158,9 @@ class Vendor extends ObjectModel
     {
         $query = new DbQuery();
         $query->select('vod.*, od.product_name, od.product_quantity, od.product_price, od.total_price_tax_incl, ols.status as line_status');
-        $query->from('vendor_order_detail', 'vod');
+        $query->from('mv_vendor_order_detail', 'vod');
         $query->leftJoin('order_detail', 'od', 'od.id_order_detail = vod.id_order_detail');
-        $query->leftJoin('order_line_status', 'ols', 'ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor');
+        $query->leftJoin('mv_order_line_status', 'ols', 'ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor');
         $query->where('vod.id_vendor = ' . (int)$id_vendor);
         $query->where('vod.id_order = ' . (int)$id_order);
 
@@ -177,7 +177,7 @@ class Vendor extends ObjectModel
     {
         // Get the default status and its commission action
         $defaultStatus = Db::getInstance()->getRow('
-            SELECT * FROM `' . _DB_PREFIX_ . 'order_line_status_type` 
+            SELECT * FROM `' . _DB_PREFIX_ . 'mv_order_line_status_type` 
             WHERE active = 1 
             ORDER BY position ASC '
         );
@@ -189,9 +189,9 @@ class Vendor extends ObjectModel
         $totalSales = Db::getInstance()->getValue(
             '
             SELECT SUM(vod.vendor_amount) 
-            FROM ' . _DB_PREFIX_ . 'vendor_order_detail vod
-            LEFT JOIN ' . _DB_PREFIX_ . 'order_line_status ols ON ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor
-            LEFT JOIN ' . _DB_PREFIX_ . 'order_line_status_type olst ON olst.name = ols.status
+            FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod
+            LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status ols ON ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor
+            LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status_type olst ON olst.name = ols.status
             WHERE vod.id_vendor = ' . (int)$id_vendor . '
             AND (
                 (olst.commission_action = "add") 
@@ -204,9 +204,9 @@ class Vendor extends ObjectModel
         $totalCommissionAdded = Db::getInstance()->getValue(
             '
             SELECT SUM(vod.vendor_amount) 
-            FROM ' . _DB_PREFIX_ . 'vendor_order_detail vod
-            LEFT JOIN ' . _DB_PREFIX_ . 'order_line_status ols ON ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor
-            LEFT JOIN ' . _DB_PREFIX_ . 'order_line_status_type olst ON olst.name = ols.status
+            FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod
+            LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status ols ON ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor
+            LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status_type olst ON olst.name = ols.status
             WHERE vod.id_vendor = ' . (int)$id_vendor . '
             AND (
                 (olst.commission_action = "add") 
@@ -219,9 +219,9 @@ class Vendor extends ObjectModel
         $totalCommissionRefunded = Db::getInstance()->getValue(
             '
             SELECT SUM(vod.vendor_amount) 
-            FROM ' . _DB_PREFIX_ . 'vendor_order_detail vod
-            LEFT JOIN ' . _DB_PREFIX_ . 'order_line_status ols ON ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor
-            LEFT JOIN ' . _DB_PREFIX_ . 'order_line_status_type olst ON olst.name = ols.status
+            FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod
+            LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status ols ON ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor
+            LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status_type olst ON olst.name = ols.status
             WHERE vod.id_vendor = ' . (int)$id_vendor . '
             AND olst.commission_action = "refund"'
         );
@@ -230,7 +230,7 @@ class Vendor extends ObjectModel
         $paidCommission = Db::getInstance()->getValue(
             '
             SELECT SUM(amount) 
-            FROM ' . _DB_PREFIX_ . 'vendor_payment 
+            FROM ' . _DB_PREFIX_ . 'mv_vendor_payment 
             WHERE id_vendor = ' . (int)$id_vendor . ' AND status = "completed"'
         );
 

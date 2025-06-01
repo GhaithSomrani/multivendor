@@ -34,7 +34,7 @@ class OrderLineStatusLog extends ObjectModel
      * @see ObjectModel::$definition
      */
     public static $definition = [
-        'table' => 'order_line_status_log',
+        'table' => 'mv_order_line_status_log',
         'primary' => 'id_order_line_status_log',
         'fields' => [
             'id_order_detail' => ['type' => self::TYPE_INT, 'validate' => 'isUnsignedId', 'required' => true],
@@ -60,7 +60,7 @@ class OrderLineStatusLog extends ObjectModel
      */
     public static function logStatusChange($id_order_detail, $id_vendor, $old_status, $new_status, $changed_by, $comment = null)
     {
-        return Db::getInstance()->insert('order_line_status_log', [
+        return Db::getInstance()->insert('mv_order_line_status_log', [
             'id_order_detail' => (int)$id_order_detail,
             'id_vendor' => (int)$id_vendor,
             'old_status' => pSQL($old_status),
@@ -81,7 +81,7 @@ class OrderLineStatusLog extends ObjectModel
     {
         $query = new DbQuery();
         $query->select('l.*, COALESCE(e.firstname, c.firstname) as changed_by_firstname, COALESCE(e.lastname, c.lastname) as changed_by_lastname');
-        $query->from('order_line_status_log', 'l');
+        $query->from('mv_order_line_status_log', 'l');
         $query->leftJoin('employee', 'e', 'e.id_employee = l.changed_by');
         $query->leftJoin('customer', 'c', 'c.id_customer = l.changed_by');
         $query->where('l.id_order_detail = ' . (int)$id_order_detail);

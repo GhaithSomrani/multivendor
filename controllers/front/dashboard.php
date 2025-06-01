@@ -191,7 +191,7 @@ class multivendorDashboardModuleFrontController extends ModuleFrontController
         $query = '
             SELECT od.product_id, od.product_name, SUM(od.product_quantity) as quantity_sold,
                    SUM(vod.vendor_amount) as total_sales
-            FROM ' . _DB_PREFIX_ . 'vendor_order_detail vod
+            FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod
             LEFT JOIN ' . _DB_PREFIX_ . 'order_detail od ON od.id_order_detail = vod.id_order_detail
             LEFT JOIN ' . _DB_PREFIX_ . 'orders o ON o.id_order = vod.id_order
             WHERE vod.id_vendor = ' . (int)$id_vendor;

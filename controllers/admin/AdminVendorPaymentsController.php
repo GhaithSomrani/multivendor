@@ -13,7 +13,7 @@ class AdminVendorPaymentsController extends ModuleAdminController
     public function __construct()
     {
         $this->bootstrap = true;
-        $this->table = 'vendor_payment';
+        $this->table = 'mv_vendor_payment';
         $this->className = 'VendorPayment';
         $this->lang = false;
         $this->identifier = 'id_vendor_payment';
@@ -72,7 +72,7 @@ class AdminVendorPaymentsController extends ModuleAdminController
         ';
 
         $this->_join = '
-            LEFT JOIN `' . _DB_PREFIX_ . 'vendor` v ON (v.id_vendor = a.id_vendor)
+            LEFT JOIN `' . _DB_PREFIX_ . 'mv_vendor` v ON (v.id_vendor = a.id_vendor)
         ';
 
         // Add custom actions
@@ -281,7 +281,7 @@ class AdminVendorPaymentsController extends ModuleAdminController
         // Get the default status and its commission action
         $defaultStatus = Db::getInstance()->getRow(
             '
-            SELECT * FROM `' . _DB_PREFIX_ . 'order_line_status_type` 
+            SELECT * FROM `' . _DB_PREFIX_ . 'mv_order_line_status_type` 
             WHERE active = 1 
             ORDER BY position ASC '
         );
@@ -296,9 +296,9 @@ class AdminVendorPaymentsController extends ModuleAdminController
         // Subquery for commissions added
         $query->select('(
             SELECT SUM(vod.vendor_amount) 
-            FROM ' . _DB_PREFIX_ . 'vendor_order_detail vod
-            LEFT JOIN ' . _DB_PREFIX_ . 'order_line_status ols ON ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor
-            LEFT JOIN ' . _DB_PREFIX_ . 'order_line_status_type olst ON olst.name = ols.status
+            FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod
+            LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status ols ON ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor
+            LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status_type olst ON olst.name = ols.status
             WHERE vod.id_vendor = v.id_vendor
             AND (
                 (olst.commission_action = "add") 
@@ -310,7 +310,7 @@ class AdminVendorPaymentsController extends ModuleAdminController
         // Subquery for total paid
         $query->select('(
             SELECT COALESCE(SUM(vp.amount), 0)
-            FROM ' . _DB_PREFIX_ . 'vendor_payment vp
+            FROM ' . _DB_PREFIX_ . 'mv_vendor_payment vp
             WHERE vp.id_vendor = v.id_vendor
             AND vp.status = "completed"
         ) as total_paid');
@@ -319,9 +319,9 @@ class AdminVendorPaymentsController extends ModuleAdminController
         $query->select('(
             COALESCE((
                 SELECT SUM(vod.vendor_amount) 
-                FROM ' . _DB_PREFIX_ . 'vendor_order_detail vod
-                LEFT JOIN ' . _DB_PREFIX_ . 'order_line_status ols ON ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor
-                LEFT JOIN ' . _DB_PREFIX_ . 'order_line_status_type olst ON olst.name = ols.status
+                FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod
+                LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status ols ON ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor
+                LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status_type olst ON olst.name = ols.status
                 WHERE vod.id_vendor = v.id_vendor
                 AND (
                     (olst.commission_action = "add") 
@@ -331,13 +331,13 @@ class AdminVendorPaymentsController extends ModuleAdminController
             ), 0) - 
             COALESCE((
                 SELECT SUM(vp.amount)
-                FROM ' . _DB_PREFIX_ . 'vendor_payment vp
+                FROM ' . _DB_PREFIX_ . 'mv_vendor_payment vp
                 WHERE vp.id_vendor = v.id_vendor
                 AND vp.status = "completed"
             ), 0)
         ) as pending_amount');
 
-        $query->from('vendor', 'v');
+        $query->from('mv_vendor', 'v');
         $query->having('pending_amount > 0');
         $query->orderBy('pending_amount DESC');
 
@@ -380,7 +380,7 @@ class AdminVendorPaymentsController extends ModuleAdminController
         // Get the default status and its commission action
         $defaultStatus = Db::getInstance()->getRow(
             '
-        SELECT * FROM `' . _DB_PREFIX_ . 'order_line_status_type` 
+        SELECT * FROM `' . _DB_PREFIX_ . 'mv_order_line_status_type` 
         WHERE active = 1 
         ORDER BY position ASC '
         );
@@ -390,13 +390,13 @@ class AdminVendorPaymentsController extends ModuleAdminController
         // Count unpaid order details with 'add' commission action
         $query = '
         SELECT COUNT(DISTINCT vod.id_order_detail)
-        FROM ' . _DB_PREFIX_ . 'vendor_order_detail vod
-        LEFT JOIN ' . _DB_PREFIX_ . 'order_line_status ols 
+        FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod
+        LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status ols 
             ON ols.id_order_detail = vod.id_order_detail 
             AND ols.id_vendor = vod.id_vendor
-        LEFT JOIN ' . _DB_PREFIX_ . 'order_line_status_type olst 
+        LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status_type olst 
             ON olst.name = ols.status
-        LEFT JOIN ' . _DB_PREFIX_ . 'vendor_transaction vt 
+        LEFT JOIN ' . _DB_PREFIX_ . 'mv_vendor_transaction vt 
             ON vt.order_detail_id = vod.id_order_detail 
             AND vt.id_vendor = vod.id_vendor
             AND vt.transaction_type = "commission"

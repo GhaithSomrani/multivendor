@@ -35,7 +35,7 @@ class OrderLineStatus extends ObjectModel
      * @see ObjectModel::$definition
      */
     public static $definition = [
-        'table' => 'order_line_status',
+        'table' => 'mv_order_line_status',
         'primary' => 'id_order_line_status',
         'fields' => [
             'id_order_detail' => ['type' => self::TYPE_INT, 'validate' => 'isUnsignedId', 'required' => true],
@@ -57,7 +57,7 @@ class OrderLineStatus extends ObjectModel
     {
         $query = new DbQuery();
         $query->select('*');
-        $query->from('order_line_status');
+        $query->from('mv_order_line_status');
         $query->where('id_order_detail = ' . (int)$id_order_detail);
 
         return Db::getInstance()->getRow($query);
@@ -74,7 +74,7 @@ class OrderLineStatus extends ObjectModel
     {
         $query = new DbQuery();
         $query->select('*');
-        $query->from('order_line_status');
+        $query->from('mv_order_line_status');
         $query->where('id_order_detail = ' . (int)$id_order_detail);
         $query->where('id_vendor = ' . (int)$id_vendor);
 
@@ -133,7 +133,7 @@ class OrderLineStatus extends ObjectModel
             // Update existing status
             $old_status = $currentStatus['status'];
 
-            $success = Db::getInstance()->update('order_line_status', [
+            $success = Db::getInstance()->update('mv_order_line_status', [
                 'status' => pSQL($new_status),
                 'comment' => pSQL($comment),
                 'date_upd' => date('Y-m-d H:i:s')
@@ -191,7 +191,7 @@ class OrderLineStatus extends ObjectModel
 
             case 'cancelled':
                 // Cancel any pending transactions for this order detail
-                return Db::getInstance()->update('vendor_transaction', [
+                return Db::getInstance()->update('mv_vendor_transaction', [
                     'status' => 'cancelled',
                 ], 'id_order = ' . (int)$id_order . ' AND id_vendor = ' . (int)$id_vendor . ' AND status = "pending"');
         }

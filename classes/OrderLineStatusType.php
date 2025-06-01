@@ -47,7 +47,7 @@ class OrderLineStatusType extends ObjectModel
      * @see ObjectModel::$definition
      */
     public static $definition = [
-        'table' => 'order_line_status_type',
+        'table' => 'mv_order_line_status_type',
         'primary' => 'id_order_line_status_type',
         'fields' => [
             'name' => ['type' => self::TYPE_STRING, 'validate' => 'isGenericName', 'required' => true, 'size' => 64],
@@ -74,7 +74,7 @@ class OrderLineStatusType extends ObjectModel
     {
         $query = new DbQuery();
         $query->select('*');
-        $query->from('order_line_status_type');
+        $query->from('mv_order_line_status_type');
         $query->where('active = 1');
 
         if ($vendor_only) {
@@ -100,7 +100,7 @@ class OrderLineStatusType extends ObjectModel
     {
         $query = new DbQuery();
         $query->select('*');
-        $query->from('order_line_status_type');
+        $query->from('mv_order_line_status_type');
         $query->where('name = "' . pSQL($name) . '"');
 
         return Db::getInstance()->getRow($query);
@@ -141,7 +141,7 @@ class OrderLineStatusType extends ObjectModel
 
             case 'cancel':
                 // Cancel any pending transactions for this order detail
-                return Db::getInstance()->update('vendor_transaction', [
+                return Db::getInstance()->update('mv_vendor_transaction', [
                     'status' => 'cancelled',
                 ], 'id_order = ' . (int)$id_order . ' AND id_vendor = ' . (int)$id_vendor . ' AND status = "pending"');
 
@@ -168,7 +168,7 @@ class OrderLineStatusType extends ObjectModel
         // Check if this status is assigned to any order lines
         $query = new DbQuery();
         $query->select('COUNT(*)');
-        $query->from('order_line_status');
+        $query->from('mv_order_line_status');
         $query->where('status = "' . pSQL($this->name) . '"');
         $count = Db::getInstance()->getValue($query);
 

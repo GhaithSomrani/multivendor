@@ -38,7 +38,7 @@ class VendorOrderDetail extends ObjectModel
      * @see ObjectModel::$definition
      */
     public static $definition = [
-        'table' => 'vendor_order_detail',
+        'table' => 'mv_vendor_order_detail',
         'primary' => 'id_vendor_order_detail',
         'fields' => [
             'id_order_detail' => ['type' => self::TYPE_INT, 'validate' => 'isUnsignedId', 'required' => true],
@@ -61,7 +61,7 @@ class VendorOrderDetail extends ObjectModel
     {
         $query = new DbQuery();
         $query->select('*');
-        $query->from('vendor_order_detail');
+        $query->from('mv_vendor_order_detail');
         $query->where('id_order = ' . (int)$id_order);
 
         return Db::getInstance()->executeS($query);
@@ -78,7 +78,7 @@ class VendorOrderDetail extends ObjectModel
     {
         $query = new DbQuery();
         $query->select('*');
-        $query->from('vendor_order_detail');
+        $query->from('mv_vendor_order_detail');
         $query->where('id_order_detail = ' . (int)$id_order_detail);
         $query->where('id_vendor = ' . (int)$id_vendor);
 
@@ -97,7 +97,7 @@ class VendorOrderDetail extends ObjectModel
     {
         $query = new DbQuery();
         $query->select('vod.*, od.product_name, od.product_quantity, od.product_price, o.reference as order_reference, o.date_add as order_date');
-        $query->from('vendor_order_detail', 'vod');
+        $query->from('mv_vendor_order_detail', 'vod');
         $query->leftJoin('order_detail', 'od', 'od.id_order_detail = vod.id_order_detail');
         $query->leftJoin('orders', 'o', 'o.id_order = vod.id_order');
         $query->where('vod.id_vendor = ' . (int)$id_vendor);
@@ -120,7 +120,7 @@ class VendorOrderDetail extends ObjectModel
     {
         $query = new DbQuery();
         $query->select('SUM(vendor_amount + commission_amount)');
-        $query->from('vendor_order_detail');
+        $query->from('mv_vendor_order_detail');
         $query->where('id_vendor = ' . (int)$id_vendor);
 
         return (float)Db::getInstance()->getValue($query);
@@ -136,7 +136,7 @@ class VendorOrderDetail extends ObjectModel
     {
         $query = new DbQuery();
         $query->select('SUM(commission_amount)');
-        $query->from('vendor_order_detail');
+        $query->from('mv_vendor_order_detail');
         $query->where('id_vendor = ' . (int)$id_vendor);
 
         return (float)Db::getInstance()->getValue($query);
@@ -163,7 +163,7 @@ class VendorOrderDetail extends ObjectModel
 
             $totalSales = Db::getInstance()->getValue('
                 SELECT SUM(vendor_amount)
-                FROM ' . _DB_PREFIX_ . 'vendor_order_detail vod
+                FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod
                 LEFT JOIN ' . _DB_PREFIX_ . 'orders o ON o.id_order = vod.id_order
                 WHERE vod.id_vendor = ' . (int)$id_vendor . '
                 AND o.date_add BETWEEN "' . pSQL($startDate) . ' 00:00:00" AND "' . pSQL($endDate) . ' 23:59:59"
@@ -190,7 +190,7 @@ class VendorOrderDetail extends ObjectModel
         $query = '
             SELECT od.product_id, od.product_name, SUM(od.product_quantity) as quantity_sold,
                    SUM(vod.vendor_amount) as total_sales
-            FROM ' . _DB_PREFIX_ . 'vendor_order_detail vod
+            FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod
             LEFT JOIN ' . _DB_PREFIX_ . 'order_detail od ON od.id_order_detail = vod.id_order_detail
             WHERE vod.id_vendor = ' . (int)$id_vendor . '
             GROUP BY od.product_id

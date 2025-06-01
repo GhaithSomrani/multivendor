@@ -129,8 +129,8 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
         $query->from('order_detail', 'od');
         $query->innerJoin('orders', 'o', 'o.id_order = od.id_order');
         $query->innerJoin('product', 'p', 'p.id_product = od.product_id');
-        $query->leftJoin('vendor_order_detail', 'vod', 'vod.id_order_detail = od.id_order_detail AND vod.id_vendor = ' . (int)$id_vendor);
-        $query->leftJoin('order_line_status', 'ols', 'ols.id_order_detail = od.id_order_detail AND ols.id_vendor = ' . (int)$id_vendor);
+        $query->leftJoin('mv_vendor_order_detail', 'vod', 'vod.id_order_detail = od.id_order_detail AND vod.id_vendor = ' . (int)$id_vendor);
+        $query->leftJoin('mv_order_line_status', 'ols', 'ols.id_order_detail = od.id_order_detail AND ols.id_vendor = ' . (int)$id_vendor);
         $query->where('vod.id_vendor = ' . (int)$id_vendor);
 
         // Add status filter if not "all"
@@ -166,8 +166,8 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
         $query->select('COUNT(od.id_order_detail)');
         $query->from('order_detail', 'od');
         $query->innerJoin('product', 'p', 'p.id_product = od.product_id');
-        $query->leftJoin('vendor_order_detail', 'vod', 'vod.id_order_detail = od.id_order_detail AND vod.id_vendor = ' . (int)$id_vendor);
-        $query->leftJoin('order_line_status', 'ols', 'ols.id_order_detail = od.id_order_detail AND ols.id_vendor = ' . (int)$id_vendor);
+        $query->leftJoin('mv_vendor_order_detail', 'vod', 'vod.id_order_detail = od.id_order_detail AND vod.id_vendor = ' . (int)$id_vendor);
+        $query->leftJoin('mv_order_line_status', 'ols', 'ols.id_order_detail = od.id_order_detail AND ols.id_vendor = ' . (int)$id_vendor);
         $query->where('vod.id_vendor = ' . (int)$id_vendor);
 
         // Add status filter if not "all"
@@ -276,17 +276,17 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
         $totalLines = Db::getInstance()->getValue(
             '
         SELECT COUNT(DISTINCT vod.id_order_detail)
-        FROM ' . _DB_PREFIX_ . 'vendor_order_detail vod
+        FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod
         WHERE vod.id_vendor = ' . (int)$id_vendor
         );
 
         // Total revenue - Only count when commission_action = "add"
         $totalRevenue = Db::getInstance()->getValue('
         SELECT SUM(vod.vendor_amount)
-        FROM ' . _DB_PREFIX_ . 'vendor_order_detail vod
+        FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod
         LEFT JOIN ' . _DB_PREFIX_ . 'orders o ON o.id_order = vod.id_order
-        LEFT JOIN ' . _DB_PREFIX_ . 'order_line_status ols ON ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor
-        LEFT JOIN ' . _DB_PREFIX_ . 'order_line_status_type olst ON olst.name = ols.status
+        LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status ols ON ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor
+        LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status_type olst ON olst.name = ols.status
         WHERE vod.id_vendor = ' . (int)$id_vendor . '
         AND DATE(o.date_add) >= DATE_SUB(CURDATE(), INTERVAL 28 DAY)
         AND olst.commission_action = "add"
@@ -297,7 +297,7 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
         // Today's orders
         $todaysOrders = Db::getInstance()->getValue('
         SELECT COUNT(DISTINCT vod.id_order_detail)
-        FROM ' . _DB_PREFIX_ . 'vendor_order_detail vod
+        FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod
         LEFT JOIN ' . _DB_PREFIX_ . 'orders o ON o.id_order = vod.id_order
         WHERE vod.id_vendor = ' . (int)$id_vendor . '
         AND DATE(o.date_add) = CURDATE()
@@ -635,10 +635,10 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
         vod.vendor_amount,
         COALESCE(ols.status, "Pending") as line_status
     ');
-        $query->from('vendor_order_detail', 'vod');
+        $query->from('mv_vendor_order_detail', 'vod');
         $query->leftJoin('order_detail', 'od', 'od.id_order_detail = vod.id_order_detail');
         $query->leftJoin('orders', 'o', 'o.id_order = vod.id_order');
-        $query->leftJoin('order_line_status', 'ols', 'ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor');
+        $query->leftJoin('mv_order_line_status', 'ols', 'ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor');
         $query->where('vod.id_vendor = ' . (int)$id_vendor);
         $query->orderBy('o.date_add DESC');
 
@@ -700,7 +700,7 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
         try {
             $query = new DbQuery();
             $query->select('name, color, position');
-            $query->from('order_line_status_type');
+            $query->from('mv_order_line_status_type');
             $query->where('commission_action = "add"');
             $query->where('is_vendor_allowed = 1');
             $query->where('active = 1');

@@ -22,7 +22,7 @@ class AdminVendorCommissionsController extends ModuleAdminController
     public function __construct()
     {
         $this->bootstrap = true;
-        $this->table = 'vendor_commission';
+        $this->table = 'mv_vendor_commission';
         $this->className = 'VendorCommission';
         $this->lang = false;
         $this->identifier = 'id_vendor_commission';
@@ -61,7 +61,7 @@ class AdminVendorCommissionsController extends ModuleAdminController
         ';
 
         $this->_join = '
-            LEFT JOIN `' . _DB_PREFIX_ . 'vendor` v ON (v.id_vendor = a.id_vendor)
+            LEFT JOIN `' . _DB_PREFIX_ . 'mv_vendor` v ON (v.id_vendor = a.id_vendor)
         ';
 
         // Add additional tabs

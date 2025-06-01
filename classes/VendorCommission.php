@@ -29,7 +29,7 @@ class VendorCommission extends ObjectModel
      * @see ObjectModel::$definition
      */
     public static $definition = [
-        'table' => 'vendor_commission',
+        'table' => 'mv_vendor_commission',
         'primary' => 'id_vendor_commission',
         'fields' => [
             'id_vendor' => ['type' => self::TYPE_INT, 'validate' => 'isUnsignedId', 'required' => true],
@@ -49,7 +49,7 @@ class VendorCommission extends ObjectModel
     {
         $query = new DbQuery();
         $query->select('commission_rate');
-        $query->from('vendor_commission');
+        $query->from('mv_vendor_commission');
         $query->where('id_vendor = ' . (int)$id_vendor);
         $query->orderBy('date_add DESC');
 
@@ -70,7 +70,7 @@ class VendorCommission extends ObjectModel
      */
     public static function logCommissionRateChange($id_vendor, $old_rate, $new_rate, $changed_by, $comment = null)
     {
-        return Db::getInstance()->insert('vendor_commission_log', [
+        return Db::getInstance()->insert('mv_vendor_commission_log', [
             'id_vendor' => (int)$id_vendor,
             'old_commission_rate' => (float)$old_rate,
             'new_commission_rate' => (float)$new_rate,

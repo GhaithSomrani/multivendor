@@ -13,7 +13,7 @@ class AdminVendorsController extends ModuleAdminController
     public function __construct()
     {
         $this->bootstrap = true;
-        $this->table = 'vendor';
+        $this->table = 'mv_vendor';
         $this->className = 'Vendor';
         $this->lang = false;
         $this->identifier = 'id_vendor';
@@ -311,20 +311,20 @@ class AdminVendorsController extends ModuleAdminController
             if ($result && !empty($this->object->id)) {
                 // Check if commission already exists
                 $existingCommission = Db::getInstance()->getRow(
-                    'SELECT * FROM `' . _DB_PREFIX_ . 'vendor_commission` 
+                    'SELECT * FROM `' . _DB_PREFIX_ . 'mv_vendor_commission` 
                  WHERE `id_vendor` = ' . (int)$this->object->id
                 );
 
                 if ($existingCommission) {
 
                     // Update existing commission
-                    Db::getInstance()->update('vendor_commission', [
+                    Db::getInstance()->update('mv_vendor_commission', [
                         'commission_rate' => $commission_rate,
                         'date_upd' => date('Y-m-d H:i:s')
                     ], '`id_vendor_commission` = ' . (int)$existingCommission['id_vendor_commission']);
                 } else {
                     // Create new commission
-                    Db::getInstance()->insert('vendor_commission', [
+                    Db::getInstance()->insert('mv_vendor_commission', [
                         'id_vendor' => (int)$this->object->id,
                         'commission_rate' => $commission_rate,
                         'date_add' => date('Y-m-d H:i:s'),

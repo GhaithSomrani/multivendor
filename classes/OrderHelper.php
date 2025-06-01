@@ -138,7 +138,7 @@ class OrderHelper
                 $vendor_amount = $total_price - $commission_amount;
 
                 // Update the vendor order detail
-                $result = Db::getInstance()->update('vendor_order_detail', [
+                $result = Db::getInstance()->update('mv_vendor_order_detail', [
                     'commission_rate' => (float)$commission_rate,
                     'commission_amount' => (float)$commission_amount,
                     'vendor_amount' => (float)$vendor_amount,
@@ -182,7 +182,7 @@ class OrderHelper
         try {
             // Find and delete vendor order detail
             $vendorOrderDetail = Db::getInstance()->getRow(
-                'SELECT * FROM `' . _DB_PREFIX_ . 'vendor_order_detail` 
+                'SELECT * FROM `' . _DB_PREFIX_ . 'mv_vendor_order_detail` 
                  WHERE `id_order_detail` = ' . (int)$orderDetail->id_order_detail
             );
 
@@ -191,13 +191,13 @@ class OrderHelper
 
                 // Delete vendor order detail
                 $result1 = Db::getInstance()->delete(
-                    'vendor_order_detail',
+                    'mv_vendor_order_detail',
                     'id_order_detail = ' . (int)$orderDetail->id_order_detail
                 );
 
                 // Delete order line status
                 $result2 = Db::getInstance()->delete(
-                    'order_line_status',
+                    'mv_order_line_status',
                     'id_order_detail = ' . (int)$orderDetail->id_order_detail .
                         ' AND id_vendor = ' . (int)$id_vendor
                 );
@@ -212,7 +212,7 @@ class OrderHelper
                     'Order detail deleted from admin'
                 );
 
-                Db::getInstance()->update('vendor_transaction', [
+                Db::getInstance()->update('mv_vendor_transaction', [
                     'status' => 'cancelled',
                 ], 'order_detail_id = ' . (int)$orderDetail->id_order_detail .
                     ' AND id_vendor = ' . (int)$id_vendor .
@@ -243,7 +243,7 @@ class OrderHelper
     public static function getDefaultOrderLineStatus()
     {
         $defaultStatus = Db::getInstance()->getValue('
-            SELECT name FROM `' . _DB_PREFIX_ . 'order_line_status_type` 
+            SELECT name FROM `' . _DB_PREFIX_ . 'mv_order_line_status_type` 
             WHERE active = 1 
             ORDER BY position ASC 
         ');
@@ -371,8 +371,8 @@ class OrderHelper
         try {
             $query = new DbQuery();
             $query->select('v.*');
-            $query->from('vendor_order_detail', 'vod');
-            $query->leftJoin('vendor', 'v', 'v.id_vendor = vod.id_vendor');
+            $query->from('mv_vendor_order_detail', 'vod');
+            $query->leftJoin('mv_vendor', 'v', 'v.id_vendor = vod.id_vendor');
             $query->where('vod.id_order_detail = ' . (int)$id_order_detail);
 
             return Db::getInstance()->getRow($query);
@@ -403,7 +403,7 @@ class OrderHelper
                 SUM(vendor_amount) as total_vendor_amount,
                 AVG(commission_rate) as avg_commission_rate
             ');
-            $query->from('vendor_order_detail');
+            $query->from('mv_vendor_order_detail');
 
             if ($id_vendor) {
                 $query->where('id_vendor = ' . (int)$id_vendor);
@@ -436,7 +436,7 @@ class OrderHelper
         try {
             $query = new DbQuery();
             $query->select('vendor_amount');
-            $query->from('vendor_order_detail');
+            $query->from('mv_vendor_order_detail');
             $query->where('id_order_detail = ' . (int)$id_order_detail);
 
             return Db::getInstance()->getValue($query);
@@ -458,13 +458,13 @@ class OrderHelper
     {
         try {
             // Clear existing status types
-            $deleteQuery = 'DELETE FROM `' . _DB_PREFIX_ . 'order_line_status_type`';
+            $deleteQuery = 'DELETE FROM `' . _DB_PREFIX_ . 'mv_order_line_status_type`';
             if (!Db::getInstance()->execute($deleteQuery)) {
                 return false;
             }
 
             // Insert default French status types
-            $insertQuery = 'INSERT INTO `' . _DB_PREFIX_ . 'order_line_status_type` 
+            $insertQuery = 'INSERT INTO `' . _DB_PREFIX_ . 'mv_order_line_status_type` 
                 (`name`, `color`, `is_admin_allowed`, `is_vendor_allowed`, `affects_commission`, `commission_action`, `position`, `active`, `date_add`, `date_upd`) 
                 VALUES 
                 ("en attente client", "#0079FF", 1, 0, 0, "none", 1, 1, NOW(), NOW()),
@@ -496,6 +496,6 @@ class OrderHelper
     }
     public static function getStatusTotalCount()
     {
-        return (int)Db::getInstance()->getValue('SELECT COUNT(*) FROM `' . _DB_PREFIX_ . 'order_line_status_type`');
+        return (int)Db::getInstance()->getValue('SELECT COUNT(*) FROM `' . _DB_PREFIX_ . 'mv_order_line_status_type`');
     }
 }

@@ -278,7 +278,7 @@ class multivendor extends Module
             $orderState->add();
 
             // Add permission record
-            Db::getInstance()->insert('order_status_permission', [
+            Db::getInstance()->insert('mv_order_status_permission', [
                 'id_order_status' => (int)$orderState->id,
                 'is_vendor_allowed' => (int)$statusData['vendor_allowed'],
                 'is_admin_allowed' => (int)$statusData['admin_allowed'],
@@ -482,7 +482,7 @@ class multivendor extends Module
     {
         return Db::getInstance()->getRow(
             '
-            SELECT * FROM `' . _DB_PREFIX_ . 'order_status_permission`
+            SELECT * FROM `' . _DB_PREFIX_ . 'mv_order_status_permission`
             WHERE `id_order_status` = ' . (int)$id_order_status
         );
     }
@@ -516,14 +516,14 @@ class multivendor extends Module
 
                 case 'cancel':
                     // Cancel any pending transactions
-                    Db::getInstance()->update('vendor_transaction', [
+                    Db::getInstance()->update('mv_vendor_transaction', [
                         'status' => 'cancelled',
                     ], 'id_order = ' . (int)$id_order . ' AND id_vendor = ' . (int)$id_vendor . ' AND status = "pending"');
                     break;
 
                 case 'pay':
                     // Update transaction status to paid
-                    Db::getInstance()->update('vendor_transaction', [
+                    Db::getInstance()->update('mv_vendor_transaction', [
                         'status' => 'paid',
                     ], 'id_order = ' . (int)$id_order . ' AND id_vendor = ' . (int)$id_vendor . ' AND status = "pending"');
                     break;
