@@ -80,7 +80,12 @@ class OrderLineStatus extends ObjectModel
         $query->where('ols.id_order_detail = ' . (int)$id_order_detail);
         $query->where('ols.id_vendor = ' . (int)$id_vendor);
 
-        return Db::getInstance()->getRow($query);
+        $result = Db::getInstance()->getRow($query);
+
+        // Debug logging to see what we're getting
+        error_log('getByOrderDetailAndVendor result for order_detail ' . $id_order_detail . ', vendor ' . $id_vendor . ': ' . print_r($result, true));
+
+        return $result;
     }
 
     /**
@@ -100,7 +105,7 @@ class OrderLineStatus extends ObjectModel
 
         // Get status type info
         $statusType = new OrderLineStatusType($id_status_type);
-        
+
         if (!Validate::isLoadedObject($statusType)) {
             return false;
         }
@@ -181,12 +186,12 @@ class OrderLineStatus extends ObjectModel
     public static function getFullStatusInfo($id_order_detail, $id_vendor)
     {
         $status = self::getByOrderDetailAndVendor($id_order_detail, $id_vendor);
-        
+
         if (!$status) {
             // Return default status if no status exists
             $defaultStatusTypeId = self::getDefaultStatusTypeId();
             $defaultStatusType = new OrderLineStatusType($defaultStatusTypeId);
-            
+
             return [
                 'id_order_line_status_type' => $defaultStatusTypeId,
                 'status_name' => $defaultStatusType->name,
@@ -198,7 +203,7 @@ class OrderLineStatus extends ObjectModel
                 'date_upd' => null
             ];
         }
-        
+
         return $status;
     }
 }

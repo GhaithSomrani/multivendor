@@ -539,8 +539,8 @@ class VendorHelper
 
                     $statusData[$id_order_detail] = [
                         'id_vendor' => $id_vendor,
-                        'vendor_name' => Validate::isLoadedObject($vendor) ? $vendor->shop_name : 'Unknown vendor',
-                        'status' => $lineStatus ? $lineStatus['status'] : 'Pending',
+                        'vendor_name' => Validate::isLoadedObject($vendor) ? $vendor->shop_name : NULL,
+                        'status' => $lineStatus ? $lineStatus['status_name'] : 'Pending',
                         'status_date' => $lineStatus ? $lineStatus['date_upd'] : null,
                         'is_vendor_product' => true
                     ];
@@ -587,14 +587,25 @@ class VendorHelper
      * @param int $employee_id Employee ID making the change
      * @return array Result with success flag
      */
-    public static function updateOrderLineStatusAsAdmin($id_order_detail, $id_vendor, $new_status, $employee_id = 1)
+    public static function updateOrderLineStatusAsAdmin($id_order_detail, $id_vendor, $id_status_type, $employee_id = 1)
     {
         try {
+            // Validate status type
+            $statusType = new OrderLineStatusType($id_status_type);
+            if (!Validate::isLoadedObject($statusType)) {
+                return ['success' => false, 'message' => 'Invalid status type ID: ' . $id_status_type];
+            }
+
+            // Check if admin is allowed to set this status
+            if ($statusType->is_admin_allowed != 1) {
+                return ['success' => false, 'message' => 'Admin not allowed to set this status'];
+            }
+
             // Update the status
             $success = OrderLineStatus::updateStatus(
                 $id_order_detail,
                 $id_vendor,
-                $new_status,
+                $id_status_type, // Use status type ID
                 $employee_id,
                 null, // No comment
                 true // is admin
@@ -640,13 +651,14 @@ class VendorHelper
                 throw new Exception('Not authorized for this product');
             }
 
+            // Update the status using status type ID
             $success = OrderLineStatus::updateStatus(
                 $id_order_detail,
                 $id_vendor,
                 $id_status_type,
                 $id_customer,
                 $comment,
-                false
+                false // not admin
             );
 
             if (!$success) {
@@ -717,7 +729,7 @@ class VendorHelper
         $lineStatus = OrderLineStatus::getByOrderDetailAndVendor($id_order_detail, $id_vendor);
 
         return [
-            'status' => $lineStatus ? $lineStatus['status'] : 'Pending',
+            'status' => $lineStatus ? $lineStatus['status_name'] : 'Pending',
             'last_update' => $lineStatus ? date('Y-m-d H:i:s', strtotime($lineStatus['date_upd'])) : null,
             'comment' => $lineStatus ? $lineStatus['comment'] : null
         ];
@@ -887,7 +899,7 @@ class VendorHelper
     {
         try {
             $query = new DbQuery();
-            $query->select('*');
+            $query->select('*'); // Select all fields including id_order_line_status_type
             $query->from('mv_order_line_status_type');
             $query->where('commission_action = "add"');
             $query->where('is_vendor_allowed = 1');
@@ -899,7 +911,7 @@ class VendorHelper
             if ($status) {
                 return [
                     'success' => true,
-                    'status' => $status
+                    'status' => $status // This now includes id_order_line_status_type
                 ];
             } else {
                 return [

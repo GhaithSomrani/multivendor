@@ -70,6 +70,7 @@ class MultivendorAjaxModuleFrontController extends ModuleFrontController
         die(json_encode($result));
     }
 
+
     /**
      * Process update order line status
      */
@@ -77,27 +78,45 @@ class MultivendorAjaxModuleFrontController extends ModuleFrontController
     {
         $id_order_detail = (int)Tools::getValue('id_order_detail');
         $id_vendor = (int)Tools::getValue('id_vendor');
-        $new_status = Tools::getValue('status');
+        $id_status_type = (int)Tools::getValue('status'); // Admin sends this as 'status' but it's actually the status type ID
         $employee_id = (isset($this->context->employee) && $this->context->employee->id)
             ? $this->context->employee->id
             : 1; // Default to admin ID 1 if no employee context
 
-        $result = VendorHelper::updateOrderLineStatusAsAdmin($id_order_detail, $id_vendor, $new_status, $employee_id);
+        $result = VendorHelper::updateOrderLineStatusAsAdmin($id_order_detail, $id_vendor, $id_status_type, $employee_id);
         die(json_encode($result));
     }
+
 
     /**
      * Process vendor status update
      */
     private function processUpdateVendorStatus()
     {
-        $id_order_detail = (int)Tools::getValue('id_order_detail');
-        $id_status_type = (int)Tools::getValue('id_status_type');
-        $comment = Tools::getValue('comment', '');
-        $id_customer = $this->context->customer->id;
+        try {
+            // Debug: Check what parameters we're receiving
+            error_log('processUpdateVendorStatus called');
+            error_log('id_order_detail: ' . Tools::getValue('id_order_detail'));
+            error_log('id_status_type: ' . Tools::getValue('id_status_type'));
+            error_log('comment: ' . Tools::getValue('comment'));
 
-        $result = VendorHelper::updateVendorOrderLineStatus($id_customer, $id_order_detail, $id_status_type, $comment);
-        die(json_encode($result));
+            $id_order_detail = (int)Tools::getValue('id_order_detail');
+            $id_status_type = (int)Tools::getValue('id_status_type'); // NOT 'status'
+            $comment = Tools::getValue('comment', '');
+            $id_customer = $this->context->customer->id;
+
+            // Validate inputs
+            if (!$id_order_detail || !$id_status_type) {
+                die(json_encode(['success' => false, 'message' => 'Missing required parameters']));
+            }
+
+            $result = VendorHelper::updateVendorOrderLineStatus($id_customer, $id_order_detail, $id_status_type, $comment);
+            die(json_encode($result));
+        } catch (Exception $e) {
+            error_log('Error in processUpdateVendorStatus: ' . $e->getMessage());
+            error_log('Stack trace: ' . $e->getTraceAsString());
+            die(json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]));
+        }
     }
 
     /**

@@ -192,7 +192,7 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
         $id_vendor = $this->context->smarty->getTemplateVars('id_vendor');
         $id_supplier = $this->context->smarty->getTemplateVars('id_supplier');
         $id_order_detail = (int)Tools::getValue('id_order_detail');
-        $new_status = Tools::getValue('status');
+        $id_status_type = (int)Tools::getValue('id_status_type'); 
         $comment = Tools::getValue('comment');
 
         // Verify this order detail has a product from this vendor's supplier
@@ -220,11 +220,11 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
             }
         }
 
-        // Update the status
+        // Update the status using the status type ID
         $success = OrderLineStatus::updateStatus(
             $id_order_detail,
             $id_vendor,
-            $new_status,
+            $id_status_type, // This is the status type ID
             $this->context->customer->id,
             $comment,
             false // not admin
@@ -278,6 +278,10 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
      */
     protected function getOrderSummary($id_vendor)
     {
+        // Get default status type for fallback
+        $defaultStatusTypeId = OrderLineStatus::getDefaultStatusTypeId();
+        $defaultStatusType = new OrderLineStatusType($defaultStatusTypeId);
+
         // Total order lines
         $totalLines = Db::getInstance()->getValue(
             '
@@ -287,15 +291,20 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
         );
 
         // Total revenue - Only count when commission_action = "add"
+        // Fixed JOIN to use id_order_line_status_type instead of status name
         $totalRevenue = Db::getInstance()->getValue('
         SELECT SUM(vod.vendor_amount)
         FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod
         LEFT JOIN ' . _DB_PREFIX_ . 'orders o ON o.id_order = vod.id_order
         LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status ols ON ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor
-        LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status_type olst ON olst.name = ols.status
+        LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status_type olst ON olst.id_order_line_status_type = ols.id_order_line_status_type
         WHERE vod.id_vendor = ' . (int)$id_vendor . '
         AND DATE(o.date_add) >= DATE_SUB(CURDATE(), INTERVAL 28 DAY)
-        AND olst.commission_action = "add"
+        AND (
+            (olst.commission_action = "add") 
+            OR 
+            (ols.id_order_line_status_type IS NULL AND "' . pSQL($defaultStatusType->commission_action) . '" = "add")
+        )
     ');
 
         $statusBreakdown = VendorHelper::getStatusBreakdown($id_vendor);
@@ -437,7 +446,7 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
         $id_vendor = $vendor['id_vendor'];
         $id_supplier = $vendor['id_supplier'];
         $id_order_detail = (int)Tools::getValue('id_order_detail');
-        $new_status = Tools::getValue('status');
+        $id_status_type = (int)Tools::getValue('id_status_type'); 
         $comment = Tools::getValue('comment');
 
         try {
@@ -456,11 +465,11 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
 
             $id_order = $result['id_order'];
 
-            // Update the status
+            // Update the status using the status type ID
             $success = OrderLineStatus::updateStatus(
                 $id_order_detail,
                 $id_vendor,
-                $new_status,
+                $id_status_type, // This is the status type ID
                 $this->context->customer->id,
                 $comment,
                 false // not admin

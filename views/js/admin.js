@@ -1,6 +1,5 @@
 $(document).ready(function () {
     replaceSelectWithAutocomplete('id_customer', 'searchCustomers');
-
     replaceSelectWithAutocomplete('id_supplier', 'searchSuppliers');
 });
 
@@ -88,9 +87,8 @@ function replaceSelectWithAutocomplete(selectName, ajaxAction) {
 }
 
 /**
- * Admin Orders JS file for multivendor module
+ * Admin Orders JS file for multivendor module - FIXED VERSION
  */
-
 
 $(document).ready(function () {
     console.log('Multivendor module admin-orders.js loaded');
@@ -107,7 +105,6 @@ $(document).ready(function () {
     }
 
     // Get admin token
-    // In PrestaShop 1.7+, the token is available in the global JavaScript variable
     var adminToken = '';
     if (typeof token !== 'undefined') {
         adminToken = token;
@@ -145,14 +142,15 @@ $(document).ready(function () {
         }
     }
 
-    // Event handler for status change
+    // Event handler for status change - FIXED VERSION
     $(document).on('change', '.order-line-status-select', function () {
         const orderDetailId = $(this).data('order-detail-id');
         const vendorId = $(this).data('vendor-id');
-        const newStatus = $(this).val();
+        const newStatusTypeId = $(this).val(); // This is the status type ID
 
-        updateOrderLineStatus(orderDetailId, vendorId, newStatus);
+        updateOrderLineStatus(orderDetailId, vendorId, newStatusTypeId);
     });
+
     /**
      * Load order line statuses via AJAX
      */
@@ -176,17 +174,27 @@ $(document).ready(function () {
                         const orderDetailId = $(this).attr('id').replace('orderProduct_', '');
                         const placeholder = $('.js-line-status-placeholder[data-order-detail-id="' + orderDetailId + '"]');
 
+                        console.log('Processing order detail:', orderDetailId);
+
                         if (response.statusData && response.statusData[orderDetailId]) {
                             const data = response.statusData[orderDetailId];
+                            console.log('Status data for order detail ' + orderDetailId + ':', data);
+
                             if (data.vendor_name) {
                                 let html = '<select class="form-control order-line-status-select" ';
                                 html += 'data-order-detail-id="' + orderDetailId + '" ';
                                 html += 'data-vendor-id="' + data.id_vendor + '">';
 
+                                console.log('Available statuses:', response.availableStatuses);
+                                console.log('Current status_type_id:', data.status_type_id);
+
                                 $.each(response.availableStatuses, function (i, status) {
-                                    html += '<option value="' + status.name + '" ';
-                                    if (data.status === status.name) {
+                                    console.log('Processing status option:', data.status_type_id);
+                                    console.log('Status ID:', status.id_order_line_status_type);
+                                    html += '<option value="' + status.id_order_line_status_type + '" ';
+                                    if (data.status_type_id == status.id_order_line_status_type) {
                                         html += 'selected ';
+                                        console.log('Selected status:', status.name);
                                     }
                                     html += 'style="background-color: ' + status.color + '">';
                                     html += status.name;
@@ -196,10 +204,13 @@ $(document).ready(function () {
                                 html += '<div class="text-muted small mt-1">';
                                 html += data.vendor_name ? data.vendor_name : 'No vendor';
                                 html += '</div>';
+
+                                console.log('Generated HTML for order detail ' + orderDetailId + ':', html);
                                 placeholder.html(html);
 
                             }
                         } else {
+                            console.log('No status data found for order detail:', orderDetailId);
                             placeholder.html('<span class="badge badge-secondary">Not a vendor product</span>');
                         }
                     });
@@ -217,11 +228,11 @@ $(document).ready(function () {
     }
 
     /**
-     * Update order line status
+     * Update order line status - FIXED VERSION
      */
-    function updateOrderLineStatus(orderDetailId, vendorId, newStatus) {
+    function updateOrderLineStatus(orderDetailId, vendorId, newStatusTypeId) {
         const orderId = getOrderId();
-        console.log('Updating status for order detail:', orderDetailId, 'to:', newStatus);
+        console.log('Updating status for order detail:', orderDetailId, 'to status type ID:', newStatusTypeId);
 
         $.ajax({
             url: multivendorAjaxUrl,
@@ -231,7 +242,7 @@ $(document).ready(function () {
                 id_order: orderId,
                 id_order_detail: orderDetailId,
                 id_vendor: vendorId,
-                status: newStatus,
+                status: newStatusTypeId, // Send as 'status' (admin expects this parameter name)
                 token: adminToken
             },
             dataType: 'json',
@@ -273,21 +284,3 @@ $(document).ready(function () {
         return urlParams.get('id_order');
     }
 });
-
-// $(document).ready(function() {
-
-//     console.log('Multivendor module admin-orders.js loaded');
-
-//     // Check if the AJAX URL is defined
-//     if (typeof multivendorAjaxUrl === 'undefined') {
-//         console.error('multivendorAjaxUrl is not defined!');
-//         // Fallback URL construction
-//         const baseUrl = window.location.origin;
-//         // multivendorAjaxUrl = baseUrl + '/index.php?fc=module&module=multivendor&controller=ajax';
-//         console.log('Using fallback URL: ' + multivendorAjaxUrl);
-//     } else {
-//         console.log('Using defined AJAX URL: ' + multivendorAjaxUrl);
-//     }
-
-//     // Rest of your existing code...
-// });

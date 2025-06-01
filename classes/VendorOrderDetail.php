@@ -77,12 +77,19 @@ class VendorOrderDetail extends ObjectModel
     public static function getByOrderDetailAndVendor($id_order_detail, $id_vendor)
     {
         $query = new DbQuery();
-        $query->select('*');
-        $query->from('mv_vendor_order_detail');
-        $query->where('id_order_detail = ' . (int)$id_order_detail);
-        $query->where('id_vendor = ' . (int)$id_vendor);
+        $query->select('ols.id_order_line_status, ols.id_order_detail, ols.id_vendor, ols.id_order_line_status_type, ols.comment, ols.date_add, ols.date_upd, olst.name as status_name, olst.color, olst.commission_action, olst.affects_commission');
+        $query->from('mv_order_line_status', 'ols');
+        $query->leftJoin('mv_order_line_status_type', 'olst', 'olst.id_order_line_status_type = ols.id_order_line_status_type');
+        $query->where('ols.id_order_detail = ' . (int)$id_order_detail);
+        $query->where('ols.id_vendor = ' . (int)$id_vendor);
 
-        return Db::getInstance()->getRow($query);
+        $result = Db::getInstance()->getRow($query);
+
+        // Debug logging to see what we're getting
+        error_log('getByOrderDetailAndVendor SQL: ' . $query->build());
+        error_log('getByOrderDetailAndVendor result for order_detail ' . $id_order_detail . ', vendor ' . $id_vendor . ': ' . print_r($result, true));
+
+        return $result;
     }
 
     /**

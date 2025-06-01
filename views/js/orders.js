@@ -16,7 +16,7 @@ $(document).ready(function () {
     $('.order-line-status-select').on('change', function () {
         const $select = $(this);
         const orderDetailId = $select.data('order-detail-id');
-        const newStatusTypeId = $select.val();
+        const newStatusTypeId = $select.val(); // This is the status type ID
         const originalStatusTypeId = $select.data('original-status-type-id');
 
         // Show loading state
@@ -29,7 +29,7 @@ $(document).ready(function () {
             data: {
                 action: 'updateVendorStatus',
                 id_order_detail: orderDetailId,
-                id_status_type: newStatusTypeId,
+                id_status_type: newStatusTypeId, // Send as id_status_type
                 comment: '', // Empty comment for quick status update
                 token: ordersAjaxToken
             },
@@ -381,7 +381,7 @@ function updateOrderLineStatus(orderDetailId) {
         dataType: 'json',
         success: function (response) {
             if (response.success && response.status) {
-                const newStatus = response.status.name;
+                const statusTypeId = response.status.id_order_line_status_type; // Use the ID, not the name
 
                 $.ajax({
                     url: ordersAjaxUrl,
@@ -389,7 +389,7 @@ function updateOrderLineStatus(orderDetailId) {
                     data: {
                         action: 'updateVendorStatus',
                         id_order_detail: orderDetailId,
-                        status: newStatus,
+                        id_status_type: statusTypeId, 
                         comment: 'MPN verified by scanning',
                         token: ordersAjaxToken
                     },
@@ -399,7 +399,7 @@ function updateOrderLineStatus(orderDetailId) {
                             showNotification('success', 'MPN verified and status updated');
 
                             // Update the status in UI
-                            updateStatusInUI(orderDetailId, newStatus, response.status.color);
+                            updateStatusInUI(orderDetailId, response.status.name, response.status.color);
 
                             // Add to manifest
                             addToManifest(orderDetailId);
