@@ -16,8 +16,8 @@ $(document).ready(function () {
     $('.order-line-status-select').on('change', function () {
         const $select = $(this);
         const orderDetailId = $select.data('order-detail-id');
-        const newStatus = $select.val();
-        const originalStatus = $select.data('original-status');
+        const newStatusTypeId = $select.val();
+        const originalStatusTypeId = $select.data('original-status-type-id');
 
         // Show loading state
         $select.prop('disabled', true);
@@ -29,7 +29,7 @@ $(document).ready(function () {
             data: {
                 action: 'updateVendorStatus',
                 id_order_detail: orderDetailId,
-                status: newStatus,
+                id_status_type: newStatusTypeId,
                 comment: '', // Empty comment for quick status update
                 token: ordersAjaxToken
             },
@@ -37,25 +37,25 @@ $(document).ready(function () {
             success: function (response) {
                 if (response.success) {
                     // Update the UI
-                    $select.data('original-status', newStatus);
+                    $select.data('original-status-type-id', newStatusTypeId);
                     showSuccessMessage(response.message || 'Status updated successfully');
 
                     // Update the dropdown appearance
                     const selectedOption = $select.find('option:selected');
                     const color = selectedOption.css('background-color');
                     $select.css('background-color', color);
-                    
+
                     // Check if we should add this to the manifest
-                    checkAndAddToManifestIfNeeded(orderDetailId, newStatus);
+                    checkAndAddToManifestIfNeeded(orderDetailId, newStatusTypeId);
                 } else {
                     // Revert to original status
-                    $select.val(originalStatus);
+                    $select.val(originalStatusTypeId);
                     showErrorMessage(response.message || 'Error updating status');
                 }
             },
             error: function () {
                 // Revert to original status
-                $select.val(originalStatus);
+                $select.val(originalStatusTypeId);
                 showErrorMessage('Connection error. Please try again.');
             },
             complete: function () {
@@ -70,10 +70,10 @@ $(document).ready(function () {
         const orderDetailId = $(this).data('order-detail-id');
         loadStatusHistory(orderDetailId);
     });
-    
+
     // Initialize the global MPN verification
     initGlobalMpnVerification();
-    
+
     // Make status badges clickable for filtering
     $('.mv-filter-status').on('click', function () {
         const status = $(this).data('status');
@@ -115,22 +115,22 @@ $(document).ready(function () {
             $('.page-header h1').text('My Order Lines');
         }
     });
-    
+
     // Handle bulk actions for order selection
     initBulkActions();
 
     // Handle print manifest button click
-    $('#print-manifest-btn').on('click', function() {
+    $('#print-manifest-btn').on('click', function () {
         printPickupManifest();
     });
 
     // Close modal when clicking outside or on close button
-    $(document).on('click', '.mv-modal-backdrop, .mv-modal-close', function() {
+    $(document).on('click', '.mv-modal-backdrop, .mv-modal-close', function () {
         $('#statusHistoryModal').removeClass('mv-modal-open');
     });
 
     // Close modal when pressing Escape key
-    $(document).on('keyup', function(e) {
+    $(document).on('keyup', function (e) {
         if (e.keyCode === 27) { // Escape key
             $('#statusHistoryModal').removeClass('mv-modal-open');
         }
@@ -142,25 +142,25 @@ $(document).ready(function () {
  */
 function initGlobalMpnVerification() {
     const $globalMpnInput = $('#global-mpn-input');
-    
+
     // Focus on the global input when page loads
     $globalMpnInput.focus();
-    
+
     // Handle input event for global MPN input
-    $globalMpnInput.on('keyup', function(e) {
+    $globalMpnInput.on('keyup', function (e) {
         // If user presses Enter, process the MPN
         if (e.keyCode === 13) {
             processMpnInput();
         }
     });
-    
+
     // On blur, also process the input
-    $globalMpnInput.on('blur', function() {
+    $globalMpnInput.on('blur', function () {
         if ($(this).val().trim().length > 0) {
             processMpnInput();
         }
     });
-    
+
     // Add existing order lines with "add commission" status to manifest
     checkExistingOrderLinesForManifest();
 }
@@ -171,24 +171,24 @@ function initGlobalMpnVerification() {
 function processMpnInput() {
     const mpnValue = $('#global-mpn-input').val().trim();
     const $statusMessage = $('#mpn-status-message');
-    
+
     if (!mpnValue) {
         return;
     }
-    
+
     // Update status to searching
     $statusMessage.text('Searching for MPN: ' + mpnValue + '...')
-                  .removeClass('success error')
-                  .addClass('searching');
-    
+        .removeClass('success error')
+        .addClass('searching');
+
     // Find the matching row
     let found = false;
     let $matchingRow = null;
     let orderDetailId = null;
-    
-    $('.mv-table tbody tr').each(function() {
+
+    $('.mv-table tbody tr').each(function () {
         const rowMpn = $(this).data('product-mpn');
-        
+
         if (rowMpn === mpnValue) {
             found = true;
             $matchingRow = $(this);
@@ -196,29 +196,29 @@ function processMpnInput() {
             return false; // Break the loop
         }
     });
-    
+
     if (found && $matchingRow && orderDetailId) {
         // Remove any previous highlights
         $('.mv-table tbody tr').removeClass('mv-mpn-found');
-        
+
         // Show success message
         $statusMessage.text('MPN found! Processing order line...')
-                      .removeClass('searching error')
-                      .addClass('success');
-        
+            .removeClass('searching error')
+            .addClass('success');
+
         // Highlight the matching row
         $matchingRow.addClass('mv-mpn-found');
-        
+
         // Scroll to the matching row
         $('html, body').animate({
             scrollTop: $matchingRow.offset().top - 100
         }, 500);
-        
+
         // Check if this order is already verified
         if (verifiedOrderDetails.has(orderDetailId)) {
             $statusMessage.text('This order line is already verified.')
-                          .removeClass('searching')
-                          .addClass('success');
+                .removeClass('searching')
+                .addClass('success');
         } else {
             // Process the verification
             updateOrderLineStatus(orderDetailId);
@@ -226,10 +226,10 @@ function processMpnInput() {
     } else {
         // Show error message
         $statusMessage.text('MPN not found. Please try again.')
-                      .removeClass('searching success')
-                      .addClass('error');
+            .removeClass('searching success')
+            .addClass('error');
     }
-    
+
     // Clear the input
     $('#global-mpn-input').val('').focus();
 }
@@ -295,7 +295,7 @@ function initBulkActions() {
             type: 'POST',
             data: {
                 ajax: true,
-                action: 'bulkUpdateVendorStatus', 
+                action: 'bulkUpdateVendorStatus',
                 order_detail_ids: selectedOrders,
                 status: newStatus,
                 comment: bulkChangeComment,
@@ -406,14 +406,14 @@ function updateOrderLineStatus(orderDetailId) {
 
                             // Mark as verified
                             $(`tr[data-id="${orderDetailId}"]`).addClass('mv-mpn-verified');
-                            
+
                             // Update status message
                             $('#mpn-status-message').text('Order line verified successfully. Ready for next scan.')
                                 .removeClass('searching error')
                                 .addClass('success');
                         } else {
                             showNotification('error', updateResponse.message || 'Failed to update status');
-                            
+
                             // Update status message
                             $('#mpn-status-message').text('Failed to update status: ' + (updateResponse.message || 'Unknown error'))
                                 .removeClass('searching success')
@@ -422,7 +422,7 @@ function updateOrderLineStatus(orderDetailId) {
                     },
                     error: function () {
                         showNotification('error', 'Connection error');
-                        
+
                         // Update status message
                         $('#mpn-status-message').text('Connection error. Please try again.')
                             .removeClass('searching success')
@@ -431,7 +431,7 @@ function updateOrderLineStatus(orderDetailId) {
                 });
             } else {
                 showNotification('error', 'No suitable status found for commission');
-                
+
                 // Update status message
                 $('#mpn-status-message').text('No suitable status found for commission')
                     .removeClass('searching success')
@@ -440,7 +440,7 @@ function updateOrderLineStatus(orderDetailId) {
         },
         error: function () {
             showNotification('error', 'Failed to get commission status');
-            
+
             // Update status message
             $('#mpn-status-message').text('Failed to get commission status')
                 .removeClass('searching success')
@@ -458,7 +458,7 @@ function updateOrderLineStatus(orderDetailId) {
 function updateStatusInUI(orderDetailId, newStatus, statusColor) {
     const $row = $('tr[data-id="' + orderDetailId + '"]');
     const $statusCell = $row.find('td:nth-child(6)'); // Status column
-    
+
     const $select = $row.find('.order-line-status-select');
     if ($select.length) {
         $select.val(newStatus);
@@ -480,10 +480,10 @@ function updateStatusInUI(orderDetailId, newStatus, statusColor) {
     }
 
     $row.attr('data-status', newStatus.toLowerCase());
-    
+
     // Add a temporary class to highlight the change
     $row.addClass('status-updated');
-    setTimeout(function() {
+    setTimeout(function () {
         $row.removeClass('status-updated');
     }, 1000);
 }
@@ -494,21 +494,21 @@ function updateStatusInUI(orderDetailId, newStatus, statusColor) {
  */
 function addToManifest(orderDetailId) {
     orderDetailId = parseInt(orderDetailId);
-  
+
     if (verifiedOrderDetails.has(orderDetailId)) {
         return;
     }
-  
+
     const $row = $('tr[data-id="' + orderDetailId + '"]');
-  
+
     const orderRef = $row.find('td:nth-child(2) a').text();
     const productName = $row.find('td:nth-child(3)').text();
     const productMpn = $row.data('product-mpn');
     const quantity = $row.find('td:nth-child(4)').text();
     const timestamp = new Date().toLocaleTimeString();
-  
+
     verifiedOrderDetails.add(orderDetailId);
-  
+
     $('#manifest-items').append(`
         <tr data-order-detail-id="${orderDetailId}">
           <td>${orderRef}</td>
@@ -518,7 +518,7 @@ function addToManifest(orderDetailId) {
           <td>${timestamp}</td>
         </tr>
     `);
-  
+
     $('#manifest-count').text(verifiedOrderDetails.size);
     $('#pickup-manifest-block').show();
 }

@@ -173,65 +173,43 @@ class Vendor extends ObjectModel
      * @param int $id_vendor Vendor ID
      * @return array Commission summary
      */
-     public static function getVendorCommissionSummary($id_vendor)
+    public static function getVendorCommissionSummary($id_vendor)
     {
-        // Get the default status and its commission action
-        $defaultStatus = Db::getInstance()->getRow('
-            SELECT * FROM `' . _DB_PREFIX_ . 'mv_order_line_status_type` 
-            WHERE active = 1 
-            ORDER BY position ASC '
-        );
-        
-        $defaultAction = $defaultStatus ? $defaultStatus['commission_action'] : 'none';
-
-        // Total sales (only when commission_action = 'add')
-        // Include records with no status if default action is 'add'
-        $totalSales = Db::getInstance()->getValue(
-            '
-            SELECT SUM(vod.vendor_amount) 
-            FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod
-            LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status ols ON ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor
-            LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status_type olst ON olst.name = ols.status
-            WHERE vod.id_vendor = ' . (int)$id_vendor . '
-            AND (
-                (olst.commission_action = "add") 
-                OR 
-                (ols.status IS NULL AND "' . pSQL($defaultAction) . '" = "add")
-            )'
-        );
+        $defaultStatusTypeId = OrderLineStatus::getDefaultStatusTypeId();
+        $defaultStatusType = new OrderLineStatusType($defaultStatusTypeId);
 
         // Total commissions added (only when commission_action = 'add')
         $totalCommissionAdded = Db::getInstance()->getValue(
             '
-            SELECT SUM(vod.vendor_amount) 
-            FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod
-            LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status ols ON ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor
-            LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status_type olst ON olst.name = ols.status
-            WHERE vod.id_vendor = ' . (int)$id_vendor . '
-            AND (
-                (olst.commission_action = "add") 
-                OR 
-                (ols.status IS NULL AND "' . pSQL($defaultAction) . '" = "add")
-            )'
+        SELECT SUM(vod.vendor_amount) 
+        FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod
+        LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status ols ON ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor
+        LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status_type olst ON olst.id_order_line_status_type = ols.id_order_line_status_type
+        WHERE vod.id_vendor = ' . (int)$id_vendor . '
+        AND (
+            (olst.commission_action = "add") 
+            OR 
+            (ols.id_order_line_status_type IS NULL AND "' . pSQL($defaultStatusType->commission_action) . '" = "add")
+        )'
         );
 
         // Total commissions refunded (only when commission_action = 'refund')
         $totalCommissionRefunded = Db::getInstance()->getValue(
             '
-            SELECT SUM(vod.vendor_amount) 
-            FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod
-            LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status ols ON ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor
-            LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status_type olst ON olst.name = ols.status
-            WHERE vod.id_vendor = ' . (int)$id_vendor . '
-            AND olst.commission_action = "refund"'
+        SELECT SUM(vod.vendor_amount) 
+        FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod
+        LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status ols ON ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor
+        LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status_type olst ON olst.id_order_line_status_type = ols.id_order_line_status_type
+        WHERE vod.id_vendor = ' . (int)$id_vendor . '
+        AND olst.commission_action = "refund"'
         );
 
         // Total paid commissions
         $paidCommission = Db::getInstance()->getValue(
             '
-            SELECT SUM(amount) 
-            FROM ' . _DB_PREFIX_ . 'mv_vendor_payment 
-            WHERE id_vendor = ' . (int)$id_vendor . ' AND status = "completed"'
+        SELECT SUM(amount) 
+        FROM ' . _DB_PREFIX_ . 'mv_vendor_payment 
+        WHERE id_vendor = ' . (int)$id_vendor . ' AND status = "completed"'
         );
 
         // Pending amount = (Commissions Added) - (Total Paid)

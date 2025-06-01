@@ -107,7 +107,8 @@
                                 <label for="select-all-orders"
                                     class="mv-checkbox-label">{l s='Tout sélectionner' mod='multivendor'}</label>
                             </div>
-                            <span class="mv-selected-count" id="selected-count">0 {l s='sélectionné(s)' mod='multivendor'}</span>
+                            <span class="mv-selected-count" id="selected-count">0
+                                {l s='sélectionné(s)' mod='multivendor'}</span>
                         </div>
                         <div class="mv-bulk-controls">
                             <select id="bulk-status-select" class="mv-status-select" disabled>
@@ -128,7 +129,8 @@
                     <div class="mv-global-mpn-container">
                         <div class="mv-input-group">
                             <input type="text" id="global-mpn-input" class="form-control mv-global-mpn-input"
-                                placeholder="{l s='Scannez le code-barres MPN ici...' mod='multivendor'}" autocomplete="off">
+                                placeholder="{l s='Scannez le code-barres MPN ici...' mod='multivendor'}"
+                                autocomplete="off">
                             <div class="mv-input-group-append">
                                 <span class="mv-input-group-text">
                                     <i class="mv-icon">🔍</i>
@@ -179,7 +181,7 @@
                                                 <td class="mv-text-center">{$line.product_quantity}</td>
                                                 <td>{($line.total_price_tax_incl - $line.commission_amount)|displayPrice}</td>
                                                 <td>
-                                                    {if isset($all_statuses[$line.line_status]) && !isset($vendor_statuses[$line.line_status])}
+                                                    {if isset($all_statuses[$line.status_type_id]) && !isset($vendor_statuses[$line.status_type_id])}
                                                         <span class="mv-status-badge"
                                                             style="background-color: {$status_colors[$line.line_status]|default:'#777'};">
                                                             {$line.line_status|capitalize}
@@ -188,11 +190,11 @@
                                                         <select class="mv-status-select order-line-status-select"
                                                             id="status-select-{$line.id_order_detail}"
                                                             data-order-detail-id="{$line.id_order_detail}"
-                                                            data-original-status="{$line.line_status|default:'En attente'}">
-                                                            {foreach from=$vendor_statuses key=status_key item=status_label}
-                                                                <option value="{$status_key}"
-                                                                    {if ($line.line_status|default:'En attente') == $status_key}selected{/if}
-                                                                    style="background-color: {$status_colors[$status_key]}; color: white;">
+                                                            data-original-status-type-id="{$line.status_type_id}">
+                                                            {foreach from=$vendor_statuses key=status_type_id item=status_label}
+                                                                <option value="{$status_type_id}"
+                                                                    {if $line.status_type_id == $status_type_id}selected{/if}
+                                                                    style="background-color: {$status_colors[$status_label]}; color: white;">
                                                                     {$status_label|escape:'html':'UTF-8'|capitalize}
                                                                 </option>
                                                             {/foreach}

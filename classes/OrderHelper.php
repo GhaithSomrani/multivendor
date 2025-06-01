@@ -63,13 +63,13 @@ class OrderHelper
 
             if ($vendorOrderDetail->save()) {
                 // Get default status
-                $defaultStatus = self::getDefaultOrderLineStatus();
+                $defaultStatus = OrderLineStatus::getDefaultStatusTypeId();
 
                 // Create initial order line status
                 $orderLineStatus = new OrderLineStatus();
                 $orderLineStatus->id_order_detail = $orderDetail->id_order_detail;
                 $orderLineStatus->id_vendor = $vendor['id_vendor'];
-                $orderLineStatus->status = $defaultStatus;
+                $orderLineStatus->id_order_line_status_type = $defaultStatus;
                 $orderLineStatus->date_add = date('Y-m-d H:i:s');
                 $orderLineStatus->date_upd = date('Y-m-d H:i:s');
                 $orderLineStatus->save();
@@ -235,21 +235,6 @@ class OrderHelper
         }
     }
 
-    /**
-     * Get default order line status
-     *
-     * @return string Default status name
-     */
-    public static function getDefaultOrderLineStatus()
-    {
-        $defaultStatus = Db::getInstance()->getValue('
-            SELECT name FROM `' . _DB_PREFIX_ . 'mv_order_line_status_type` 
-            WHERE active = 1 
-            ORDER BY position ASC 
-        ');
-
-        return $defaultStatus ?: 'Pending';
-    }
 
     /**
      * Process multiple order details for vendors (bulk operation)

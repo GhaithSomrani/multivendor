@@ -37,7 +37,7 @@ $sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'mv_vendor_commission` (
     PRIMARY KEY (`id_vendor_commission`),
     UNIQUE KEY `unique_id_vendor` (`id_vendor`)
 ) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8;';
- 
+
 // Create Category Commission table
 // $sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'category_commission` (
 //     `id_category_commission` int(10) unsigned NOT NULL AUTO_INCREMENT,
@@ -96,34 +96,35 @@ $sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'mv_vendor_commission_lo
     PRIMARY KEY (`id_vendor_commission_log`),
     KEY `id_vendor` (`id_vendor`)
 ) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8;';
-
 // Create Order Line Status table
 $sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'mv_order_line_status` (
     `id_order_line_status` int(10) unsigned NOT NULL AUTO_INCREMENT,
     `id_order_detail` int(10) unsigned NOT NULL,
     `id_vendor` int(10) unsigned NOT NULL,
-    `status` varchar(32) NOT NULL,
+    `id_order_line_status_type` int(10) unsigned NOT NULL,
     `comment` text,
     `date_add` datetime NOT NULL,
     `date_upd` datetime NOT NULL,
     PRIMARY KEY (`id_order_line_status`),
     KEY `id_order_detail` (`id_order_detail`),
-    KEY `id_vendor` (`id_vendor`)
+    KEY `id_vendor` (`id_vendor`),
+    KEY `id_order_line_status_type` (`id_order_line_status_type`)
 ) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8;';
-
 // Create Order Line Status Log table
 $sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'mv_order_line_status_log` (
     `id_order_line_status_log` int(10) unsigned NOT NULL AUTO_INCREMENT,
     `id_order_detail` int(10) unsigned NOT NULL,
     `id_vendor` int(10) unsigned NOT NULL,
-    `old_status` varchar(32),
-    `new_status` varchar(32) NOT NULL,
+    `old_id_order_line_status_type` int(10) unsigned DEFAULT NULL,
+    `new_id_order_line_status_type` int(10) unsigned NOT NULL,
     `comment` text,
     `changed_by` int(10) unsigned NOT NULL,
     `date_add` datetime NOT NULL,
     PRIMARY KEY (`id_order_line_status_log`),
     KEY `id_order_detail` (`id_order_detail`),
-    KEY `id_vendor` (`id_vendor`)
+    KEY `id_vendor` (`id_vendor`),
+    KEY `old_id_order_line_status_type` (`old_id_order_line_status_type`),
+    KEY `new_id_order_line_status_type` (`new_id_order_line_status_type`)
 ) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8;';
 
 // Create Vendor Order Detail table

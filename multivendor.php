@@ -319,7 +319,7 @@ class multivendor extends Module
                 )
             );
         }
-
+  
         if (Tools::isSubmit('submit' . $this->name)) {
             // Process configuration form
             $defaultCommission = (float)Tools::getValue('MV_DEFAULT_COMMISSION');
@@ -539,9 +539,8 @@ class multivendor extends Module
         $order = $params['order'];
         $cart = $params['cart'];
 
-        $defaultStatus = OrderHelper::getDefaultOrderLineStatus();
 
-
+        $defaultStatusTypeId = OrderLineStatus::getDefaultStatusTypeId();
 
         // Get order details
         $orderDetails = OrderDetail::getList($order->id);
@@ -573,11 +572,12 @@ class multivendor extends Module
                 $vendorOrderDetail->date_add = date('Y-m-d H:i:s');
                 $vendorOrderDetail->save();
 
+
                 // Create initial order line status
                 $orderLineStatus = new OrderLineStatus();
                 $orderLineStatus->id_order_detail = $detail['id_order_detail'];
                 $orderLineStatus->id_vendor = $vendor['id_vendor'];
-                $orderLineStatus->status = $defaultStatus;
+                $orderLineStatus->id_order_line_status_type = $defaultStatusTypeId;
                 $orderLineStatus->date_add = date('Y-m-d H:i:s');
                 $orderLineStatus->date_upd = date('Y-m-d H:i:s');
                 $orderLineStatus->save();
@@ -586,8 +586,8 @@ class multivendor extends Module
                 $orderLineStatusLog = new OrderLineStatusLog();
                 $orderLineStatusLog->id_order_detail = $detail['id_order_detail'];
                 $orderLineStatusLog->id_vendor = $vendor['id_vendor'];
-                $orderLineStatusLog->old_status = $defaultStatus;
-                $orderLineStatusLog->new_status = $defaultStatus;
+                $orderLineStatusLog->old_id_order_line_status_type = null;
+                $orderLineStatusLog->new_id_order_line_status_type = $defaultStatusTypeId;
                 $orderLineStatusLog->changed_by = 0; // System
                 $orderLineStatusLog->date_add = date('Y-m-d H:i:s');
                 $orderLineStatusLog->save();

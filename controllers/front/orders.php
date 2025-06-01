@@ -65,14 +65,14 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
         // Get only vendor-allowed statuses for dropdown
         $vendorStatusTypes = OrderLineStatusType::getAllActiveStatusTypes(true); // true = vendor only
         foreach ($vendorStatusTypes as $status) {
-            $vendorStatuses[$status['name']] = $status['name'];
+            $vendorStatuses[$status['id_order_line_status_type']] = $status['name'];
             $status_colors[$status['name']] = $status['color'];
         }
 
         // Get ALL statuses (including admin-only) for display
         $allStatusTypes = OrderLineStatusType::getAllActiveStatusTypes();
         foreach ($allStatusTypes as $status) {
-            $allStatuses[$status['name']] = $status['name'];
+            $allStatuses[$status['id_order_line_status_type']] = $status['name'];
             $status_colors[$status['name']] = $status['color'];
         }
 
@@ -121,21 +121,25 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
      */
     protected function getVendorOrderLines($id_vendor, $id_supplier, $limit = 20, $offset = 0, $status = 'all')
     {
+        $defaultStatusTypeId = OrderLineStatus::getDefaultStatusTypeId();
+
         $query = new DbQuery();
         $query->select('od.id_order_detail, od.product_name, od.product_reference, od.product_quantity, od.unit_price_tax_incl, od.total_price_tax_incl,
-                  o.reference as order_reference, o.date_add as order_date, p.id_supplier, od.product_mpn,
-                  vod.id_vendor, vod.commission_amount, vod.vendor_amount, vod.id_order, 
-                  COALESCE(ols.status, "Pending") as line_status');
+              o.reference as order_reference, o.date_add as order_date, p.id_supplier, od.product_mpn,
+              vod.id_vendor, vod.commission_amount, vod.vendor_amount, vod.id_order, 
+              COALESCE(ols.id_order_line_status_type, ' . (int)$defaultStatusTypeId . ') as status_type_id,
+              COALESCE(olst.name, "Pending") as line_status');
         $query->from('order_detail', 'od');
         $query->innerJoin('orders', 'o', 'o.id_order = od.id_order');
         $query->innerJoin('product', 'p', 'p.id_product = od.product_id');
         $query->leftJoin('mv_vendor_order_detail', 'vod', 'vod.id_order_detail = od.id_order_detail AND vod.id_vendor = ' . (int)$id_vendor);
         $query->leftJoin('mv_order_line_status', 'ols', 'ols.id_order_detail = od.id_order_detail AND ols.id_vendor = ' . (int)$id_vendor);
+        $query->leftJoin('mv_order_line_status_type', 'olst', 'olst.id_order_line_status_type = ols.id_order_line_status_type');
         $query->where('vod.id_vendor = ' . (int)$id_vendor);
 
         // Add status filter if not "all"
         if ($status !== 'all' && $status) {
-            $query->where('LOWER(COALESCE(ols.status, "Pending")) = "' . pSQL(strtolower($status)) . '"');
+            $query->where('LOWER(COALESCE(olst.name, "Pending")) = "' . pSQL(strtolower($status)) . '"');
         }
 
         $query->orderBy('od.id_order_detail DESC');
@@ -148,11 +152,13 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
             if (empty($result['line_status'])) {
                 $result['line_status'] = 'Pending';
             }
+            if (empty($result['status_type_id'])) {
+                $result['status_type_id'] = $defaultStatusTypeId;
+            }
         }
 
         return $results;
     }
-
     /**
      * Count vendor order lines based on supplier ID
      * 
@@ -531,76 +537,14 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
 
     public function processBulkUpdateVendorStatus()
     {
-        // Check if customer is a vendor
-        $id_customer = $this->context->customer->id;
-        $vendor = VendorHelper::getVendorByCustomer($id_customer);
-
-        if (!$vendor) {
-            die(json_encode(['success' => false, 'message' => 'Not authorized']));
-        }
-
-        $id_vendor = $vendor['id_vendor'];
-        $id_supplier = $vendor['id_supplier'];
         $order_detail_ids = Tools::getValue('order_detail_ids', []);
-        $new_status = Tools::getValue('status');
+        $id_status_type = (int)Tools::getValue('id_status_type');
         $comment = Tools::getValue('comment', 'Bulk status update');
+        $id_customer = $this->context->customer->id;
 
-        if (empty($order_detail_ids) || !is_array($order_detail_ids) || empty($new_status)) {
-            die(json_encode(['success' => false, 'message' => 'Missing required parameters']));
-        }
-
-        $success_count = 0;
-        $error_count = 0;
-        $results = [];
-
-        foreach ($order_detail_ids as $id_order_detail) {
-            // Verify this order detail belongs to this vendor's supplier
-            $query = new DbQuery();
-            $query->select('p.id_supplier, od.id_order');
-            $query->from('order_detail', 'od');
-            $query->innerJoin('product', 'p', 'p.id_product = od.product_id');
-            $query->where('od.id_order_detail = ' . (int)$id_order_detail);
-
-            $result = Db::getInstance()->getRow($query);
-
-            if (!$result || (int)$result['id_supplier'] !== (int)$id_supplier) {
-                $error_count++;
-                $results[$id_order_detail] = false;
-                continue;
-            }
-
-            // Update the status
-            $update_result = OrderLineStatus::updateStatus(
-                $id_order_detail,
-                $id_vendor,
-                $new_status,
-                $this->context->customer->id,
-                $comment,
-                false // not admin
-            );
-
-            if ($update_result) {
-                $success_count++;
-                $results[$id_order_detail] = true;
-            } else {
-                $error_count++;
-                $results[$id_order_detail] = false;
-            }
-        }
-
-        die(json_encode([
-            'success' => $success_count > 0,
-            'results' => $results,
-            'success_count' => $success_count,
-            'error_count' => $error_count,
-            'message' => sprintf(
-                '%d orders updated successfully, %d failed',
-                $success_count,
-                $error_count
-            )
-        ]));
+        $result = VendorHelper::bulkUpdateVendorOrderLineStatus($id_customer, $order_detail_ids, $id_status_type, $comment);
+        die(json_encode($result));
     }
-
 
 
 

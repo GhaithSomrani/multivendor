@@ -109,25 +109,26 @@ class VendorHelper
      */
     public static function getOrderLinesByStatusGrouped($id_vendor)
     {
-        $defaultStatus = self::getAddCommissionStatus();
-        $defaultStatus = $defaultStatus['status'];;
+        $defaultStatusTypeId = OrderLineStatus::getDefaultStatusTypeId();
+        $defaultStatusType = new OrderLineStatusType($defaultStatusTypeId);
 
         $query = new DbQuery();
         $query->select('od.id_order_detail, od.product_name, od.product_reference, od.product_quantity,
-                       o.reference as order_reference, o.date_add as order_date, o.id_order,
-                       vod.commission_amount, vod.vendor_amount,
-                       c.firstname, c.lastname,
-                       a.address1, a.city, a.postcode,
-                       COALESCE(ols.status, "' . pSQL($defaultStatus['name']) . '") as line_status,
-                       COALESCE(olst.commission_action, "' . pSQL($defaultStatus['commission_action']) . '") as commission_action,
-                       COALESCE(olst.color, "' . pSQL($defaultStatus['color']) . '") as status_color');
+                   o.reference as order_reference, o.date_add as order_date, o.id_order,
+                   vod.commission_amount, vod.vendor_amount,
+                   c.firstname, c.lastname,
+                   a.address1, a.city, a.postcode,
+                   COALESCE(olst.name, "' . pSQL($defaultStatusType->name) . '") as line_status,
+                   COALESCE(olst.commission_action, "' . pSQL($defaultStatusType->commission_action) . '") as commission_action,
+                   COALESCE(olst.color, "' . pSQL($defaultStatusType->color) . '") as status_color,
+                   COALESCE(ols.id_order_line_status_type, ' . (int)$defaultStatusTypeId . ') as status_type_id');
         $query->from('mv_vendor_order_detail', 'vod');
         $query->leftJoin('order_detail', 'od', 'od.id_order_detail = vod.id_order_detail');
         $query->leftJoin('orders', 'o', 'o.id_order = vod.id_order');
         $query->leftJoin('customer', 'c', 'c.id_customer = o.id_customer');
         $query->leftJoin('address', 'a', 'a.id_address = o.id_address_delivery');
         $query->leftJoin('mv_order_line_status', 'ols', 'ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor');
-        $query->leftJoin('mv_order_line_status_type', 'olst', 'olst.name = ols.status');
+        $query->leftJoin('mv_order_line_status_type', 'olst', 'olst.id_order_line_status_type = ols.id_order_line_status_type');
         $query->where('vod.id_vendor = ' . (int)$id_vendor);
         $query->orderBy('o.date_add DESC');
 
@@ -160,34 +161,36 @@ class VendorHelper
             }
         }
 
-        return  $grouped;
+        return $grouped;
     }
+
 
     public static function getOrderLinesByStatus($id_vendor)
     {
-        $defaultStatus = self::getAddCommissionStatus();
-        $defaultStatus = $defaultStatus['status'];;
+        $defaultStatusTypeId = OrderLineStatus::getDefaultStatusTypeId();
+        $defaultStatusType = new OrderLineStatusType($defaultStatusTypeId);
 
         $query = new DbQuery();
         $query->select('od.id_order_detail, od.product_name, od.product_reference, od.product_quantity,
-                       o.reference as order_reference, o.date_add as order_date, o.id_order,
-                       vod.commission_amount, vod.vendor_amount,
-                       c.firstname, c.lastname,
-                       a.address1, a.city, a.postcode,
-                       COALESCE(ols.status, "' . pSQL($defaultStatus['name']) . '") as line_status,
-                       COALESCE(olst.commission_action, "' . pSQL($defaultStatus['commission_action']) . '") as commission_action,
-                       COALESCE(olst.color, "' . pSQL($defaultStatus['color']) . '") as status_color');
+                   o.reference as order_reference, o.date_add as order_date, o.id_order,
+                   vod.commission_amount, vod.vendor_amount,
+                   c.firstname, c.lastname,
+                   a.address1, a.city, a.postcode,
+                   COALESCE(olst.name, "' . pSQL($defaultStatusType->name) . '") as line_status,
+                   COALESCE(olst.commission_action, "' . pSQL($defaultStatusType->commission_action) . '") as commission_action,
+                   COALESCE(olst.color, "' . pSQL($defaultStatusType->color) . '") as status_color,
+                   COALESCE(ols.id_order_line_status_type, ' . (int)$defaultStatusTypeId . ') as status_type_id');
         $query->from('mv_vendor_order_detail', 'vod');
         $query->leftJoin('order_detail', 'od', 'od.id_order_detail = vod.id_order_detail');
         $query->leftJoin('orders', 'o', 'o.id_order = vod.id_order');
         $query->leftJoin('customer', 'c', 'c.id_customer = o.id_customer');
         $query->leftJoin('address', 'a', 'a.id_address = o.id_address_delivery');
         $query->leftJoin('mv_order_line_status', 'ols', 'ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor');
-        $query->leftJoin('mv_order_line_status_type', 'olst', 'olst.name = ols.status');
+        $query->leftJoin('mv_order_line_status_type', 'olst', 'olst.id_order_line_status_type = ols.id_order_line_status_type');
         $query->where('vod.id_vendor = ' . (int)$id_vendor);
         $query->orderBy('o.date_add DESC');
         $orderLines = Db::getInstance()->executeS($query);
-        return  $orderLines;
+        return $orderLines;
     }
 
     /**
@@ -366,30 +369,30 @@ class VendorHelper
             return self::getCachedData($cacheKey);
         }
 
-        $defaultStatus = self::getDefaultOrderStatus();
+        $defaultStatusTypeId = OrderLineStatus::getDefaultStatusTypeId();
 
         $query = '
-            SELECT 
-                lstype.name as status,
-                lstype.color,
-                lstype.position,
-                lstype.is_vendor_allowed,
-                (
-                    SELECT COUNT(*)
-                    FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod
-                    LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status ols 
-                        ON ols.id_order_detail = vod.id_order_detail 
-                        AND ols.id_vendor = vod.id_vendor
-                    WHERE vod.id_vendor = ' . (int)$id_vendor . '
-                    AND (
-                        ols.status = lstype.name 
-                        OR 
-                        (ols.status IS NULL AND lstype.name = "' . pSQL($defaultStatus) . '")
-                    )
-                ) as count
-            FROM ' . _DB_PREFIX_ . 'mv_order_line_status_type lstype
-            WHERE lstype.active = 1
-            ORDER BY lstype.color ASC';
+        SELECT 
+            lstype.name as status,
+            lstype.color,
+            lstype.position,
+            lstype.is_vendor_allowed,
+            (
+                SELECT COUNT(*)
+                FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod
+                LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status ols 
+                    ON ols.id_order_detail = vod.id_order_detail 
+                    AND ols.id_vendor = vod.id_vendor
+                WHERE vod.id_vendor = ' . (int)$id_vendor . '
+                AND (
+                    ols.id_order_line_status_type = lstype.id_order_line_status_type 
+                    OR 
+                    (ols.id_order_line_status_type IS NULL AND lstype.id_order_line_status_type = ' . (int)$defaultStatusTypeId . ')
+                )
+            ) as count
+        FROM ' . _DB_PREFIX_ . 'mv_order_line_status_type lstype
+        WHERE lstype.active = 1
+        ORDER BY lstype.position ASC';
 
         $results = Db::getInstance()->executeS($query);
 
@@ -612,7 +615,7 @@ class VendorHelper
      * @param string $comment Optional comment
      * @return array Result with success flag, status data and message
      */
-    public static function updateVendorOrderLineStatus($id_customer, $id_order_detail, $new_status, $comment = '')
+    public static function updateVendorOrderLineStatus($id_customer, $id_order_detail, $id_status_type, $comment = '')
     {
         $vendor = self::getVendorByCustomer($id_customer);
 
@@ -637,12 +640,10 @@ class VendorHelper
                 throw new Exception('Not authorized for this product');
             }
 
-            $id_order = $result['id_order'];
-
             $success = OrderLineStatus::updateStatus(
                 $id_order_detail,
                 $id_vendor,
-                $new_status,
+                $id_status_type,
                 $id_customer,
                 $comment,
                 false
@@ -663,6 +664,7 @@ class VendorHelper
             return ['success' => false, 'message' => $e->getMessage()];
         }
     }
+
 
     /**
      * Get status history for an order line
@@ -730,7 +732,8 @@ class VendorHelper
      * @param string $comment Optional comment
      * @return array Result with success counts and details
      */
-    public static function bulkUpdateVendorOrderLineStatus($id_customer, $order_detail_ids, $new_status, $comment = 'Bulk status update')
+
+    public static function bulkUpdateVendorOrderLineStatus($id_customer, $order_detail_ids, $id_status_type, $comment = 'Bulk status update')
     {
         $vendor = self::getVendorByCustomer($id_customer);
 
@@ -741,7 +744,7 @@ class VendorHelper
         $id_vendor = $vendor['id_vendor'];
         $id_supplier = $vendor['id_supplier'];
 
-        if (empty($order_detail_ids) || !is_array($order_detail_ids) || empty($new_status)) {
+        if (empty($order_detail_ids) || !is_array($order_detail_ids) || empty($id_status_type)) {
             return ['success' => false, 'message' => 'Missing required parameters'];
         }
 
@@ -767,7 +770,7 @@ class VendorHelper
             $update_result = OrderLineStatus::updateStatus(
                 $id_order_detail,
                 $id_vendor,
-                $new_status,
+                $id_status_type,
                 $id_customer,
                 $comment,
                 false
@@ -794,7 +797,6 @@ class VendorHelper
             )
         ];
     }
-
     /**
      * Export vendor orders to CSV
      * 
@@ -920,35 +922,28 @@ class VendorHelper
      */
     public static function getTransactionsWithCommissionDetails($id_vendor, $limit = null, $offset = null)
     {
-        // Get the default status and its commission action
-        $defaultStatus = Db::getInstance()->getRow(
-            '
-            SELECT * FROM `' . _DB_PREFIX_ . 'mv_order_line_status_type` 
-            WHERE active = 1 
-            ORDER BY position ASC '
-        );
+        $defaultStatusTypeId = OrderLineStatus::getDefaultStatusTypeId();
+        $defaultStatusType = new OrderLineStatusType($defaultStatusTypeId);
 
         $query = new DbQuery();
         $query->select('od.id_order_detail, od.product_name, od.product_quantity, od.product_reference,
-                       o.reference as order_reference, o.date_add as order_date,
-                       vod.commission_amount, vod.vendor_amount, vod.id_order,
-                       COALESCE(ols.status, "' . pSQL($defaultStatus['name']) . '") as line_status,
-                       COALESCE(olst.commission_action, "' . pSQL($defaultStatus['commission_action']) . '") as commission_action,
-                       COALESCE(olst.color, "' . pSQL($defaultStatus['color']) . '") as status_color');
+                   o.reference as order_reference, o.date_add as order_date,
+                   vod.commission_amount, vod.vendor_amount, vod.id_order,
+                   COALESCE(olst.name, "' . pSQL($defaultStatusType->name) . '") as line_status,
+                   COALESCE(olst.commission_action, "' . pSQL($defaultStatusType->commission_action) . '") as commission_action,
+                   COALESCE(olst.color, "' . pSQL($defaultStatusType->color) . '") as status_color');
         $query->from('mv_vendor_order_detail', 'vod');
         $query->leftJoin('order_detail', 'od', 'od.id_order_detail = vod.id_order_detail');
         $query->leftJoin('orders', 'o', 'o.id_order = vod.id_order');
         $query->leftJoin('mv_order_line_status', 'ols', 'ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor');
-        $query->leftJoin('mv_order_line_status_type', 'olst', 'olst.name = ols.status');
+        $query->leftJoin('mv_order_line_status_type', 'olst', 'olst.id_order_line_status_type = ols.id_order_line_status_type');
         $query->where('vod.id_vendor = ' . (int)$id_vendor);
 
-        // Filter to show only transactions with add or refund actions
-        // Include records where either the status has these actions OR no status exists yet (will use default)
         $query->where('(
-            (olst.commission_action IN ("add", "refund")) 
-            OR 
-            (ols.status IS NULL AND "' . pSQL($defaultStatus['commission_action']) . '" IN ("add", "refund"))
-        )');
+        (olst.commission_action IN ("add", "refund")) 
+        OR 
+        (ols.id_order_line_status_type IS NULL AND "' . pSQL($defaultStatusType->commission_action) . '" IN ("add", "refund"))
+    )');
 
         $query->groupBy('od.id_order_detail');
         $query->orderBy('o.date_add DESC');
@@ -965,28 +960,22 @@ class VendorHelper
      */
     public static function countTotalTransactions($id_vendor)
     {
-        // Get the default status and its commission action
-        $defaultStatus = Db::getInstance()->getRow(
-            '
-            SELECT * FROM `' . _DB_PREFIX_ . 'mv_order_line_status_type` 
-            WHERE active = 1 
-            ORDER BY position ASC '
-        );
+        $defaultStatusTypeId = OrderLineStatus::getDefaultStatusTypeId();
+        $defaultStatusType = new OrderLineStatusType($defaultStatusTypeId);
 
         $query = new DbQuery();
         $query->select('COUNT(DISTINCT od.id_order_detail)');
         $query->from('mv_vendor_order_detail', 'vod');
         $query->leftJoin('order_detail', 'od', 'od.id_order_detail = vod.id_order_detail');
         $query->leftJoin('mv_order_line_status', 'ols', 'ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor');
-        $query->leftJoin('mv_order_line_status_type', 'olst', 'olst.name = ols.status');
+        $query->leftJoin('mv_order_line_status_type', 'olst', 'olst.id_order_line_status_type = ols.id_order_line_status_type');
         $query->where('vod.id_vendor = ' . (int)$id_vendor);
 
-        // Filter to count only transactions with add or refund actions
         $query->where('(
-            (olst.commission_action IN ("add", "refund")) 
-            OR 
-            (ols.status IS NULL AND "' . pSQL($defaultStatus['commission_action']) . '" IN ("add", "refund"))
-        )');
+        (olst.commission_action IN ("add", "refund")) 
+        OR 
+        (ols.id_order_line_status_type IS NULL AND "' . pSQL($defaultStatusType->commission_action) . '" IN ("add", "refund"))
+    )');
 
         return (int)Db::getInstance()->getValue($query);
     }

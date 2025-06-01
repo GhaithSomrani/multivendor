@@ -1,7 +1,7 @@
 <?php
 
 /**
- * OrderLineStatus model class
+ * OrderLineStatus model class - Updated to use status type IDs
  */
 
 if (!defined('_PS_VERSION_')) {
@@ -19,8 +19,8 @@ class OrderLineStatus extends ObjectModel
     /** @var int Vendor ID */
     public $id_vendor;
 
-    /** @var string Status */
-    public $status;
+    /** @var int Status Type ID */
+    public $id_order_line_status_type;
 
     /** @var string Comment */
     public $comment;
@@ -40,7 +40,7 @@ class OrderLineStatus extends ObjectModel
         'fields' => [
             'id_order_detail' => ['type' => self::TYPE_INT, 'validate' => 'isUnsignedId', 'required' => true],
             'id_vendor' => ['type' => self::TYPE_INT, 'validate' => 'isUnsignedId', 'required' => true],
-            'status' => ['type' => self::TYPE_STRING, 'validate' => 'isGenericName', 'required' => true, 'size' => 32],
+            'id_order_line_status_type' => ['type' => self::TYPE_INT, 'validate' => 'isUnsignedId', 'required' => true],
             'comment' => ['type' => self::TYPE_STRING, 'validate' => 'isCleanHtml'],
             'date_add' => ['type' => self::TYPE_DATE, 'validate' => 'isDate'],
             'date_upd' => ['type' => self::TYPE_DATE, 'validate' => 'isDate']
@@ -48,35 +48,37 @@ class OrderLineStatus extends ObjectModel
     ];
 
     /**
-     * Get status by order detail ID
+     * Get status by order detail ID with status type details
      *
      * @param int $id_order_detail Order detail ID
-     * @return array|false Status data
+     * @return array|false Status data with type information
      */
     public static function getByOrderDetail($id_order_detail)
     {
         $query = new DbQuery();
-        $query->select('*');
-        $query->from('mv_order_line_status');
-        $query->where('id_order_detail = ' . (int)$id_order_detail);
+        $query->select('ols.*, olst.name as status_name, olst.color, olst.commission_action');
+        $query->from('mv_order_line_status', 'ols');
+        $query->leftJoin('mv_order_line_status_type', 'olst', 'olst.id_order_line_status_type = ols.id_order_line_status_type');
+        $query->where('ols.id_order_detail = ' . (int)$id_order_detail);
 
         return Db::getInstance()->getRow($query);
     }
 
     /**
-     * Get status by order detail ID and vendor ID
+     * Get status by order detail ID and vendor ID with status type details
      *
      * @param int $id_order_detail Order detail ID
      * @param int $id_vendor Vendor ID
-     * @return array|false Status data
+     * @return array|false Status data with type information
      */
     public static function getByOrderDetailAndVendor($id_order_detail, $id_vendor)
     {
         $query = new DbQuery();
-        $query->select('*');
-        $query->from('mv_order_line_status');
-        $query->where('id_order_detail = ' . (int)$id_order_detail);
-        $query->where('id_vendor = ' . (int)$id_vendor);
+        $query->select('ols.*, olst.name as status_name, olst.color, olst.commission_action, olst.affects_commission');
+        $query->from('mv_order_line_status', 'ols');
+        $query->leftJoin('mv_order_line_status_type', 'olst', 'olst.id_order_line_status_type = ols.id_order_line_status_type');
+        $query->where('ols.id_order_detail = ' . (int)$id_order_detail);
+        $query->where('ols.id_vendor = ' . (int)$id_vendor);
 
         return Db::getInstance()->getRow($query);
     }
@@ -86,29 +88,29 @@ class OrderLineStatus extends ObjectModel
      *
      * @param int $id_order_detail Order detail ID
      * @param int $id_vendor Vendor ID
-     * @param string $new_status New status
+     * @param int $id_status_type Status type ID
      * @param int $changed_by ID of the employee or customer who made the change
      * @param string $comment Optional comment
      * @param bool $is_admin Whether the change was made by an admin
      * @return bool Success
      */
-    public static function updateStatus($id_order_detail, $id_vendor, $new_status, $changed_by, $comment = null, $is_admin = false)
+    public static function updateStatus($id_order_detail, $id_vendor, $id_status_type, $changed_by, $comment = null, $is_admin = false)
     {
         $currentStatus = self::getByOrderDetailAndVendor($id_order_detail, $id_vendor);
 
         // Get status type info
-        $statusType = OrderLineStatusType::getByName($new_status);
-
-        if (!$statusType) {
+        $statusType = new OrderLineStatusType($id_status_type);
+        
+        if (!Validate::isLoadedObject($statusType)) {
             return false;
         }
 
         // Check permissions
-        if (!$is_admin && $statusType['is_vendor_allowed'] != 1) {
+        if (!$is_admin && $statusType->is_vendor_allowed != 1) {
             return false;
         }
 
-        if ($is_admin && $statusType['is_admin_allowed'] != 1) {
+        if ($is_admin && $statusType->is_admin_allowed != 1) {
             return false;
         }
 
@@ -117,7 +119,7 @@ class OrderLineStatus extends ObjectModel
             $orderLineStatus = new OrderLineStatus();
             $orderLineStatus->id_order_detail = (int)$id_order_detail;
             $orderLineStatus->id_vendor = (int)$id_vendor;
-            $orderLineStatus->status = $new_status;
+            $orderLineStatus->id_order_line_status_type = (int)$id_status_type;
             $orderLineStatus->comment = $comment;
             $orderLineStatus->date_add = date('Y-m-d H:i:s');
             $orderLineStatus->date_upd = date('Y-m-d H:i:s');
@@ -125,27 +127,27 @@ class OrderLineStatus extends ObjectModel
 
             // Log the status change
             if ($success) {
-                OrderLineStatusLog::logStatusChange($id_order_detail, $id_vendor, '', $new_status, $changed_by, $comment);
+                OrderLineStatusLog::logStatusChange($id_order_detail, $id_vendor, null, $id_status_type, $changed_by, $comment);
             }
 
             return $success;
         } else {
             // Update existing status
-            $old_status = $currentStatus['status'];
+            $old_status_type_id = $currentStatus['id_order_line_status_type'];
 
             $success = Db::getInstance()->update('mv_order_line_status', [
-                'status' => pSQL($new_status),
+                'id_order_line_status_type' => (int)$id_status_type,
                 'comment' => pSQL($comment),
                 'date_upd' => date('Y-m-d H:i:s')
             ], 'id_order_detail = ' . (int)$id_order_detail . ' AND id_vendor = ' . (int)$id_vendor);
 
             // Log the status change
             if ($success) {
-                OrderLineStatusLog::logStatusChange($id_order_detail, $id_vendor, $old_status, $new_status, $changed_by, $comment);
+                OrderLineStatusLog::logStatusChange($id_order_detail, $id_vendor, $old_status_type_id, $id_status_type, $changed_by, $comment);
 
                 // Process commission if needed
-                if ($statusType['affects_commission'] == 1) {
-                    OrderLineStatusType::processCommission($id_order_detail, $id_vendor, $statusType['commission_action']);
+                if ($statusType->affects_commission == 1) {
+                    OrderLineStatusType::processCommission($id_order_detail, $id_vendor, $statusType->commission_action);
                 }
             }
 
@@ -154,61 +156,49 @@ class OrderLineStatus extends ObjectModel
     }
 
     /**
-     * Process status change to handle commission if needed
+     * Get default status type ID
      *
-     * @param int $id_order_detail Order detail ID
-     * @param int $id_vendor Vendor ID
-     * @param string $old_status Old status
-     * @param string $new_status New status
-     * @return bool Success
+     * @return int Default status type ID
      */
-    protected static function processStatusChange($id_order_detail, $id_vendor, $old_status, $new_status)
+    public static function getDefaultStatusTypeId()
     {
-        // Get order detail
-        $orderDetail = new OrderDetail($id_order_detail);
-        $id_order = $orderDetail->id_order;
+        $defaultStatusType = Db::getInstance()->getRow('
+            SELECT id_order_line_status_type FROM `' . _DB_PREFIX_ . 'mv_order_line_status_type` 
+            WHERE active = 1 
+            ORDER BY position ASC 
+        ');
 
-        // Get vendor order detail
-        $vendorOrderDetail = VendorOrderDetail::getByOrderDetailAndVendor($id_order_detail, $id_vendor);
-
-        if (!$vendorOrderDetail) {
-            return false;
-        }
-
-        // Process based on new status
-        switch ($new_status) {
-            case 'shipped':
-                // Create transaction when order is shipped
-                $transaction = new VendorTransaction();
-                $transaction->id_vendor = $id_vendor;
-                $transaction->id_order = $id_order;
-                $transaction->commission_amount = $vendorOrderDetail['commission_amount'];
-                $transaction->vendor_amount = $vendorOrderDetail['vendor_amount'];
-                $transaction->transaction_type = 'commission';
-                $transaction->status = 'pending';
-                $transaction->date_add = date('Y-m-d H:i:s');
-                return $transaction->save();
-
-            case 'cancelled':
-                // Cancel any pending transactions for this order detail
-                return Db::getInstance()->update('mv_vendor_transaction', [
-                    'status' => 'cancelled',
-                ], 'id_order = ' . (int)$id_order . ' AND id_vendor = ' . (int)$id_vendor . ' AND status = "pending"');
-        }
-
-        return true;
+        return $defaultStatusType ? (int)$defaultStatusType['id_order_line_status_type'] : 1;
     }
 
     /**
-     * Check if vendor can change to this status
+     * Get status with full type information by order detail and vendor
      *
-     * @param string $status Status to check
-     * @return bool Whether vendor can change to this status
+     * @param int $id_order_detail Order detail ID
+     * @param int $id_vendor Vendor ID
+     * @return array Status information including type details
      */
-    protected static function vendorCanChangeToStatus($status)
+    public static function getFullStatusInfo($id_order_detail, $id_vendor)
     {
-        $allowedStatuses = ['processing', 'shipped', 'cancelled'];
-
-        return in_array($status, $allowedStatuses);
+        $status = self::getByOrderDetailAndVendor($id_order_detail, $id_vendor);
+        
+        if (!$status) {
+            // Return default status if no status exists
+            $defaultStatusTypeId = self::getDefaultStatusTypeId();
+            $defaultStatusType = new OrderLineStatusType($defaultStatusTypeId);
+            
+            return [
+                'id_order_line_status_type' => $defaultStatusTypeId,
+                'status_name' => $defaultStatusType->name,
+                'color' => $defaultStatusType->color,
+                'commission_action' => $defaultStatusType->commission_action,
+                'affects_commission' => $defaultStatusType->affects_commission,
+                'comment' => null,
+                'date_add' => null,
+                'date_upd' => null
+            ];
+        }
+        
+        return $status;
     }
 }

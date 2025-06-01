@@ -92,11 +92,11 @@ class MultivendorAjaxModuleFrontController extends ModuleFrontController
     private function processUpdateVendorStatus()
     {
         $id_order_detail = (int)Tools::getValue('id_order_detail');
-        $new_status = Tools::getValue('status');
+        $id_status_type = (int)Tools::getValue('id_status_type');
         $comment = Tools::getValue('comment', '');
         $id_customer = $this->context->customer->id;
 
-        $result = VendorHelper::updateVendorOrderLineStatus($id_customer, $id_order_detail, $new_status, $comment);
+        $result = VendorHelper::updateVendorOrderLineStatus($id_customer, $id_order_detail, $id_status_type, $comment);
         die(json_encode($result));
     }
 
@@ -118,7 +118,7 @@ class MultivendorAjaxModuleFrontController extends ModuleFrontController
     private function processBulkUpdateVendorStatus()
     {
         $order_detail_ids = Tools::getValue('order_detail_ids', []);
-        $new_status = Tools::getValue('status');
+        $new_status = (int)Tools::getValue('status');
         $comment = Tools::getValue('comment', 'Bulk status update');
         $id_customer = $this->context->customer->id;
 
