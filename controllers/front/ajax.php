@@ -31,13 +31,7 @@ class MultivendorAjaxModuleFrontController extends ModuleFrontController
         error_log('MultivendorAjax: All parameters: ' . print_r($_POST, true));
 
         switch ($action) {
-            case 'getOrderLineStatusesForAdmin':
-                $this->processGetOrderLineStatusesForAdmin();
-                break;
 
-            case 'updateOrderLineStatus':
-                $this->processUpdateOrderLineStatus();
-                break;
 
             case 'updateVendorStatus':
                 $this->processUpdateVendorStatus();
@@ -65,80 +59,7 @@ class MultivendorAjaxModuleFrontController extends ModuleFrontController
         }
     }
 
-    /**
-     * Process get order line statuses for admin - FIXED VERSION
-     */
-    private function processGetOrderLineStatusesForAdmin()
-    {
-        try {
-            $id_order = (int)Tools::getValue('id_order');
-
-            if (!$id_order) {
-                die(json_encode(['success' => false, 'message' => 'Missing order ID parameter']));
-            }
-
-            error_log('MultivendorAjax: Getting statuses for order: ' . $id_order);
-
-            $result = VendorHelper::getOrderLineStatusesForAdmin($id_order);
-
-            error_log('MultivendorAjax: Status result: ' . print_r($result, true));
-
-            die(json_encode($result));
-        } catch (Exception $e) {
-            error_log('MultivendorAjax: Error in processGetOrderLineStatusesForAdmin: ' . $e->getMessage());
-            die(json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]));
-        }
-    }
-
-    /**
-     * Process update order line status - COMPLETE FIXED VERSION
-     */
-    private function processUpdateOrderLineStatus()
-    {
-        try {
-            // Get parameters
-            $id_order = (int)Tools::getValue('id_order');
-            $id_order_detail = (int)Tools::getValue('id_order_detail');
-            $id_vendor = (int)Tools::getValue('id_vendor');
-            $id_status_type = (int)Tools::getValue('status'); // Admin sends this as 'status' but it's actually the status type ID
-
-            error_log('MultivendorAjax: Admin status update parameters: ' . print_r([
-                'id_order' => $id_order,
-                'id_order_detail' => $id_order_detail,
-                'id_vendor' => $id_vendor,
-                'id_status_type' => $id_status_type
-            ], true));
-
-            // Validate required parameters
-            if (!$id_order_detail || !$id_vendor || !$id_status_type) {
-                $error = 'Missing required parameters. Received: order=' . $id_order . ', order_detail=' . $id_order_detail . ', vendor=' . $id_vendor . ', status=' . $id_status_type;
-                error_log('MultivendorAjax: ' . $error);
-                die(json_encode(['success' => false, 'message' => $error]));
-            }
-
-            // Get employee ID - try different methods to get it
-            $employee_id = 1; // Default fallback
-
-            if (isset($this->context->employee) && $this->context->employee->id) {
-                $employee_id = $this->context->employee->id;
-            } elseif (Tools::getValue('employee_id')) {
-                $employee_id = (int)Tools::getValue('employee_id');
-            }
-
-            error_log('MultivendorAjax: Using employee ID: ' . $employee_id);
-
-            // Update the status
-            $result = VendorHelper::updateOrderLineStatusAsAdmin($id_order_detail, $id_vendor, $id_status_type, $employee_id);
-
-            error_log('MultivendorAjax: Admin status update result: ' . print_r($result, true));
-
-            die(json_encode($result));
-        } catch (Exception $e) {
-            error_log('MultivendorAjax: Error in processUpdateOrderLineStatus: ' . $e->getMessage());
-            error_log('MultivendorAjax: Stack trace: ' . $e->getTraceAsString());
-            die(json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]));
-        }
-    }
+    
 
     /**
      * Process vendor status update - FIXED VERSION

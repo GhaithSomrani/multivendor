@@ -378,7 +378,7 @@ class AdminOrderLineStatusController  extends ModuleAdminController
                 '
             SELECT COUNT(*) 
             FROM `' . _DB_PREFIX_ . 'mv_order_line_status` 
-            WHERE `status` = "' . pSQL($status->name) . '"'
+            WHERE `id_order_line_status_type` = "' . pSQL($status->id) . '"'
             );
 
             if ($count > 0) {
@@ -408,7 +408,7 @@ class AdminOrderLineStatusController  extends ModuleAdminController
                         '
                     SELECT COUNT(*) 
                     FROM `' . _DB_PREFIX_ . 'mv_order_line_status` 
-                    WHERE `status` = "' . pSQL($status->name) . '"'
+                    WHERE `id_order_line_status_type` = "' . pSQL($status->id) . '"'
                     );
 
                     if ($count > 0) {

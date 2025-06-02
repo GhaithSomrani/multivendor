@@ -895,12 +895,13 @@ class VendorHelper
             o.id_order,
             vod.commission_amount,
             vod.vendor_amount,
-            COALESCE(ols.status, "Pending") as line_status
+            olst.name as line_status
         ');
         $query->from('mv_vendor_order_detail', 'vod');
         $query->leftJoin('order_detail', 'od', 'od.id_order_detail = vod.id_order_detail');
         $query->leftJoin('orders', 'o', 'o.id_order = vod.id_order');
         $query->leftJoin('mv_order_line_status', 'ols', 'ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor');
+        $query->leftJoin('mv_order_line_status_type', 'olst', 'olst.id_order_line_status_type = ols.id_order_line_status_type');
         $query->where('vod.id_vendor = ' . (int)$id_vendor);
         $query->orderBy('o.date_add DESC');
 

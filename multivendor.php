@@ -3,7 +3,7 @@
 /**
  * multivendor - A PrestaShop module for multi-vendor marketplace
  *
- * @author      YourName
+ * @author      Ghaith Somrani
  * @copyright   Copyright (c) 2025
  * @license     [License]
  */
@@ -40,6 +40,7 @@ class multivendor extends Module
         $this->bootstrap = true;
 
         parent::__construct();
+        
         if (!is_callable('smartyDisplayPrice')) {
             smartyRegisterFunction(
                 $this->context->smarty,
@@ -48,7 +49,6 @@ class multivendor extends Module
                 ['Tools', 'displayPrice']
             );
         }
-
 
         $this->displayName = $this->l('Multi-Vendor Marketplace');
         $this->description = $this->l('Transform your PrestaShop store into a multi-vendor marketplace.');
@@ -80,15 +80,12 @@ class multivendor extends Module
             !$this->registerHook('actionObjectOrderDetailAddAfter') ||
             !$this->registerHook('actionObjectOrderDetailUpdateAfter') ||
             !$this->registerHook('actionObjectOrderDetailDeleteAfter') ||
-            !$this->installTab()  ||
-            !$this->installOverrides()
+            !$this->installTab()
         ) {
             return false;
         }
 
-        // Create vendor order statuses
-        $this->createOrderStatuses();
-
+  
         return true;
     }
 
@@ -147,7 +144,6 @@ class multivendor extends Module
             [
                 'class_name' => 'AdminVendorSettings',
                 'name' => 'Settings',
-
             ],
             [
                 'class_name' => 'AdminOrderLineStatus',
@@ -198,99 +194,11 @@ class multivendor extends Module
         return true;
     }
 
-
     /**
      * Create custom order statuses for vendors
      * 
      * @return bool
      */
-    public function createOrderStatuses()
-    {
-        // Create vendor-specific order statuses
-        $statuses = [
-            [
-                'name' => 'Awaiting Vendor Processing',
-                'color' => '#FFDD99',
-                'logable' => true,
-                'paid' => false,
-                'shipped' => false,
-                'delivery' => false,
-                'invoice' => false,
-                'vendor_allowed' => true,
-                'admin_allowed' => true,
-                'affects_commission' => false
-            ],
-            [
-                'name' => 'Processing by Vendor',
-                'color' => '#8AAAE5',
-                'logable' => true,
-                'paid' => true,
-                'shipped' => false,
-                'delivery' => false,
-                'invoice' => true,
-                'vendor_allowed' => true,
-                'admin_allowed' => true,
-                'affects_commission' => false
-            ],
-            [
-                'name' => 'Shipped by Vendor',
-                'color' => '#32CD32',
-                'logable' => true,
-                'paid' => true,
-                'shipped' => true,
-                'delivery' => false,
-                'invoice' => true,
-                'vendor_allowed' => true,
-                'admin_allowed' => true,
-                'affects_commission' => true,
-                'commission_action' => 'add'
-            ],
-            [
-                'name' => 'Cancelled by Vendor',
-                'color' => '#DC143C',
-                'logable' => true,
-                'paid' => false,
-                'shipped' => false,
-                'delivery' => false,
-                'invoice' => false,
-                'vendor_allowed' => true,
-                'admin_allowed' => true,
-                'affects_commission' => true,
-                'commission_action' => 'cancel'
-            ]
-        ];
-
-        foreach ($statuses as $statusData) {
-            $orderState = new OrderState();
-            $orderState->color = $statusData['color'];
-            $orderState->logable = $statusData['logable'];
-            $orderState->paid = $statusData['paid'];
-            $orderState->shipped = $statusData['shipped'];
-            $orderState->delivery = $statusData['delivery'];
-            $orderState->invoice = $statusData['invoice'];
-            $orderState->module_name = $this->name;
-            $orderState->name = array();
-
-            foreach (Language::getLanguages() as $language) {
-                $orderState->name[$language['id_lang']] = $statusData['name'];
-            }
-
-            $orderState->add();
-
-            // Add permission record
-            Db::getInstance()->insert('mv_order_status_permission', [
-                'id_order_status' => (int)$orderState->id,
-                'is_vendor_allowed' => (int)$statusData['vendor_allowed'],
-                'is_admin_allowed' => (int)$statusData['admin_allowed'],
-                'affects_commission' => (int)$statusData['affects_commission'],
-                'commission_action' => isset($statusData['commission_action']) ? $statusData['commission_action'] : null,
-                'date_add' => date('Y-m-d H:i:s'),
-                'date_upd' => date('Y-m-d H:i:s')
-            ]);
-        }
-
-        return true;
-    }
 
     /**
      * Module configuration page
@@ -298,6 +206,14 @@ class multivendor extends Module
     public function getContent()
     {
         $output = '';
+
+        // Handle AJAX requests first
+        if (Tools::isSubmit('ajax') && Tools::getValue('ajax') == '1') {
+            $this->handleAdminAjaxRequests();
+            return; // Stop execution after AJAX response
+        }
+
+        // Handle form submissions
         if (Tools::isSubmit('resetStatus')) {
             if (OrderHelper::resetOrderLineStatuses()) {
                 $output .= $this->displayConfirmation($this->l('Order line statuses have been reset to default French statuses'));
@@ -305,7 +221,7 @@ class multivendor extends Module
                 $output .= $this->displayError($this->l('Error occurred while resetting statuses'));
             }
         }
-        // Handle sync action
+
         if (Tools::isSubmit('syncOrderDetails')) {
             $results = OrderHelper::synchronizeOrderDetailsWithVendors();
             $output .= $this->displayConfirmation(
@@ -333,6 +249,79 @@ class multivendor extends Module
 
         return $output . $this->renderConfigForm();
     }
+
+    /**
+     * Handle admin AJAX requests securely
+     */
+    private function handleAdminAjaxRequests()
+    {
+        // Verify this is an admin context
+        if (!$this->context->employee || !$this->context->employee->id) {
+            die(json_encode(['success' => false, 'message' => 'Access denied: Admin access required']));
+        }
+
+        // Verify admin token
+        $token = Tools::getValue('token');
+        $expectedToken = Tools::getAdminTokenLite('AdminModules');
+        
+        if (empty($token) || $token !== $expectedToken) {
+            die(json_encode(['success' => false, 'message' => 'Access denied: Invalid token']));
+        }
+
+        $action = Tools::getValue('action');
+
+        try {
+            switch ($action) {
+                case 'getOrderLineStatusesForAdmin':
+                    $this->processGetOrderLineStatusesForAdmin();
+                    break;
+
+                case 'updateOrderLineStatus':
+                    $this->processUpdateOrderLineStatusAdmin();
+                    break;
+
+                default:
+                    die(json_encode(['success' => false, 'message' => 'Unknown admin action: ' . $action]));
+            }
+        } catch (Exception $e) {
+            PrestaShopLogger::addLog('Multivendor AJAX error: ' . $e->getMessage(), 3, null, 'multivendor');
+            die(json_encode(['success' => false, 'message' => 'Server error: ' . $e->getMessage()]));
+        }
+    }
+
+    /**
+     * Handle getting order line statuses for admin
+     */
+    private function processGetOrderLineStatusesForAdmin()
+    {
+        $id_order = (int)Tools::getValue('id_order');
+
+        if (!$id_order) {
+            die(json_encode(['success' => false, 'message' => 'Missing order ID']));
+        }
+
+        $result = VendorHelper::getOrderLineStatusesForAdmin($id_order);
+        die(json_encode($result));
+    }
+
+    /**
+     * Handle admin order line status updates
+     */
+    private function processUpdateOrderLineStatusAdmin()
+    {
+        $id_order_detail = (int)Tools::getValue('id_order_detail');
+        $id_vendor = (int)Tools::getValue('id_vendor');
+        $id_status_type = (int)Tools::getValue('status'); // Admin sends this as 'status'
+        $employee_id = $this->context->employee->id;
+
+        if (!$id_order_detail || !$id_vendor || !$id_status_type) {
+            die(json_encode(['success' => false, 'message' => 'Missing required parameters']));
+        }
+
+        $result = VendorHelper::updateOrderLineStatusAsAdmin($id_order_detail, $id_vendor, $id_status_type, $employee_id);
+        die(json_encode($result));
+    }
+
     /**
      * Render configuration form
      */
@@ -392,7 +381,7 @@ class multivendor extends Module
                                 <i class="icon-refresh"></i> ' . $this->l('Synchronize Existing Orders') . '
                             </button>
                         </div>
-                    '
+                        '
                     ],
                     [
                         'type' => 'html',
@@ -422,14 +411,13 @@ class multivendor extends Module
                             border-color: #d58512 !important;
                         }
                         </style>
-                    '
+                        '
                     ]
                 ],
                 'submit' => [
                     'title' => $this->l('Save'),
                     'class' => 'btn btn-default pull-right'
                 ],
-
             ]
         ];
 
@@ -474,15 +462,13 @@ class multivendor extends Module
         }
     }
 
-
     /**
      * Get order status permission record
      */
     protected function getOrderStatusPermission($id_order_status)
     {
         return Db::getInstance()->getRow(
-            '
-            SELECT * FROM `' . _DB_PREFIX_ . 'mv_order_status_permission`
+            'SELECT * FROM `' . _DB_PREFIX_ . 'mv_order_status_permission`
             WHERE `id_order_status` = ' . (int)$id_order_status
         );
     }
@@ -539,7 +525,6 @@ class multivendor extends Module
         $order = $params['order'];
         $cart = $params['cart'];
 
-
         $defaultStatusTypeId = OrderLineStatus::getDefaultStatusTypeId();
 
         // Get order details
@@ -557,7 +542,7 @@ class multivendor extends Module
                 $commission_rate = VendorHelper::getCommissionRate($vendor['id_vendor']);
                 $product_price = $detail['unit_price_tax_incl'];
                 $quantity = $detail['product_quantity'];
-                $total_price =  $detail['total_price_tax_incl'];
+                $total_price = $detail['total_price_tax_incl'];
                 $commission_amount = $total_price * ($commission_rate / 100);
                 $vendor_amount = $total_price - $commission_amount;
 
@@ -571,7 +556,6 @@ class multivendor extends Module
                 $vendorOrderDetail->vendor_amount = $vendor_amount;
                 $vendorOrderDetail->date_add = date('Y-m-d H:i:s');
                 $vendorOrderDetail->save();
-
 
                 // Create initial order line status
                 $orderLineStatus = new OrderLineStatus();
@@ -595,8 +579,6 @@ class multivendor extends Module
         }
     }
 
-
-
     /**
      * Hook: Display vendor tabs in customer account
      */
@@ -615,7 +597,6 @@ class multivendor extends Module
                 'vendor_commissions_url' => $this->context->link->getModuleLink('multivendor', 'commissions', []),
                 'vendor_profile_url' => $this->context->link->getModuleLink('multivendor', 'profile', []),
                 'vendor_manage_orders_url' => $this->context->link->getModuleLink('multivendor', 'manageorders', []),
-
             ]);
 
             return $this->display(__FILE__, 'views/templates/front/customer_account.tpl');
@@ -626,7 +607,6 @@ class multivendor extends Module
                     'is_vendor' => false,
                     'vendor_dashboard_url' => $this->context->link->getModuleLink('multivendor', 'dashboard', []),
                     'vendor_register_url' => $this->context->link->getModuleLink('multivendor', 'register', [])
-
                 ]);
 
                 return $this->display(__FILE__, 'views/templates/front/customer_account.tpl');
@@ -684,8 +664,6 @@ class multivendor extends Module
 
         return $this->display(__FILE__, 'views/templates/admin/order_detail.tpl');
     }
-
-
 
     /**
      * Hook: When an order detail is added from admin
@@ -747,8 +725,6 @@ class multivendor extends Module
         }
     }
 
-
-
     /**
      * Hook: Add JS/CSS to admin pages
      */
@@ -769,17 +745,30 @@ class multivendor extends Module
             $this->context->controller->addCSS($this->_path . 'views/css/admin.css');
         }
     }
+
     /**
-     * Hook: Add JS/CSS to back office
+     * Hook: Add JS/CSS to back office header
      */
     public function hookDisplayBackOfficeHeader($params)
-
     {
-        $ajaxUrl = $this->context->link->getModuleLink('multivendor', 'ajax');
+        $controller = Tools::getValue('controller');
 
-        Media::addJsDef([
-            'multivendorAjaxUrl' => $ajaxUrl,
-            'adminToken' => Tools::getAdminToken('AdminOrders')
-        ]);
+        // Only add our JS variables on order pages
+        if ($controller === 'AdminOrders') {
+            // Build the admin AJAX URL properly
+            $adminAjaxUrl = $this->context->link->getAdminLink('AdminModules', true, [], [
+                'configure' => $this->name,
+                'ajax' => '1'
+            ]);
+
+            // Add JS variables for admin AJAX
+            Media::addJsDef([
+                'multivendorAdminAjaxUrl' => $adminAjaxUrl,
+                'multivendorToken' => Tools::getAdminTokenLite('AdminModules')
+            ]);
+
+            // Log for debugging
+            PrestaShopLogger::addLog('Multivendor admin AJAX URL: ' . $adminAjaxUrl, 1, null, 'multivendor');
+        }
     }
 }
