@@ -192,7 +192,7 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
         $id_vendor = $this->context->smarty->getTemplateVars('id_vendor');
         $id_supplier = $this->context->smarty->getTemplateVars('id_supplier');
         $id_order_detail = (int)Tools::getValue('id_order_detail');
-        $id_status_type = (int)Tools::getValue('id_status_type'); 
+        $id_status_type = (int)Tools::getValue('id_status_type');
         $comment = Tools::getValue('comment');
 
         // Verify this order detail has a product from this vendor's supplier
@@ -396,35 +396,37 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
     public function processUpdateOrderLineStatus()
     {
         try {
-            // Use token-based security check instead of employee context
-            // $token = Tools::getValue('token');
-
-            // if (empty($token) || $token !== Tools::getAdminToken('AdminOrders')) {
-            //     die(json_encode(['success' => false, 'message' => 'Access denied: Invalid token']));
-            // }
-
             // Get parameters
             $id_order_detail = (int)Tools::getValue('id_order_detail');
             $id_vendor = (int)Tools::getValue('id_vendor');
-            $new_status = Tools::getValue('status');
+            $id_status_type = (int)Tools::getValue('status'); // Admin sends this as 'status' but it's actually the status type ID
 
-            // We need a way to identify which employee is making the change
-            // Since we don't have direct access to the employee context
-            // For now, we'll use a placeholder employee ID (1 = usually the superadmin)
-            $employee_id = 1;
+            // Validate required parameters
+            if (!$id_order_detail || !$id_vendor || !$id_status_type) {
+                die(json_encode([
+                    'success' => false,
+                    'message' => 'Missing required parameters. Received: order_detail=' . $id_order_detail . ', vendor=' . $id_vendor . ', status=' . $id_status_type
+                ]));
+            }
+
+            // Get employee ID - try different methods to get it
+            $employee_id = 1; // Default fallback
+
+            if (isset($this->context->employee) && $this->context->employee->id) {
+                $employee_id = $this->context->employee->id;
+            } elseif (Tools::getValue('employee_id')) {
+                $employee_id = (int)Tools::getValue('employee_id');
+            }
+
+            // Debug logging
+            error_log('Admin status update: order_detail=' . $id_order_detail . ', vendor=' . $id_vendor . ', status_type=' . $id_status_type . ', employee=' . $employee_id);
 
             // Update the status
-            $success = OrderLineStatus::updateStatus(
-                $id_order_detail,
-                $id_vendor,
-                $new_status,
-                $employee_id,
-                null, // No comment
-                true // is admin
-            );
+            $result = VendorHelper::updateOrderLineStatusAsAdmin($id_order_detail, $id_vendor, $id_status_type, $employee_id);
 
-            die(json_encode(['success' => $success]));
+            die(json_encode($result));
         } catch (Exception $e) {
+            error_log('Error in processUpdateOrderLineStatus: ' . $e->getMessage());
             die(json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]));
         }
     }
@@ -446,7 +448,7 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
         $id_vendor = $vendor['id_vendor'];
         $id_supplier = $vendor['id_supplier'];
         $id_order_detail = (int)Tools::getValue('id_order_detail');
-        $id_status_type = (int)Tools::getValue('id_status_type'); 
+        $id_status_type = (int)Tools::getValue('id_status_type');
         $comment = Tools::getValue('comment');
 
         try {
@@ -652,7 +654,7 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
     {
         try {
             $query = new DbQuery();
-            $query->select('name, color, position');
+            $query->select('id_order_line_status_type, name, color, position');
             $query->from('mv_order_line_status_type');
             $query->where('commission_action = "add"');
             $query->where('is_vendor_allowed = 1');

@@ -122,37 +122,66 @@ class VendorTransaction extends ObjectModel
         // Get the default status
         $defaultStatus = Db::getInstance()->getRow(
             '
-        SELECT * FROM `' . _DB_PREFIX_ . 'mv_order_line_status_type` 
-        WHERE active = 1 
-        ORDER BY position ASC '
+    SELECT * FROM `' . _DB_PREFIX_ . 'mv_order_line_status_type` 
+    WHERE active = 1 
+    ORDER BY position ASC '
         );
 
         $defaultAction = $defaultStatus ? $defaultStatus['commission_action'] : 'none';
+        $defaultStatusName = $defaultStatus ? $defaultStatus['name'] : 'en attente client';
 
-        // Get all unpaid order lines with commission_action = 'add'
+        // UPDATED QUERY: Find order details that should earn commission but haven't been paid yet
+        // Remove the transaction check since we're creating the transactions now
         $unpaidOrderLines = Db::getInstance()->executeS('
-        SELECT DISTINCT vod.*, od.id_order_detail, od.product_name, vod.id_order as id_order,
-               COALESCE(ols.status, "' . pSQL($defaultStatus['name']) . '") as line_status,
-               COALESCE(olst.commission_action, "' . pSQL($defaultAction) . '") as commission_action
-        FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod
-        LEFT JOIN ' . _DB_PREFIX_ . 'order_detail od ON od.id_order_detail = vod.id_order_detail
-        LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status ols ON ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor
-        LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status_type olst ON olst.name = ols.status
-        LEFT JOIN ' . _DB_PREFIX_ . 'mv_vendor_transaction vt ON vt.id_order = vod.id_order 
-            AND vt.id_vendor = vod.id_vendor 
-            AND vt.transaction_type = "commission"
-            AND vt.order_detail_id = vod.id_order_detail
-        WHERE vod.id_vendor = ' . (int)$id_vendor . '
-        AND (
-            (olst.commission_action = "add") 
-            OR 
-            (ols.status IS NULL AND "' . pSQL($defaultAction) . '" = "add")
-        )
-        AND vt.id_vendor_transaction IS NULL
-    ');
+    SELECT DISTINCT vod.*, od.id_order_detail, od.product_name, vod.id_order as id_order,
+           COALESCE(olst.name, "' . pSQL($defaultStatusName) . '") as line_status,
+           COALESCE(olst.commission_action, "' . pSQL($defaultAction) . '") as commission_action
+    FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod
+    LEFT JOIN ' . _DB_PREFIX_ . 'order_detail od ON od.id_order_detail = vod.id_order_detail
+    LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status ols ON ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor
+    LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status_type olst ON olst.id_order_line_status_type = ols.id_order_line_status_type
+    WHERE vod.id_vendor = ' . (int)$id_vendor . '
+    AND (
+        (olst.commission_action = "add") 
+        OR 
+        (ols.id_order_line_status_type IS NULL AND "' . pSQL($defaultAction) . '" = "add")
+    )
+    AND vod.id_order_detail NOT IN (
+        SELECT DISTINCT vt.order_detail_id 
+        FROM ' . _DB_PREFIX_ . 'mv_vendor_transaction vt 
+        WHERE vt.id_vendor = ' . (int)$id_vendor . ' 
+        AND vt.transaction_type = "commission" 
+        AND vt.status = "paid"
+        AND vt.order_detail_id IS NOT NULL
+    )
+');
+
+        // Debug logging
+        error_log('Vendor ID: ' . $id_vendor);
+        error_log('Found unpaid order lines: ' . count($unpaidOrderLines));
+        error_log('Default action: ' . $defaultAction);
 
         if (empty($unpaidOrderLines)) {
-            return ['success' => false, 'message' => 'No unpaid commissions found'];
+            // Let's check what's actually in the database for debugging
+            $debugQuery = '
+        SELECT COUNT(*) as total_orders,
+               SUM(CASE WHEN olst.commission_action = "add" OR (ols.id_order_line_status_type IS NULL AND "' . pSQL($defaultAction) . '" = "add") THEN 1 ELSE 0 END) as commission_orders,
+               SUM(CASE WHEN vt.id_vendor_transaction IS NOT NULL THEN 1 ELSE 0 END) as paid_orders
+        FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod
+        LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status ols ON ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor
+        LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status_type olst ON olst.id_order_line_status_type = ols.id_order_line_status_type
+        LEFT JOIN ' . _DB_PREFIX_ . 'mv_vendor_transaction vt ON vt.order_detail_id = vod.id_order_detail AND vt.id_vendor = vod.id_vendor AND vt.transaction_type = "commission"
+        WHERE vod.id_vendor = ' . (int)$id_vendor;
+
+            $debugResult = Db::getInstance()->getRow($debugQuery);
+            error_log('Debug result: ' . print_r($debugResult, true));
+
+            return [
+                'success' => false,
+                'message' => 'No unpaid commissions found. Debug info: Total orders: ' . $debugResult['total_orders'] .
+                    ', Commission orders: ' . $debugResult['commission_orders'] .
+                    ', Paid orders: ' . $debugResult['paid_orders']
+            ];
         }
 
         // Calculate total amount to pay
@@ -162,6 +191,8 @@ class VendorTransaction extends ObjectModel
             $totalCommissionAmount += $line['vendor_amount'];
             $totalVendorAmount += $line['vendor_amount'];
         }
+
+        error_log('Total amount to pay: ' . $totalCommissionAmount);
 
         // Start transaction
         Db::getInstance()->execute('START TRANSACTION');
@@ -180,6 +211,8 @@ class VendorTransaction extends ObjectModel
                 throw new Exception('Failed to create payment record');
             }
 
+            error_log('Payment created with ID: ' . $payment->id);
+
             // Create a transaction record for each order line being paid
             foreach ($unpaidOrderLines as $line) {
                 $transaction = new VendorTransaction();
@@ -196,10 +229,14 @@ class VendorTransaction extends ObjectModel
                 if (!$transaction->save()) {
                     throw new Exception('Failed to create transaction record for order detail: ' . $line['id_order_detail']);
                 }
+
+                error_log('Transaction created for order detail: ' . $line['id_order_detail']);
             }
 
             // Commit transaction
             Db::getInstance()->execute('COMMIT');
+
+            error_log('Payment completed successfully');
 
             return [
                 'success' => true,
@@ -210,6 +247,8 @@ class VendorTransaction extends ObjectModel
         } catch (Exception $e) {
             // Rollback transaction
             Db::getInstance()->execute('ROLLBACK');
+
+            error_log('Payment failed: ' . $e->getMessage());
 
             return [
                 'success' => false,

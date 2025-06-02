@@ -12,7 +12,7 @@ $(document).ready(function () {
         $(this).css('background-color', color);
     });
 
-    // Handle status change dropdown
+    // Handle status change dropdown - FIXED VERSION for status type IDs
     $('.order-line-status-select').on('change', function () {
         const $select = $(this);
         const orderDetailId = $select.data('order-detail-id');
@@ -45,7 +45,7 @@ $(document).ready(function () {
                     const color = selectedOption.css('background-color');
                     $select.css('background-color', color);
 
-                    // Check if we should add this to the manifest
+                    // Check if we should add this to the manifest using status type ID
                     checkAndAddToManifestIfNeeded(orderDetailId, newStatusTypeId);
                 } else {
                     // Revert to original status
@@ -74,7 +74,7 @@ $(document).ready(function () {
     // Initialize the global MPN verification
     initGlobalMpnVerification();
 
-    // Make status badges clickable for filtering
+    // Make status badges clickable for filtering - FIXED VERSION
     $('.mv-filter-status').on('click', function () {
         const status = $(this).data('status');
 
@@ -93,13 +93,23 @@ $(document).ready(function () {
             // Hide all rows first
             $('.mv-table tbody tr').hide();
 
-            // Show only rows with matching status
+            // Show only rows with matching status - updated to work with status type IDs
             $('.mv-table tbody tr').each(function () {
-                const rowStatus = $(this).find('.mv-status-select option:selected').val() ||
-                    $(this).find('.mv-status-badge').text().trim().toLowerCase();
+                const $row = $(this);
+                const $statusSelect = $row.find('.mv-status-select');
+                const $statusBadge = $row.find('.mv-status-badge');
 
-                if (rowStatus.toLowerCase().includes(status.toLowerCase())) {
-                    $(this).show();
+                let rowStatus = '';
+
+                if ($statusSelect.length) {
+                    // Get the text of the selected option
+                    rowStatus = $statusSelect.find('option:selected').text().trim().toLowerCase();
+                } else if ($statusBadge.length) {
+                    rowStatus = $statusBadge.text().trim().toLowerCase();
+                }
+
+                if (rowStatus.includes(status.toLowerCase())) {
+                    $row.show();
                 }
             });
         }
@@ -136,7 +146,6 @@ $(document).ready(function () {
         }
     });
 });
-
 /**
  * Initialize global MPN verification system
  */
@@ -277,10 +286,11 @@ function initBulkActions() {
         updateBulkControls();
     });
 
+    // Handle bulk status apply - FIXED VERSION
     $('#apply-bulk-status').on('click', function () {
-        const newStatus = $('#bulk-status-select').val();
+        const newStatusTypeId = $('#bulk-status-select').val(); // This is now status type ID
 
-        if (!newStatus || selectedOrders.length === 0) {
+        if (!newStatusTypeId || selectedOrders.length === 0) {
             return;
         }
 
@@ -297,7 +307,7 @@ function initBulkActions() {
                 ajax: true,
                 action: 'bulkUpdateVendorStatus',
                 order_detail_ids: selectedOrders,
-                status: newStatus,
+                id_status_type: newStatusTypeId, // Send as id_status_type
                 comment: bulkChangeComment,
                 token: ordersAjaxToken
             },
@@ -306,11 +316,18 @@ function initBulkActions() {
                 if (response.success) {
                     $.each(response.results, function (id, success) {
                         if (success) {
-                            updateRowStatus(id, newStatus);
+                            updateRowStatus(id, newStatusTypeId);
                         }
                     });
 
                     showNotification('success', response.message);
+
+                    // Check each updated row for manifest eligibility
+                    $.each(response.results, function (id, success) {
+                        if (success) {
+                            checkAndAddToManifestIfNeeded(id, newStatusTypeId);
+                        }
+                    });
                 } else {
                     showNotification('error', response.message || 'Error updating statuses');
                 }
@@ -336,16 +353,26 @@ function initBulkActions() {
     }
 
     /**
-     * Update row status after bulk update
+     * Update row status after bulk update - FIXED VERSION
      */
-    function updateRowStatus(id, newStatus) {
+    function updateRowStatus(id, newStatusTypeId) {
         const row = $(`tr[data-id="${id}"]`);
         const select = row.find('.order-line-status-select');
 
         if (select.length) {
-            select.val(newStatus);
+            select.val(newStatusTypeId);
 
-            row.attr('data-status', newStatus.toLowerCase());
+            // Update the visual styling
+            const selectedOption = select.find('option:selected');
+            const color = selectedOption.css('background-color');
+            select.css('background-color', color);
+
+            // Update data attribute
+            select.data('original-status-type-id', newStatusTypeId);
+
+            // Update row status attribute with status name for filtering
+            const statusName = selectedOption.text().trim();
+            row.attr('data-status', statusName.toLowerCase());
         }
 
         row.find('.mv-row-checkbox').prop('checked', false);
@@ -389,7 +416,7 @@ function updateOrderLineStatus(orderDetailId) {
                     data: {
                         action: 'updateVendorStatus',
                         id_order_detail: orderDetailId,
-                        id_status_type: statusTypeId, 
+                        id_status_type: statusTypeId,
                         comment: 'MPN verified by scanning',
                         token: ordersAjaxToken
                     },
@@ -538,8 +565,11 @@ function checkAndAddToManifestIfNeeded(orderDetailId, newStatus) {
         dataType: 'json',
         success: function (response) {
             if (response.success && response.status) {
+                console.log('response.status',response.status)
+                console.log('response.status',newStatus)
+
                 // If the selected status matches the "add commission" status
-                if (newStatus === response.status.name) {
+                if (newStatus === response.status.id_order_line_status_type) {
                     // Check if this order detail is already in the manifest
                     if (!verifiedOrderDetails.has(parseInt(orderDetailId))) {
                         // Add it to the manifest
@@ -596,16 +626,17 @@ function checkExistingOrderLinesForManifest() {
         dataType: 'json',
         success: function (response) {
             if (response.success && response.status) {
-                const addCommissionStatus = response.status.name;
+                const addCommissionStatus = response.status.id_order_line_status_type;
 
-                // Loop through all order lines with status selects
                 $('.order-line-status-select').each(function () {
                     const $select = $(this);
                     const currentStatus = $select.val();
+                    
                     const orderDetailId = $select.data('order-detail-id');
 
-                    // If the current status matches the "add commission" status,
-                    // add it to the manifest
+                    console.log('addCommissionStatus ', addCommissionStatus);
+                    console.log('orderDetailId', currentStatus);
+
                     if (currentStatus === addCommissionStatus) {
                         addToManifest(orderDetailId);
                     }

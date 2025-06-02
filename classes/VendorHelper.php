@@ -172,14 +172,14 @@ class VendorHelper
 
         $query = new DbQuery();
         $query->select('od.id_order_detail, od.product_name, od.product_reference, od.product_quantity,
-                   o.reference as order_reference, o.date_add as order_date, o.id_order,
-                   vod.commission_amount, vod.vendor_amount,
-                   c.firstname, c.lastname,
-                   a.address1, a.city, a.postcode,
-                   COALESCE(olst.name, "' . pSQL($defaultStatusType->name) . '") as line_status,
-                   COALESCE(olst.commission_action, "' . pSQL($defaultStatusType->commission_action) . '") as commission_action,
-                   COALESCE(olst.color, "' . pSQL($defaultStatusType->color) . '") as status_color,
-                   COALESCE(ols.id_order_line_status_type, ' . (int)$defaultStatusTypeId . ') as status_type_id');
+               o.reference as order_reference, o.date_add as order_date, o.id_order,
+               vod.commission_amount, vod.vendor_amount,
+               c.firstname, c.lastname,
+               a.address1, a.city, a.postcode,
+               COALESCE(olst.name, "' . pSQL($defaultStatusType->name) . '") as line_status,
+               COALESCE(olst.commission_action, "' . pSQL($defaultStatusType->commission_action) . '") as commission_action,
+               COALESCE(olst.color, "' . pSQL($defaultStatusType->color) . '") as status_color,
+               COALESCE(ols.id_order_line_status_type, ' . (int)$defaultStatusTypeId . ') as status_type_id');
         $query->from('mv_vendor_order_detail', 'vod');
         $query->leftJoin('order_detail', 'od', 'od.id_order_detail = vod.id_order_detail');
         $query->leftJoin('orders', 'o', 'o.id_order = vod.id_order');
@@ -189,6 +189,7 @@ class VendorHelper
         $query->leftJoin('mv_order_line_status_type', 'olst', 'olst.id_order_line_status_type = ols.id_order_line_status_type');
         $query->where('vod.id_vendor = ' . (int)$id_vendor);
         $query->orderBy('o.date_add DESC');
+
         $orderLines = Db::getInstance()->executeS($query);
         return $orderLines;
     }
@@ -527,7 +528,9 @@ class VendorHelper
     {
         try {
             $statusData = [];
+            $defaultStatusTypeId = OrderLineStatus::getDefaultStatusTypeId();
 
+            // Get vendor order details for this order
             $vendorOrderDetails = VendorOrderDetail::getByOrderId($id_order);
 
             if (!empty($vendorOrderDetails)) {
@@ -535,31 +538,54 @@ class VendorHelper
                     $id_order_detail = $detail['id_order_detail'];
                     $id_vendor = $detail['id_vendor'];
                     $vendor = new Vendor($id_vendor);
+
+                    // Get the current status with proper fallback
                     $lineStatus = OrderLineStatus::getByOrderDetailAndVendor($id_order_detail, $id_vendor);
+
+                    if ($lineStatus) {
+                        $currentStatusTypeId = $lineStatus['id_order_line_status_type'];
+                        $currentStatusName = $lineStatus['status_name'];
+                    } else {
+                        // Use default status if no status exists
+                        $currentStatusTypeId = $defaultStatusTypeId;
+                        $defaultStatusType = new OrderLineStatusType($defaultStatusTypeId);
+                        $currentStatusName = $defaultStatusType->name;
+                    }
 
                     $statusData[$id_order_detail] = [
                         'id_vendor' => $id_vendor,
-                        'vendor_name' => Validate::isLoadedObject($vendor) ? $vendor->shop_name : NULL,
-                        'status' => $lineStatus ? $lineStatus['status_name'] : 'Pending',
+                        'vendor_name' => Validate::isLoadedObject($vendor) ? $vendor->shop_name : 'Unknown vendor',
+                        'status' => $currentStatusName,
+                        'status_type_id' => $currentStatusTypeId,
                         'status_date' => $lineStatus ? $lineStatus['date_upd'] : null,
                         'is_vendor_product' => true
                     ];
                 }
             }
 
-            $allOrderDetails = OrderDetail::getList($id_order);
+            // Get all order details for this order to handle non-vendor products
+            $allOrderDetails = Db::getInstance()->executeS(
+                '
+            SELECT id_order_detail 
+            FROM ' . _DB_PREFIX_ . 'order_detail 
+            WHERE id_order = ' . (int)$id_order
+            );
 
+            // Process all order details to include non-vendor products
             foreach ($allOrderDetails as $orderDetail) {
                 $id_order_detail = $orderDetail['id_order_detail'];
 
+                // Skip if this order detail is already handled by a vendor
                 if (isset($statusData[$id_order_detail])) {
                     continue;
                 }
 
+                // This is a non-vendor product, add it with appropriate indication
                 $statusData[$id_order_detail] = [
                     'id_vendor' => 0,
                     'vendor_name' => null,
                     'status' => 'Not a vendor product',
+                    'status_type_id' => null,
                     'status_date' => null,
                     'is_vendor_product' => false
                 ];
@@ -574,6 +600,7 @@ class VendorHelper
                 'availableStatuses' => $availableStatuses
             ];
         } catch (Exception $e) {
+            error_log('Error in getOrderLineStatusesForAdmin: ' . $e->getMessage());
             return ['success' => false, 'message' => 'Error: ' . $e->getMessage()];
         }
     }
@@ -601,6 +628,31 @@ class VendorHelper
                 return ['success' => false, 'message' => 'Admin not allowed to set this status'];
             }
 
+            // Verify that the order detail exists and get the order ID
+            $orderDetailInfo = Db::getInstance()->getRow(
+                '
+            SELECT od.id_order, od.product_id 
+            FROM ' . _DB_PREFIX_ . 'order_detail od 
+            WHERE od.id_order_detail = ' . (int)$id_order_detail
+            );
+
+            if (!$orderDetailInfo) {
+                return ['success' => false, 'message' => 'Order detail not found'];
+            }
+
+            // Verify that this order detail belongs to the specified vendor
+            $vendorOrderDetail = Db::getInstance()->getRow(
+                '
+            SELECT vod.* 
+            FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod 
+            WHERE vod.id_order_detail = ' . (int)$id_order_detail . ' 
+            AND vod.id_vendor = ' . (int)$id_vendor
+            );
+
+            if (!$vendorOrderDetail) {
+                return ['success' => false, 'message' => 'This order detail does not belong to the specified vendor'];
+            }
+
             // Update the status
             $success = OrderLineStatus::updateStatus(
                 $id_order_detail,
@@ -611,7 +663,11 @@ class VendorHelper
                 true // is admin
             );
 
-            return ['success' => $success];
+            if ($success) {
+                return ['success' => true, 'message' => 'Status updated successfully'];
+            } else {
+                return ['success' => false, 'message' => 'Failed to update status'];
+            }
         } catch (Exception $e) {
             return ['success' => false, 'message' => 'Error: ' . $e->getMessage()];
         }

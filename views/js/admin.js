@@ -87,7 +87,7 @@ function replaceSelectWithAutocomplete(selectName, ajaxAction) {
 }
 
 /**
- * Admin Orders JS file for multivendor module - FIXED VERSION
+ * Admin Orders JS file for multivendor module - COMPLETE FIXED VERSION
  */
 
 $(document).ready(function () {
@@ -114,17 +114,31 @@ $(document).ready(function () {
 
     // Add the Line Status column to the order products table
     if ($('#orderProductsTable').length > 0) {
+        console.log('Order products table found, adding status column...');
+        
         // First, find the table header row
         const headerRow = $('#orderProductsTable thead tr');
 
         // Check if our column already exists
         if (headerRow.find('th.cellProductLineStatus').length === 0) {
             // Insert the new column header before the "Total" column
-            headerRow.find('th:contains("Total")').before('<th class="cellProductLineStatus"><p>Line Status</p></th>');
+            const totalColumn = headerRow.find('th:contains("Total")');
+            if (totalColumn.length > 0) {
+                totalColumn.before('<th class="cellProductLineStatus"><p>Line Status</p></th>');
+            } else {
+                // Fallback: add to the end
+                headerRow.append('<th class="cellProductLineStatus"><p>Line Status</p></th>');
+            }
 
             // For each product row, insert the status cell
             $('#orderProductsTable tbody tr.cellProduct').each(function () {
-                const productId = $(this).attr('id').replace('orderProduct_', '');
+                const rowId = $(this).attr('id');
+                if (!rowId) {
+                    console.warn('Row without ID found:', this);
+                    return;
+                }
+                
+                const productId = rowId.replace('orderProduct_', '');
 
                 // Create the status cell with loading placeholder
                 let statusCell = '<td class="cellProductLineStatus text-center">';
@@ -133,8 +147,13 @@ $(document).ready(function () {
                 statusCell += '</div>';
                 statusCell += '</td>';
 
-                // Insert the cell before the total column
-                $(this).find('td.cellProductTotalPrice').before(statusCell);
+                // Insert the cell before the total column or at the end
+                const totalCell = $(this).find('td.cellProductTotalPrice');
+                if (totalCell.length > 0) {
+                    totalCell.before(statusCell);
+                } else {
+                    $(this).append(statusCell);
+                }
             });
 
             // Load status data via AJAX
@@ -147,15 +166,34 @@ $(document).ready(function () {
         const orderDetailId = $(this).data('order-detail-id');
         const vendorId = $(this).data('vendor-id');
         const newStatusTypeId = $(this).val(); // This is the status type ID
+        const originalValue = $(this).data('original-value');
 
-        updateOrderLineStatus(orderDetailId, vendorId, newStatusTypeId);
+        // Store original value if not already stored
+        if (typeof originalValue === 'undefined') {
+            $(this).data('original-value', $(this).val());
+        }
+
+        console.log('Status change detected:', {
+            orderDetailId: orderDetailId,
+            vendorId: vendorId,
+            newStatusTypeId: newStatusTypeId
+        });
+
+        updateOrderLineStatus(orderDetailId, vendorId, newStatusTypeId, $(this));
     });
 
     /**
-     * Load order line statuses via AJAX
+     * Load order line statuses via AJAX - COMPLETE FIXED VERSION
      */
     function loadOrderLineStatuses() {
         const orderId = getOrderId();
+        
+        if (!orderId) {
+            console.error('Cannot load statuses: Order ID not found');
+            $('.js-line-status-placeholder').html('<span class="badge badge-danger">Order ID not found</span>');
+            return;
+        }
+        
         console.log('Loading statuses for order:', orderId);
 
         $.ajax({
@@ -171,7 +209,10 @@ $(document).ready(function () {
                 console.log('Status data received:', response);
                 if (response.success) {
                     $('#orderProductsTable tbody tr.cellProduct').each(function () {
-                        const orderDetailId = $(this).attr('id').replace('orderProduct_', '');
+                        const rowId = $(this).attr('id');
+                        if (!rowId) return;
+                        
+                        const orderDetailId = rowId.replace('orderProduct_', '');
                         const placeholder = $('.js-line-status-placeholder[data-order-detail-id="' + orderDetailId + '"]');
 
                         console.log('Processing order detail:', orderDetailId);
@@ -180,59 +221,87 @@ $(document).ready(function () {
                             const data = response.statusData[orderDetailId];
                             console.log('Status data for order detail ' + orderDetailId + ':', data);
 
-                            if (data.vendor_name) {
+                            if (data.vendor_name && data.id_vendor && data.is_vendor_product) {
                                 let html = '<select class="form-control order-line-status-select" ';
                                 html += 'data-order-detail-id="' + orderDetailId + '" ';
-                                html += 'data-vendor-id="' + data.id_vendor + '">';
+                                html += 'data-vendor-id="' + data.id_vendor + '" ';
+                                html += 'data-original-value="' + data.status_type_id + '">';
 
                                 console.log('Available statuses:', response.availableStatuses);
                                 console.log('Current status_type_id:', data.status_type_id);
 
-                                $.each(response.availableStatuses, function (i, status) {
-                                    console.log('Processing status option:', data.status_type_id);
-                                    console.log('Status ID:', status.id_order_line_status_type);
-                                    html += '<option value="' + status.id_order_line_status_type + '" ';
-                                    if (data.status_type_id == status.id_order_line_status_type) {
-                                        html += 'selected ';
-                                        console.log('Selected status:', status.name);
-                                    }
-                                    html += 'style="background-color: ' + status.color + '">';
-                                    html += status.name;
-                                    html += '</option>';
-                                });
+                                if (response.availableStatuses && response.availableStatuses.length > 0) {
+                                    $.each(response.availableStatuses, function (i, status) {
+                                        html += '<option value="' + status.id_order_line_status_type + '" ';
+                                        if (data.status_type_id == status.id_order_line_status_type) {
+                                            html += 'selected ';
+                                            console.log('Selected status:', status.name);
+                                        }
+                                        html += 'style="background-color: ' + (status.color || '#ccc') + '; color: white;">';
+                                        html += status.name;
+                                        html += '</option>';
+                                    });
+                                } else {
+                                    html += '<option value="">No statuses available</option>';
+                                }
+                                
                                 html += '</select>';
                                 html += '<div class="text-muted small mt-1">';
-                                html += data.vendor_name ? data.vendor_name : 'No vendor';
+                                html += '<strong>' + data.vendor_name + '</strong>';
                                 html += '</div>';
 
                                 console.log('Generated HTML for order detail ' + orderDetailId + ':', html);
                                 placeholder.html(html);
-
+                            } else if (data.is_vendor_product === false) {
+                                placeholder.html('<span class="badge badge-secondary">Not a vendor product</span>');
+                            } else {
+                                placeholder.html('<span class="badge badge-warning">No vendor assigned</span>');
                             }
                         } else {
                             console.log('No status data found for order detail:', orderDetailId);
-                            placeholder.html('<span class="badge badge-secondary">Not a vendor product</span>');
+                            placeholder.html('<span class="badge badge-secondary">No data</span>');
                         }
                     });
                 } else {
                     console.error('Error:', response.message);
-                    $('.js-line-status-placeholder').html('<span class="badge badge-danger">Error loading status</span>');
+                    $('.js-line-status-placeholder').html('<span class="badge badge-danger">Error: ' + (response.message || 'Unknown error') + '</span>');
                 }
             },
             error: function (xhr, status, error) {
                 console.error('AJAX Error:', status, error);
                 console.log('Response text:', xhr.responseText);
-                $('.js-line-status-placeholder').html('<span class="badge badge-danger">Error loading status</span>');
+                $('.js-line-status-placeholder').html('<span class="badge badge-danger">AJAX Error: ' + error + '</span>');
             }
         });
     }
 
     /**
-     * Update order line status - FIXED VERSION
+     * Update order line status - COMPLETE FIXED VERSION
      */
-    function updateOrderLineStatus(orderDetailId, vendorId, newStatusTypeId) {
+    function updateOrderLineStatus(orderDetailId, vendorId, newStatusTypeId, selectElement) {
         const orderId = getOrderId();
-        console.log('Updating status for order detail:', orderDetailId, 'to status type ID:', newStatusTypeId);
+        console.log('Updating status for order detail:', orderDetailId, 'vendor:', vendorId, 'to status type ID:', newStatusTypeId);
+
+        // Validate parameters before sending
+        if (!orderDetailId || !vendorId || !newStatusTypeId || !orderId) {
+            console.error('Missing required parameters:', {
+                orderDetailId: orderDetailId,
+                vendorId: vendorId, 
+                newStatusTypeId: newStatusTypeId,
+                orderId: orderId
+            });
+            showErrorMessage('Missing required parameters for status update');
+            // Revert select to original value
+            if (selectElement) {
+                selectElement.val(selectElement.data('original-value'));
+            }
+            return;
+        }
+
+        // Disable the select during update
+        if (selectElement) {
+            selectElement.prop('disabled', true);
+        }
 
         $.ajax({
             url: multivendorAjaxUrl,
@@ -250,37 +319,127 @@ $(document).ready(function () {
                 console.log('Update response:', response);
                 if (response.success) {
                     showSuccessMessage('Status updated successfully');
+                    // Update the stored original value
+                    if (selectElement) {
+                        selectElement.data('original-value', newStatusTypeId);
+                    }
                 } else {
                     console.error('Error updating status:', response.message);
                     showErrorMessage('Error updating status: ' + (response.message || 'Unknown error'));
+                    // Revert select to original value
+                    if (selectElement) {
+                        selectElement.val(selectElement.data('original-value'));
+                    }
                 }
             },
             error: function (xhr, status, error) {
                 console.error('AJAX Error:', status, error);
                 console.log('Response text:', xhr.responseText);
                 showErrorMessage('Error communicating with server: ' + error);
+                // Revert select to original value
+                if (selectElement) {
+                    selectElement.val(selectElement.data('original-value'));
+                }
+            },
+            complete: function() {
+                // Re-enable the select
+                if (selectElement) {
+                    selectElement.prop('disabled', false);
+                }
             }
         });
     }
 
     /**
-     * Get order ID from URL or hidden input
+     * Get order ID from URL or hidden input - IMPROVED VERSION
      */
     function getOrderId() {
-        // Try to get from URL
+        // Method 1: Try to get from URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        let orderId = urlParams.get('id_order');
+        
+        if (orderId) {
+            console.log('Order ID found in URL params:', orderId);
+            return orderId;
+        }
+
+        // Method 2: Try to get from URL path
         const matches = window.location.pathname.match(/\/orders\/(\d+)/);
         if (matches && matches[1]) {
+            console.log('Order ID found in URL path:', matches[1]);
             return matches[1];
         }
 
-        // Try to get from hidden input
+        // Method 3: Try to get from hidden input
         const hiddenInput = $('input[name="id_order"]');
-        if (hiddenInput.length > 0) {
+        if (hiddenInput.length > 0 && hiddenInput.val()) {
+            console.log('Order ID found in hidden input:', hiddenInput.val());
             return hiddenInput.val();
         }
 
-        // Get from the current URL query parameters
-        const urlParams = new URLSearchParams(window.location.search);
-        return urlParams.get('id_order');
+        // Method 4: Try to get from order reference in the page
+        const orderRefElement = $('.order-reference, .reference');
+        if (orderRefElement.length > 0) {
+            const refText = orderRefElement.text();
+            const refMatch = refText.match(/#(\d+)/);
+            if (refMatch && refMatch[1]) {
+                console.log('Order ID found in reference:', refMatch[1]);
+                return refMatch[1];
+            }
+        }
+
+        // Method 5: Try to extract from current page URL
+        const currentUrl = window.location.href;
+        const urlMatch = currentUrl.match(/id_order=(\d+)/);
+        if (urlMatch && urlMatch[1]) {
+            console.log('Order ID found in current URL:', urlMatch[1]);
+            return urlMatch[1];
+        }
+
+        console.error('Order ID not found using any method');
+        return null;
+    }
+
+    /**
+     * Show success message
+     */
+    function showSuccessMessage(message) {
+        // Remove existing messages
+        $('.multivendor-alert').remove();
+        
+        const alert = $('<div class="alert alert-success multivendor-alert" style="position: fixed; top: 20px; right: 20px; z-index: 9999; max-width: 350px;">' + message + '</div>');
+        $('body').append(alert);
+        
+        setTimeout(function () {
+            alert.fadeOut(function () {
+                $(this).remove();
+            });
+        }, 3000);
+    }
+
+    /**
+     * Show error message
+     */
+    function showErrorMessage(message) {
+        // Remove existing messages
+        $('.multivendor-alert').remove();
+        
+        const alert = $('<div class="alert alert-danger multivendor-alert" style="position: fixed; top: 20px; right: 20px; z-index: 9999; max-width: 350px;">' + message + '</div>');
+        $('body').append(alert);
+        
+        setTimeout(function () {
+            alert.fadeOut(function () {
+                $(this).remove();
+            });
+        }, 5000);
+    }
+
+    // Auto-load statuses when page is ready
+    if ($('#orderProductsTable').length > 0) {
+        console.log('Auto-loading order line statuses...');
+        // Small delay to ensure DOM is fully ready
+        setTimeout(function() {
+            loadOrderLineStatuses();
+        }, 500);
     }
 });

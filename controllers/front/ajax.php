@@ -1,7 +1,7 @@
 <?php
 
 /**
- * AJAX controller for multivendor module
+ * AJAX controller for multivendor module - COMPLETE FIXED VERSION
  */
 
 if (!defined('_PS_VERSION_')) {
@@ -25,6 +25,10 @@ class MultivendorAjaxModuleFrontController extends ModuleFrontController
         parent::initContent();
 
         $action = Tools::getValue('action');
+
+        // Log the action for debugging
+        error_log('MultivendorAjax: Action received: ' . $action);
+        error_log('MultivendorAjax: All parameters: ' . print_r($_POST, true));
 
         switch ($action) {
             case 'getOrderLineStatusesForAdmin':
@@ -56,54 +60,105 @@ class MultivendorAjaxModuleFrontController extends ModuleFrontController
                 break;
 
             default:
-                die(json_encode(['success' => false, 'message' => 'Unknown action']));
+                error_log('MultivendorAjax: Unknown action: ' . $action);
+                die(json_encode(['success' => false, 'message' => 'Unknown action: ' . $action]));
         }
     }
 
     /**
-     * Process get order line statuses for admin
+     * Process get order line statuses for admin - FIXED VERSION
      */
     private function processGetOrderLineStatusesForAdmin()
     {
-        $id_order = (int)Tools::getValue('id_order');
-        $result = VendorHelper::getOrderLineStatusesForAdmin($id_order);
-        die(json_encode($result));
+        try {
+            $id_order = (int)Tools::getValue('id_order');
+
+            if (!$id_order) {
+                die(json_encode(['success' => false, 'message' => 'Missing order ID parameter']));
+            }
+
+            error_log('MultivendorAjax: Getting statuses for order: ' . $id_order);
+
+            $result = VendorHelper::getOrderLineStatusesForAdmin($id_order);
+
+            error_log('MultivendorAjax: Status result: ' . print_r($result, true));
+
+            die(json_encode($result));
+        } catch (Exception $e) {
+            error_log('MultivendorAjax: Error in processGetOrderLineStatusesForAdmin: ' . $e->getMessage());
+            die(json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]));
+        }
     }
 
-
     /**
-     * Process update order line status
+     * Process update order line status - COMPLETE FIXED VERSION
      */
     private function processUpdateOrderLineStatus()
     {
-        $id_order_detail = (int)Tools::getValue('id_order_detail');
-        $id_vendor = (int)Tools::getValue('id_vendor');
-        $id_status_type = (int)Tools::getValue('status'); // Admin sends this as 'status' but it's actually the status type ID
-        $employee_id = (isset($this->context->employee) && $this->context->employee->id)
-            ? $this->context->employee->id
-            : 1; // Default to admin ID 1 if no employee context
+        try {
+            // Get parameters
+            $id_order = (int)Tools::getValue('id_order');
+            $id_order_detail = (int)Tools::getValue('id_order_detail');
+            $id_vendor = (int)Tools::getValue('id_vendor');
+            $id_status_type = (int)Tools::getValue('status'); // Admin sends this as 'status' but it's actually the status type ID
 
-        $result = VendorHelper::updateOrderLineStatusAsAdmin($id_order_detail, $id_vendor, $id_status_type, $employee_id);
-        die(json_encode($result));
+            error_log('MultivendorAjax: Admin status update parameters: ' . print_r([
+                'id_order' => $id_order,
+                'id_order_detail' => $id_order_detail,
+                'id_vendor' => $id_vendor,
+                'id_status_type' => $id_status_type
+            ], true));
+
+            // Validate required parameters
+            if (!$id_order_detail || !$id_vendor || !$id_status_type) {
+                $error = 'Missing required parameters. Received: order=' . $id_order . ', order_detail=' . $id_order_detail . ', vendor=' . $id_vendor . ', status=' . $id_status_type;
+                error_log('MultivendorAjax: ' . $error);
+                die(json_encode(['success' => false, 'message' => $error]));
+            }
+
+            // Get employee ID - try different methods to get it
+            $employee_id = 1; // Default fallback
+
+            if (isset($this->context->employee) && $this->context->employee->id) {
+                $employee_id = $this->context->employee->id;
+            } elseif (Tools::getValue('employee_id')) {
+                $employee_id = (int)Tools::getValue('employee_id');
+            }
+
+            error_log('MultivendorAjax: Using employee ID: ' . $employee_id);
+
+            // Update the status
+            $result = VendorHelper::updateOrderLineStatusAsAdmin($id_order_detail, $id_vendor, $id_status_type, $employee_id);
+
+            error_log('MultivendorAjax: Admin status update result: ' . print_r($result, true));
+
+            die(json_encode($result));
+        } catch (Exception $e) {
+            error_log('MultivendorAjax: Error in processUpdateOrderLineStatus: ' . $e->getMessage());
+            error_log('MultivendorAjax: Stack trace: ' . $e->getTraceAsString());
+            die(json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]));
+        }
     }
 
-
     /**
-     * Process vendor status update
+     * Process vendor status update - FIXED VERSION
      */
     private function processUpdateVendorStatus()
     {
         try {
-            // Debug: Check what parameters we're receiving
-            error_log('processUpdateVendorStatus called');
-            error_log('id_order_detail: ' . Tools::getValue('id_order_detail'));
-            error_log('id_status_type: ' . Tools::getValue('id_status_type'));
-            error_log('comment: ' . Tools::getValue('comment'));
+            error_log('MultivendorAjax: processUpdateVendorStatus called');
 
             $id_order_detail = (int)Tools::getValue('id_order_detail');
             $id_status_type = (int)Tools::getValue('id_status_type'); // NOT 'status'
             $comment = Tools::getValue('comment', '');
             $id_customer = $this->context->customer->id;
+
+            error_log('MultivendorAjax: Vendor status update parameters: ' . print_r([
+                'id_order_detail' => $id_order_detail,
+                'id_status_type' => $id_status_type,
+                'comment' => $comment,
+                'id_customer' => $id_customer
+            ], true));
 
             // Validate inputs
             if (!$id_order_detail || !$id_status_type) {
@@ -111,10 +166,13 @@ class MultivendorAjaxModuleFrontController extends ModuleFrontController
             }
 
             $result = VendorHelper::updateVendorOrderLineStatus($id_customer, $id_order_detail, $id_status_type, $comment);
+
+            error_log('MultivendorAjax: Vendor status update result: ' . print_r($result, true));
+
             die(json_encode($result));
         } catch (Exception $e) {
-            error_log('Error in processUpdateVendorStatus: ' . $e->getMessage());
-            error_log('Stack trace: ' . $e->getTraceAsString());
+            error_log('MultivendorAjax: Error in processUpdateVendorStatus: ' . $e->getMessage());
+            error_log('MultivendorAjax: Stack trace: ' . $e->getTraceAsString());
             die(json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]));
         }
     }
@@ -124,11 +182,20 @@ class MultivendorAjaxModuleFrontController extends ModuleFrontController
      */
     private function processGetStatusHistory()
     {
-        $id_order_detail = (int)Tools::getValue('id_order_detail');
-        $id_customer = $this->context->customer->id;
+        try {
+            $id_order_detail = (int)Tools::getValue('id_order_detail');
+            $id_customer = $this->context->customer->id;
 
-        $result = VendorHelper::getOrderLineStatusHistory($id_customer, $id_order_detail);
-        die(json_encode($result));
+            if (!$id_order_detail) {
+                die(json_encode(['success' => false, 'message' => 'Missing order detail ID']));
+            }
+
+            $result = VendorHelper::getOrderLineStatusHistory($id_customer, $id_order_detail);
+            die(json_encode($result));
+        } catch (Exception $e) {
+            error_log('MultivendorAjax: Error in processGetStatusHistory: ' . $e->getMessage());
+            die(json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]));
+        }
     }
 
     /**
@@ -136,13 +203,32 @@ class MultivendorAjaxModuleFrontController extends ModuleFrontController
      */
     private function processBulkUpdateVendorStatus()
     {
-        $order_detail_ids = Tools::getValue('order_detail_ids', []);
-        $new_status = (int)Tools::getValue('status');
-        $comment = Tools::getValue('comment', 'Bulk status update');
-        $id_customer = $this->context->customer->id;
+        try {
+            $order_detail_ids = Tools::getValue('order_detail_ids', []);
+            $id_status_type = (int)Tools::getValue('id_status_type'); // Changed from 'status'
+            $comment = Tools::getValue('comment', 'Bulk status update');
+            $id_customer = $this->context->customer->id;
 
-        $result = VendorHelper::bulkUpdateVendorOrderLineStatus($id_customer, $order_detail_ids, $new_status, $comment);
-        die(json_encode($result));
+            error_log('MultivendorAjax: Bulk update parameters: ' . print_r([
+                'order_detail_ids' => $order_detail_ids,
+                'id_status_type' => $id_status_type,
+                'comment' => $comment,
+                'id_customer' => $id_customer
+            ], true));
+
+            if (empty($order_detail_ids) || !$id_status_type) {
+                die(json_encode(['success' => false, 'message' => 'Missing required parameters']));
+            }
+
+            $result = VendorHelper::bulkUpdateVendorOrderLineStatus($id_customer, $order_detail_ids, $id_status_type, $comment);
+
+            error_log('MultivendorAjax: Bulk update result: ' . print_r($result, true));
+
+            die(json_encode($result));
+        } catch (Exception $e) {
+            error_log('MultivendorAjax: Error in processBulkUpdateVendorStatus: ' . $e->getMessage());
+            die(json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]));
+        }
     }
 
     /**
@@ -150,18 +236,24 @@ class MultivendorAjaxModuleFrontController extends ModuleFrontController
      */
     private function processExportOrdersCSV()
     {
-        $id_customer = $this->context->customer->id;
+        try {
+            $id_customer = $this->context->customer->id;
 
-        $result = VendorHelper::exportVendorOrdersToCSV($id_customer, $this->module);
+            $result = VendorHelper::exportVendorOrdersToCSV($id_customer, $this->module);
 
-        // If it's not a success response, display error
-        if (is_array($result) && isset($result['success']) && !$result['success']) {
+            // If it's not a success response, display error
+            if (is_array($result) && isset($result['success']) && !$result['success']) {
+                header('Content-Type: text/plain');
+                die('Error: ' . $result['message']);
+            }
+
+            // If it reached here, the CSV has been sent
+            exit;
+        } catch (Exception $e) {
+            error_log('MultivendorAjax: Error in processExportOrdersCSV: ' . $e->getMessage());
             header('Content-Type: text/plain');
-            die('Error: ' . $result['message']);
+            die('Error: ' . $e->getMessage());
         }
-
-        // If it reached here, the CSV has been sent
-        exit;
     }
 
     /**
@@ -169,8 +261,13 @@ class MultivendorAjaxModuleFrontController extends ModuleFrontController
      */
     private function processGetAddCommissionStatus()
     {
-        $result = VendorHelper::getAddCommissionStatus();
-        die(json_encode($result));
+        try {
+            $result = VendorHelper::getAddCommissionStatus();
+            die(json_encode($result));
+        } catch (Exception $e) {
+            error_log('MultivendorAjax: Error in processGetAddCommissionStatus: ' . $e->getMessage());
+            die(json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]));
+        }
     }
 
     /**
@@ -178,37 +275,42 @@ class MultivendorAjaxModuleFrontController extends ModuleFrontController
      */
     private function processGetManifestUrl()
     {
-        $order_detail_ids = Tools::getValue('order_detail_ids', []);
+        try {
+            $order_detail_ids = Tools::getValue('order_detail_ids', []);
 
-        if (empty($order_detail_ids) || !is_array($order_detail_ids)) {
-            die(json_encode(['success' => false, 'message' => 'No order details provided']));
-        }
-
-        // Verify that all order details belong to this vendor
-        $id_customer = $this->context->customer->id;
-        $vendor = VendorHelper::getVendorByCustomer($id_customer);
-
-        if (!$vendor) {
-            die(json_encode(['success' => false, 'message' => 'Not authorized']));
-        }
-
-        // Verify ownership of all order details
-        foreach ($order_detail_ids as $id_order_detail) {
-            if (!VendorHelper::verifyOrderDetailOwnership($id_order_detail, $id_customer)) {
-                die(json_encode(['success' => false, 'message' => 'Not authorized for order detail: ' . $id_order_detail]));
+            if (empty($order_detail_ids) || !is_array($order_detail_ids)) {
+                die(json_encode(['success' => false, 'message' => 'No order details provided']));
             }
+
+            // Verify that all order details belong to this vendor
+            $id_customer = $this->context->customer->id;
+            $vendor = VendorHelper::getVendorByCustomer($id_customer);
+
+            if (!$vendor) {
+                die(json_encode(['success' => false, 'message' => 'Not authorized']));
+            }
+
+            // Verify ownership of all order details
+            foreach ($order_detail_ids as $id_order_detail) {
+                if (!VendorHelper::verifyOrderDetailOwnership($id_order_detail, $id_customer)) {
+                    die(json_encode(['success' => false, 'message' => 'Not authorized for order detail: ' . $id_order_detail]));
+                }
+            }
+
+            // Generate the correct URL
+            $url = $this->context->link->getModuleLink(
+                'multivendor',
+                'manifest',
+                ['details' => implode(',', $order_detail_ids)]
+            );
+
+            die(json_encode([
+                'success' => true,
+                'url' => $url
+            ]));
+        } catch (Exception $e) {
+            error_log('MultivendorAjax: Error in processGetManifestUrl: ' . $e->getMessage());
+            die(json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]));
         }
-
-        // Generate the correct URL
-        $url = $this->context->link->getModuleLink(
-            'multivendor',
-            'manifest',
-            ['details' => implode(',', $order_detail_ids)]
-        );
-
-        die(json_encode([
-            'success' => true,
-            'url' => $url
-        ]));
     }
 }

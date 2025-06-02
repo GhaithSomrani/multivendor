@@ -1,7 +1,7 @@
 <?php
 
 /**
- * OrderLineStatus model class - Updated to use status type IDs
+ * OrderLineStatus model class - FIXED VERSION
  */
 
 if (!defined('_PS_VERSION_')) {
@@ -80,16 +80,11 @@ class OrderLineStatus extends ObjectModel
         $query->where('ols.id_order_detail = ' . (int)$id_order_detail);
         $query->where('ols.id_vendor = ' . (int)$id_vendor);
 
-        $result = Db::getInstance()->getRow($query);
-
-        // Debug logging to see what we're getting
-        error_log('getByOrderDetailAndVendor result for order_detail ' . $id_order_detail . ', vendor ' . $id_vendor . ': ' . print_r($result, true));
-
-        return $result;
+        return Db::getInstance()->getRow($query);
     }
 
     /**
-     * Update status of an order line
+     * Update status of an order line - FIXED VERSION
      *
      * @param int $id_order_detail Order detail ID
      * @param int $id_vendor Vendor ID
@@ -101,62 +96,144 @@ class OrderLineStatus extends ObjectModel
      */
     public static function updateStatus($id_order_detail, $id_vendor, $id_status_type, $changed_by, $comment = null, $is_admin = false)
     {
-        $currentStatus = self::getByOrderDetailAndVendor($id_order_detail, $id_vendor);
+        try {
+            // Get current status
+            $currentStatus = self::getByOrderDetailAndVendor($id_order_detail, $id_vendor);
 
-        // Get status type info
-        $statusType = new OrderLineStatusType($id_status_type);
+            // Get status type info
+            $statusType = new OrderLineStatusType($id_status_type);
 
-        if (!Validate::isLoadedObject($statusType)) {
-            return false;
-        }
-
-        // Check permissions
-        if (!$is_admin && $statusType->is_vendor_allowed != 1) {
-            return false;
-        }
-
-        if ($is_admin && $statusType->is_admin_allowed != 1) {
-            return false;
-        }
-
-        if (!$currentStatus) {
-            // Create new status if it doesn't exist
-            $orderLineStatus = new OrderLineStatus();
-            $orderLineStatus->id_order_detail = (int)$id_order_detail;
-            $orderLineStatus->id_vendor = (int)$id_vendor;
-            $orderLineStatus->id_order_line_status_type = (int)$id_status_type;
-            $orderLineStatus->comment = $comment;
-            $orderLineStatus->date_add = date('Y-m-d H:i:s');
-            $orderLineStatus->date_upd = date('Y-m-d H:i:s');
-            $success = $orderLineStatus->save();
-
-            // Log the status change
-            if ($success) {
-                OrderLineStatusLog::logStatusChange($id_order_detail, $id_vendor, null, $id_status_type, $changed_by, $comment);
+            if (!Validate::isLoadedObject($statusType)) {
+                error_log('Invalid status type ID: ' . $id_status_type);
+                return false;
             }
 
-            return $success;
-        } else {
-            // Update existing status
-            $old_status_type_id = $currentStatus['id_order_line_status_type'];
+            // Check permissions
+            if (!$is_admin && $statusType->is_vendor_allowed != 1) {
+                error_log('Vendor not allowed to set status: ' . $statusType->name);
+                return false;
+            }
 
-            $success = Db::getInstance()->update('mv_order_line_status', [
-                'id_order_line_status_type' => (int)$id_status_type,
-                'comment' => pSQL($comment),
-                'date_upd' => date('Y-m-d H:i:s')
-            ], 'id_order_detail = ' . (int)$id_order_detail . ' AND id_vendor = ' . (int)$id_vendor);
+            if ($is_admin && $statusType->is_admin_allowed != 1) {
+                error_log('Admin not allowed to set status: ' . $statusType->name);
+                return false;
+            }
 
-            // Log the status change
-            if ($success) {
-                OrderLineStatusLog::logStatusChange($id_order_detail, $id_vendor, $old_status_type_id, $id_status_type, $changed_by, $comment);
+            $success = false;
 
-                // Process commission if needed
-                if ($statusType->affects_commission == 1) {
-                    OrderLineStatusType::processCommission($id_order_detail, $id_vendor, $statusType->commission_action);
+            if (!$currentStatus) {
+                // Create new status if it doesn't exist
+                $orderLineStatus = new OrderLineStatus();
+                $orderLineStatus->id_order_detail = (int)$id_order_detail;
+                $orderLineStatus->id_vendor = (int)$id_vendor;
+                $orderLineStatus->id_order_line_status_type = (int)$id_status_type;
+                $orderLineStatus->comment = $comment;
+                $orderLineStatus->date_add = date('Y-m-d H:i:s');
+                $orderLineStatus->date_upd = date('Y-m-d H:i:s');
+                $success = $orderLineStatus->save();
+
+                // Log the status change
+                if ($success) {
+                    OrderLineStatusLog::logStatusChange($id_order_detail, $id_vendor, null, $id_status_type, $changed_by, $comment);
+                }
+            } else {
+                // Update existing status
+                $old_status_type_id = $currentStatus['id_order_line_status_type'];
+
+                $success = Db::getInstance()->update('mv_order_line_status', [
+                    'id_order_line_status_type' => (int)$id_status_type,
+                    'comment' => pSQL($comment),
+                    'date_upd' => date('Y-m-d H:i:s')
+                ], 'id_order_detail = ' . (int)$id_order_detail . ' AND id_vendor = ' . (int)$id_vendor);
+
+                // Log the status change
+                if ($success) {
+                    OrderLineStatusLog::logStatusChange($id_order_detail, $id_vendor, $old_status_type_id, $id_status_type, $changed_by, $comment);
                 }
             }
 
+            // Process commission if needed - FIXED VERSION
+            if ($success && $statusType->affects_commission == 1) {
+                self::processCommissionForOrderDetail($id_order_detail, $id_vendor, $statusType->commission_action);
+            }
+
             return $success;
+
+        } catch (Exception $e) {
+            error_log('Error in OrderLineStatus::updateStatus: ' . $e->getMessage());
+            error_log('Stack trace: ' . $e->getTraceAsString());
+            return false;
+        }
+    }
+
+    /**
+     * Process commission for order detail - NEW METHOD
+     *
+     * @param int $id_order_detail Order detail ID
+     * @param int $id_vendor Vendor ID
+     * @param string $action Commission action
+     * @return bool Success
+     */
+    protected static function processCommissionForOrderDetail($id_order_detail, $id_vendor, $action)
+    {
+        try {
+            // Get vendor order detail
+            $vendorOrderDetail = Db::getInstance()->getRow('
+                SELECT vod.*, od.id_order 
+                FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod
+                LEFT JOIN ' . _DB_PREFIX_ . 'order_detail od ON od.id_order_detail = vod.id_order_detail
+                WHERE vod.id_order_detail = ' . (int)$id_order_detail . ' 
+                AND vod.id_vendor = ' . (int)$id_vendor
+            );
+
+            if (!$vendorOrderDetail) {
+                error_log('Vendor order detail not found for order_detail: ' . $id_order_detail . ', vendor: ' . $id_vendor);
+                return false;
+            }
+
+            $id_order = $vendorOrderDetail['id_order'];
+
+            switch ($action) {
+                case 'add':
+                    // Create transaction when status is set
+                    $transaction = new VendorTransaction();
+                    $transaction->id_vendor = $id_vendor;
+                    $transaction->id_order = $id_order;
+                    $transaction->order_detail_id = $id_order_detail;
+                    $transaction->commission_amount = $vendorOrderDetail['commission_amount'];
+                    $transaction->vendor_amount = $vendorOrderDetail['vendor_amount'];
+                    $transaction->transaction_type = 'commission';
+                    $transaction->status = 'pending';
+                    $transaction->date_add = date('Y-m-d H:i:s');
+                    return $transaction->save();
+
+                case 'cancel':
+                    // Cancel any pending transactions for this order detail
+                    return Db::getInstance()->update('mv_vendor_transaction', [
+                        'status' => 'cancelled',
+                    ], 'order_detail_id = ' . (int)$id_order_detail . ' AND id_vendor = ' . (int)$id_vendor . ' AND status = "pending"');
+
+                case 'refund':
+                    // Create a negative transaction for refund
+                    $transaction = new VendorTransaction();
+                    $transaction->id_vendor = $id_vendor;
+                    $transaction->id_order = $id_order;
+                    $transaction->order_detail_id = $id_order_detail;
+                    $transaction->commission_amount = -$vendorOrderDetail['commission_amount'];
+                    $transaction->vendor_amount = -$vendorOrderDetail['vendor_amount'];
+                    $transaction->transaction_type = 'refund';
+                    $transaction->status = 'pending';
+                    $transaction->date_add = date('Y-m-d H:i:s');
+                    return $transaction->save();
+
+                case 'none':
+                default:
+                    return true;
+            }
+
+        } catch (Exception $e) {
+            error_log('Error in processCommissionForOrderDetail: ' . $e->getMessage());
+            return false;
         }
     }
 
