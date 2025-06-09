@@ -288,43 +288,48 @@ class AdminVendorPaymentsController extends ModuleAdminController
 
         $defaultAction = $defaultStatus ? $defaultStatus['commission_action'] : 'none';
 
-        $query = new DbQuery();
-        $query->select('v.id_vendor, v.shop_name');
+        $sql = '
+            SELECT 
+                v.id_vendor, 
+                v.shop_name,
 
-        $query->select('(
-        SELECT SUM(vod.vendor_amount) 
-        FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod
-        LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status ols ON ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor
-        LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status_type olst ON olst.id_order_line_status_type = ols.id_order_line_status_type
-        WHERE vod.id_vendor = v.id_vendor
-        AND (
-            (olst.commission_action = "add") 
-            OR 
-            (ols.id_order_line_status_type IS NULL AND "' . pSQL($defaultAction) . '" = "add")
-        )
-    ) as commissions_added');
+                (
+                    SELECT SUM(vod.vendor_amount)
+                    FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod
+                    LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status ols 
+                        ON ols.id_order_detail = vod.id_order_detail 
+                        AND ols.id_vendor = vod.id_vendor
+                    LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status_type olst 
+                        ON olst.id_order_line_status_type = ols.id_order_line_status_type
+                    WHERE vod.id_vendor = v.id_vendor
+                    AND (
+                        (olst.commission_action = "add") 
+                        OR 
+                        (ols.id_order_line_status_type IS NULL AND "' . pSQL($defaultAction) . '" = "add")
+                    )
+                ) AS commissions_added,
 
-        $query->select('(
-        SELECT COALESCE(SUM(vp.amount), 0)
-        FROM ' . _DB_PREFIX_ . 'mv_vendor_payment vp
-        WHERE vp.id_vendor = v.id_vendor
-        AND vp.status = "completed"
-    ) as total_paid');
+                (
+                    SELECT COALESCE(SUM(vp.amount), 0)
+                    FROM ' . _DB_PREFIX_ . 'mv_vendor_payment vp
+                    WHERE vp.id_vendor = v.id_vendor
+                    AND vp.status = "completed"
+                ) AS total_paid,
 
-        $query->select('(
-    SELECT COALESCE(SUM(vt.vendor_amount), 0)
-    FROM ' . _DB_PREFIX_ . 'mv_vendor_transaction vt
-    WHERE vt.id_vendor = v.id_vendor
-    AND vt.status = "pending"
-    ) as pending_amount');
+                (
+                    SELECT COALESCE(SUM(vt.vendor_amount), 0)
+                    FROM ' . _DB_PREFIX_ . 'mv_vendor_transaction vt
+                    WHERE vt.id_vendor = v.id_vendor
+                    AND vt.status = "pending"
+                ) AS pending_amount
 
-        $query->from('mv_vendor', 'v');
-        $query->having('pending_amount > 0');
-        $query->orderBy('pending_amount DESC');
+            FROM ' . _DB_PREFIX_ . 'mv_vendor v
 
-        $pendingCommissions = Db::getInstance()->executeS($query);
+            HAVING pending_amount > 0
+            ORDER BY pending_amount DESC
+            ';
 
-        // Format the results
+        $pendingCommissions = Db::getInstance()->executeS($sql);
         foreach ($pendingCommissions as &$commission) {
             $commission['pending_amount'] = (float)$commission['pending_amount'];
             $commission['transaction_count'] = $this->countPendingTransactions($commission['id_vendor']);
@@ -393,10 +398,7 @@ class AdminVendorPaymentsController extends ModuleAdminController
         if ($result['success']) {
             die(json_encode([
                 'success' => true,
-                'message' => sprintf(
-                    $this->l('Successfully paid %s for %d order lines'),
-                    Tools::displayPrice($result['amount_paid']),
-                )
+                'message' => 'Successfully paid order lines'
             ]));
         } else {
             die(json_encode([
