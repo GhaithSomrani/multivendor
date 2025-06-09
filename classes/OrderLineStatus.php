@@ -71,17 +71,7 @@ class OrderLineStatus extends ObjectModel
      * @param int $id_vendor Vendor ID
      * @return array|false Status data with type information
      */
-    public static function getByOrderDetailAndVendor($id_order_detail, $id_vendor)
-    {
-        $query = new DbQuery();
-        $query->select('ols.*, olst.name as status_name, olst.color, olst.commission_action, olst.affects_commission');
-        $query->from('mv_order_line_status', 'ols');
-        $query->leftJoin('mv_order_line_status_type', 'olst', 'olst.id_order_line_status_type = ols.id_order_line_status_type');
-        $query->where('ols.id_order_detail = ' . (int)$id_order_detail);
-        $query->where('ols.id_vendor = ' . (int)$id_vendor);
 
-        return Db::getInstance()->getRow($query);
-    }
 
     /**
      * Update status of an order line - FIXED VERSION
@@ -98,7 +88,7 @@ class OrderLineStatus extends ObjectModel
     {
         try {
             // Get current status
-            $currentStatus = self::getByOrderDetailAndVendor($id_order_detail, $id_vendor);
+            $currentStatus = VendorHelper::getOrderLineStatusByOrderDetailAndVendor($id_order_detail, $id_vendor);
 
             // Get status type info
             $statusType = new OrderLineStatusType($id_status_type);
@@ -108,7 +98,6 @@ class OrderLineStatus extends ObjectModel
                 return false;
             }
 
-            // Check permissions
             if (!$is_admin && $statusType->is_vendor_allowed != 1) {
                 error_log('Vendor not allowed to set status: ' . $statusType->name);
                 return false;
@@ -122,7 +111,6 @@ class OrderLineStatus extends ObjectModel
             $success = false;
 
             if (!$currentStatus) {
-                // Create new status if it doesn't exist
                 $orderLineStatus = new OrderLineStatus();
                 $orderLineStatus->id_order_detail = (int)$id_order_detail;
                 $orderLineStatus->id_vendor = (int)$id_vendor;
@@ -146,7 +134,6 @@ class OrderLineStatus extends ObjectModel
                     'date_upd' => date('Y-m-d H:i:s')
                 ], 'id_order_detail = ' . (int)$id_order_detail . ' AND id_vendor = ' . (int)$id_vendor);
 
-                // Log the status change
                 if ($success) {
                     OrderLineStatusLog::logStatusChange($id_order_detail, $id_vendor, $old_status_type_id, $id_status_type, $changed_by, $comment);
                 }
@@ -158,7 +145,6 @@ class OrderLineStatus extends ObjectModel
             }
 
             return $success;
-
         } catch (Exception $e) {
             error_log('Error in OrderLineStatus::updateStatus: ' . $e->getMessage());
             error_log('Stack trace: ' . $e->getTraceAsString());
@@ -178,10 +164,10 @@ class OrderLineStatus extends ObjectModel
     {
         try {
             // Get vendor order detail
-            $vendorOrderDetail = Db::getInstance()->getRow('
-                SELECT vod.*, od.id_order 
+            $vendorOrderDetail = Db::getInstance()->getRow(
+                '
+                SELECT vod.* 
                 FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod
-                LEFT JOIN ' . _DB_PREFIX_ . 'order_detail od ON od.id_order_detail = vod.id_order_detail
                 WHERE vod.id_order_detail = ' . (int)$id_order_detail . ' 
                 AND vod.id_vendor = ' . (int)$id_vendor
             );
@@ -230,7 +216,6 @@ class OrderLineStatus extends ObjectModel
                 default:
                     return true;
             }
-
         } catch (Exception $e) {
             error_log('Error in processCommissionForOrderDetail: ' . $e->getMessage());
             return false;
@@ -250,9 +235,19 @@ class OrderLineStatus extends ObjectModel
             ORDER BY position ASC 
         ');
 
-        return $defaultStatusType ? (int)$defaultStatusType['id_order_line_status_type'] : 1;
+        return (int)$defaultStatusType['id_order_line_status_type'] ;
     }
 
+    public static function getDeleteStatusTypeId()
+    {
+        $deleteStatusType = Db::getInstance()->getRow('
+            SELECT id_order_line_status_type FROM `' . _DB_PREFIX_ . 'mv_order_line_status_type` 
+            WHERE active = 1 
+            ORDER BY position desc
+        '); 
+
+        return (int)$deleteStatusType['id_order_line_status_type'] ;
+    }
     /**
      * Get status with full type information by order detail and vendor
      *
@@ -262,7 +257,7 @@ class OrderLineStatus extends ObjectModel
      */
     public static function getFullStatusInfo($id_order_detail, $id_vendor)
     {
-        $status = self::getByOrderDetailAndVendor($id_order_detail, $id_vendor);
+        $status = VendorHelper::getOrderLineStatusByOrderDetailAndVendor($id_order_detail, $id_vendor);
 
         if (!$status) {
             // Return default status if no status exists

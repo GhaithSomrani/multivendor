@@ -124,16 +124,14 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
         $defaultStatusTypeId = OrderLineStatus::getDefaultStatusTypeId();
 
         $query = new DbQuery();
-        $query->select('od.id_order_detail, od.product_name, od.product_reference, od.product_quantity, od.unit_price_tax_incl, od.total_price_tax_incl,
-              o.reference as order_reference, o.date_add as order_date, p.id_supplier, od.product_mpn,
+        $query->select('vod.id_order_detail, vod.product_name, vod.product_reference, vod.product_quantity, vod.vendor_amount,
+              o.reference as order_reference, o.date_add as order_date, vod.product_mpn,
               vod.id_vendor, vod.commission_amount, vod.vendor_amount, vod.id_order, 
               COALESCE(ols.id_order_line_status_type, ' . (int)$defaultStatusTypeId . ') as status_type_id,
               COALESCE(olst.name, "Pending") as line_status');
-        $query->from('order_detail', 'od');
-        $query->innerJoin('orders', 'o', 'o.id_order = od.id_order');
-        $query->innerJoin('product', 'p', 'p.id_product = od.product_id');
-        $query->leftJoin('mv_vendor_order_detail', 'vod', 'vod.id_order_detail = od.id_order_detail AND vod.id_vendor = ' . (int)$id_vendor);
-        $query->leftJoin('mv_order_line_status', 'ols', 'ols.id_order_detail = od.id_order_detail AND ols.id_vendor = ' . (int)$id_vendor);
+        $query->from('mv_vendor_order_detail', 'vod');
+        $query->innerJoin('orders', 'o', 'o.id_order = vod.id_order');
+        $query->leftJoin('mv_order_line_status', 'ols', 'ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = ' . (int)$id_vendor);
         $query->leftJoin('mv_order_line_status_type', 'olst', 'olst.id_order_line_status_type = ols.id_order_line_status_type');
         $query->where('vod.id_vendor = ' . (int)$id_vendor);
 
@@ -142,7 +140,7 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
             $query->where('LOWER(COALESCE(olst.name, "Pending")) = "' . pSQL(strtolower($status)) . '"');
         }
 
-        $query->orderBy('od.id_order_detail DESC');
+        $query->orderBy('vod.id_order_detail DESC');
         $query->limit($limit, $offset);
 
         $results = Db::getInstance()->executeS($query);
@@ -166,14 +164,12 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
      * @param int $id_supplier Supplier ID
      * @return int Number of order lines
      */
-    protected function countVendorOrderLines($id_vendor, $id_supplier, $status = 'all')
+    protected function countVendorOrderLines($id_vendor, $status = 'all')
     {
         $query = new DbQuery();
-        $query->select('COUNT(od.id_order_detail)');
-        $query->from('order_detail', 'od');
-        $query->innerJoin('product', 'p', 'p.id_product = od.product_id');
-        $query->leftJoin('mv_vendor_order_detail', 'vod', 'vod.id_order_detail = od.id_order_detail AND vod.id_vendor = ' . (int)$id_vendor);
-        $query->leftJoin('mv_order_line_status', 'ols', 'ols.id_order_detail = od.id_order_detail AND ols.id_vendor = ' . (int)$id_vendor);
+        $query->select('COUNT(vod.id_order_detail)');
+        $query->from('mv_vendor_order_detail', 'vod');
+        $query->leftJoin('mv_order_line_status', 'ols', 'ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = ' . (int)$id_vendor);
         $query->where('vod.id_vendor = ' . (int)$id_vendor);
 
         // Add status filter if not "all"
@@ -190,27 +186,16 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
     protected function processStatusUpdate()
     {
         $id_vendor = $this->context->smarty->getTemplateVars('id_vendor');
-        $id_supplier = $this->context->smarty->getTemplateVars('id_supplier');
         $id_order_detail = (int)Tools::getValue('id_order_detail');
         $id_status_type = (int)Tools::getValue('id_status_type');
         $comment = Tools::getValue('comment');
-
-        // Verify this order detail has a product from this vendor's supplier
-        $query = new DbQuery();
-        $query->select('p.id_supplier');
-        $query->from('order_detail', 'od');
-        $query->innerJoin('product', 'p', 'p.id_product = od.product_id');
-        $query->where('od.id_order_detail = ' . (int)$id_order_detail);
-
-        $result = Db::getInstance()->getValue($query);
-
-        if ((int)$result !== (int)$id_supplier) {
+        if (!VendorHelper::validateVendorOrderDetailAccess($id_order_detail, $id_vendor)) {
             $this->errors[] = $this->module->l('You do not have permission to update this order line.');
             return;
         }
 
         // Check if vendor order detail exists, if not create it
-        $vendorOrderDetail = VendorOrderDetail::getByOrderDetailAndVendor($id_order_detail, $id_vendor);
+        $vendorOrderDetail = VendorHelper::getVendorOrderDetailByOrderDetailAndVendor($id_order_detail, $id_vendor);
 
         if (!$vendorOrderDetail) {
             // Create a new vendor order detail record
@@ -224,10 +209,10 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
         $success = OrderLineStatus::updateStatus(
             $id_order_detail,
             $id_vendor,
-            $id_status_type, // This is the status type ID
+            $id_status_type, 
             $this->context->customer->id,
             $comment,
-            false // not admin
+            false 
         );
 
         if ($success) {
@@ -290,8 +275,7 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
         WHERE vod.id_vendor = ' . (int)$id_vendor
         );
 
-        // Total revenue - Only count when commission_action = "add"
-        // Fixed JOIN to use id_order_line_status_type instead of status name
+
         $totalRevenue = Db::getInstance()->getValue('
         SELECT SUM(vod.vendor_amount)
         FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod
@@ -315,7 +299,7 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
         FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod
         LEFT JOIN ' . _DB_PREFIX_ . 'orders o ON o.id_order = vod.id_order
         WHERE vod.id_vendor = ' . (int)$id_vendor . '
-        AND DATE(o.date_add) = CURDATE()
+        AND DATE(vod.date_add) = CURDATE()
     ');
 
         return [
@@ -343,7 +327,7 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
                     $id_order_detail = $detail['id_order_detail'];
                     $id_vendor = $detail['id_vendor'];
                     $vendor = new Vendor($id_vendor);
-                    $lineStatus = OrderLineStatus::getByOrderDetailAndVendor($id_order_detail, $id_vendor);
+                    $lineStatus = VendorHelper::getOrderLineStatusByOrderDetailAndVendor($id_order_detail, $id_vendor);
 
                     $statusData[$id_order_detail] = [
                         'id_vendor' => $id_vendor,
@@ -537,7 +521,7 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
      */
     public function getOrderLineStatusData($id_order_detail, $id_vendor)
     {
-        $lineStatus = OrderLineStatus::getByOrderDetailAndVendor($id_order_detail, $id_vendor);
+        $lineStatus = VendorHelper::getOrderLineStatusByOrderDetailAndVendor($id_order_detail, $id_vendor);
 
         return [
             'status' => $lineStatus ? $lineStatus['status'] : 'Pending',

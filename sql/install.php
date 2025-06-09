@@ -133,6 +133,13 @@ $sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'mv_vendor_order_detail`
     `id_order_detail` int(10) unsigned NOT NULL,
     `id_vendor` int(10) unsigned NOT NULL,
     `id_order` int(10) unsigned NOT NULL,
+    `product_id` int(10) unsigned NOT NULL,
+    `product_name` varchar(255) NOT NULL,
+    `product_reference` varchar(128) DEFAULT NULL,
+    `product_mpn` varchar(128) DEFAULT NULL,
+    `product_price` decimal(20,6) NOT NULL DEFAULT "0.000000",
+    `product_quantity` int(10) unsigned NOT NULL DEFAULT "1",
+    `product_attribute_id` int(10) unsigned DEFAULT NULL,
     `commission_rate` decimal(20,6) NOT NULL DEFAULT "0.000000",
     `commission_amount` decimal(20,6) NOT NULL DEFAULT "0.000000",
     `vendor_amount` decimal(20,6) NOT NULL DEFAULT "0.000000",
@@ -140,7 +147,10 @@ $sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'mv_vendor_order_detail`
     PRIMARY KEY (`id_vendor_order_detail`),
     UNIQUE KEY `id_order_detail_vendor` (`id_order_detail`,`id_vendor`),
     KEY `id_vendor` (`id_vendor`),
-    KEY `id_order` (`id_order`)
+    KEY `id_order` (`id_order`),
+    KEY `product_id` (`product_id`),
+    KEY `product_reference` (`product_reference`),
+    KEY `product_attribute_id` (`product_attribute_id`)
 ) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8;';
 
 // Create Order Status Permission table

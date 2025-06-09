@@ -40,7 +40,7 @@ class multivendor extends Module
         $this->bootstrap = true;
 
         parent::__construct();
-        
+
         if (!is_callable('smartyDisplayPrice')) {
             smartyRegisterFunction(
                 $this->context->smarty,
@@ -74,9 +74,6 @@ class multivendor extends Module
             !$this->registerHook('actionValidateOrder') ||
             !$this->registerHook('displayBackOfficeHeader') ||
             !$this->registerHook('actionAdminControllerSetMedia') ||
-            !$this->registerHook('actionOrderDetailAdd') ||
-            !$this->registerHook('actionOrderDetailUpdate') ||
-            !$this->registerHook('actionOrderDetailDelete') ||
             !$this->registerHook('actionObjectOrderDetailAddAfter') ||
             !$this->registerHook('actionObjectOrderDetailUpdateAfter') ||
             !$this->registerHook('actionObjectOrderDetailDeleteAfter') ||
@@ -85,7 +82,7 @@ class multivendor extends Module
             return false;
         }
 
-  
+
         return true;
     }
 
@@ -263,7 +260,7 @@ class multivendor extends Module
         // Verify admin token
         $token = Tools::getValue('token');
         $expectedToken = Tools::getAdminTokenLite('AdminModules');
-        
+
         if (empty($token) || $token !== $expectedToken) {
             die(json_encode(['success' => false, 'message' => 'Access denied: Invalid token']));
         }
@@ -521,63 +518,70 @@ class multivendor extends Module
      * Hook: When a new order is validated
      */
     public function hookActionValidateOrder($params)
-    {
-        $order = $params['order'];
-        $cart = $params['cart'];
+{
+    $order = $params['order'];
+    $cart = $params['cart'];
 
-        $defaultStatusTypeId = OrderLineStatus::getDefaultStatusTypeId();
+    $defaultStatusTypeId = OrderLineStatus::getDefaultStatusTypeId();
 
-        // Get order details
-        $orderDetails = OrderDetail::getList($order->id);
+    // Get order details
+    $orderDetails = OrderDetail::getList($order->id);
 
-        foreach ($orderDetails as $detail) {
-            $product = new Product($detail['product_id']);
-            $id_supplier = $product->id_supplier;
+    foreach ($orderDetails as $detail) {
+        $product = new Product($detail['product_id']);
+        $id_supplier = $product->id_supplier;
 
-            // Check if this supplier is associated with a vendor
-            $vendor = Vendor::getVendorBySupplier($id_supplier);
+        // Check if this supplier is associated with a vendor
+        $vendor = Vendor::getVendorBySupplier($id_supplier);
 
-            if ($vendor) {
-                // Calculate commission
-                $commission_rate = VendorHelper::getCommissionRate($vendor['id_vendor']);
-                $product_price = $detail['unit_price_tax_incl'];
-                $quantity = $detail['product_quantity'];
-                $total_price = $detail['total_price_tax_incl'];
-                $commission_amount = $total_price * ($commission_rate / 100);
-                $vendor_amount = $total_price - $commission_amount;
+        if ($vendor) {
+            // Calculate commission
+            $commission_rate = VendorHelper::getCommissionRate($vendor['id_vendor']);
+            $product_price = $detail['product_price'];
+            $quantity = $detail['product_quantity'];
+            $total_price = $quantity * $product_price ; 
+            $commission_amount = $total_price * ($commission_rate / 100);
+            $vendor_amount = $total_price - $commission_amount;
 
-                // Create vendor order detail record
-                $vendorOrderDetail = new VendorOrderDetail();
-                $vendorOrderDetail->id_order_detail = $detail['id_order_detail'];
-                $vendorOrderDetail->id_vendor = $vendor['id_vendor'];
-                $vendorOrderDetail->id_order = $order->id;
-                $vendorOrderDetail->commission_rate = $commission_rate;
-                $vendorOrderDetail->commission_amount = $commission_amount;
-                $vendorOrderDetail->vendor_amount = $vendor_amount;
-                $vendorOrderDetail->date_add = date('Y-m-d H:i:s');
-                $vendorOrderDetail->save();
+            // Create vendor order detail record with product information including reference
+            $vendorOrderDetail = new VendorOrderDetail();
+            $vendorOrderDetail->id_order_detail = $detail['id_order_detail'];
+            $vendorOrderDetail->id_vendor = $vendor['id_vendor'];
+            $vendorOrderDetail->id_order = $order->id;
+            $vendorOrderDetail->product_id = $detail['product_id'];
+            $vendorOrderDetail->product_name = $detail['product_name'];
+            $vendorOrderDetail->product_reference = $detail['product_reference'];
+            $vendorOrderDetail->product_mpn = $product->mpn ;
+            $vendorOrderDetail->product_price = $detail['product_price'];
+            $vendorOrderDetail->product_quantity = $detail['product_quantity'];
+            $vendorOrderDetail->product_attribute_id = $detail['product_attribute_id'] ?: null;
+            $vendorOrderDetail->commission_rate = $commission_rate;
+            $vendorOrderDetail->commission_amount = $commission_amount;
+            $vendorOrderDetail->vendor_amount = $vendor_amount;
+            $vendorOrderDetail->date_add = date('Y-m-d H:i:s');
+            $vendorOrderDetail->save();
 
-                // Create initial order line status
-                $orderLineStatus = new OrderLineStatus();
-                $orderLineStatus->id_order_detail = $detail['id_order_detail'];
-                $orderLineStatus->id_vendor = $vendor['id_vendor'];
-                $orderLineStatus->id_order_line_status_type = $defaultStatusTypeId;
-                $orderLineStatus->date_add = date('Y-m-d H:i:s');
-                $orderLineStatus->date_upd = date('Y-m-d H:i:s');
-                $orderLineStatus->save();
+            // Create initial order line status (simple table)
+            $orderLineStatus = new OrderLineStatus();
+            $orderLineStatus->id_order_detail = $detail['id_order_detail'];
+            $orderLineStatus->id_vendor = $vendor['id_vendor'];
+            $orderLineStatus->id_order_line_status_type = $defaultStatusTypeId;
+            $orderLineStatus->date_add = date('Y-m-d H:i:s');
+            $orderLineStatus->date_upd = date('Y-m-d H:i:s');
+            $orderLineStatus->save();
 
-                // Log status change
-                $orderLineStatusLog = new OrderLineStatusLog();
-                $orderLineStatusLog->id_order_detail = $detail['id_order_detail'];
-                $orderLineStatusLog->id_vendor = $vendor['id_vendor'];
-                $orderLineStatusLog->old_id_order_line_status_type = null;
-                $orderLineStatusLog->new_id_order_line_status_type = $defaultStatusTypeId;
-                $orderLineStatusLog->changed_by = 0; // System
-                $orderLineStatusLog->date_add = date('Y-m-d H:i:s');
-                $orderLineStatusLog->save();
-            }
+            // Log status change
+            OrderLineStatusLog::logStatusChange(
+                $detail['id_order_detail'],
+                $vendor['id_vendor'],
+                null,
+                $defaultStatusTypeId,
+                0, // System
+                'New order created'
+            );
         }
     }
+}
 
     /**
      * Hook: Display vendor tabs in customer account
@@ -666,16 +670,6 @@ class multivendor extends Module
     }
 
     /**
-     * Hook: When an order detail is added from admin
-     */
-    public function hookActionOrderDetailAdd($params)
-    {
-        if (isset($params['order_detail'])) {
-            OrderHelper::processOrderDetailForVendor($params['order_detail']);
-        }
-    }
-
-    /**
      * Hook: When an order detail is added (alternative hook)
      */
     public function hookActionObjectOrderDetailAddAfter($params)
@@ -685,15 +679,6 @@ class multivendor extends Module
         }
     }
 
-    /**
-     * Hook: When an order detail is updated from admin
-     */
-    public function hookActionOrderDetailUpdate($params)
-    {
-        if (isset($params['order_detail'])) {
-            OrderHelper::updateOrderDetailForVendor($params['order_detail']);
-        }
-    }
 
     /**
      * Hook: When an order detail is updated (alternative hook)
@@ -705,15 +690,6 @@ class multivendor extends Module
         }
     }
 
-    /**
-     * Hook: When an order detail is deleted from admin
-     */
-    public function hookActionOrderDetailDelete($params)
-    {
-        if (isset($params['order_detail'])) {
-            OrderHelper::deleteOrderDetailForVendor($params['order_detail']);
-        }
-    }
 
     /**
      * Hook: When an order detail is deleted (alternative hook)

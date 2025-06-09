@@ -126,7 +126,7 @@ class MultivendorAjaxModuleFrontController extends ModuleFrontController
     {
         try {
             $order_detail_ids = Tools::getValue('order_detail_ids', []);
-            $id_status_type = (int)Tools::getValue('id_status_type'); // Changed from 'status'
+            $id_status_type = (int)Tools::getValue('id_status_type'); 
             $comment = Tools::getValue('comment', 'Bulk status update');
             $id_customer = $this->context->customer->id;
 

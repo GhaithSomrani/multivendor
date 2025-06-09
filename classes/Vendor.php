@@ -147,25 +147,6 @@ class Vendor extends ObjectModel
         return (int)Db::getInstance()->getValue($query);
     }
 
-    /**
-     * Get vendor order details
-     * 
-     * @param int $id_vendor Vendor ID
-     * @param int $id_order Order ID
-     * @return array Order details
-     */
-    public static function getVendorOrderDetails($id_vendor, $id_order)
-    {
-        $query = new DbQuery();
-        $query->select('vod.*, od.product_name, od.product_quantity, od.product_price, od.total_price_tax_incl, ols.status as line_status');
-        $query->from('mv_vendor_order_detail', 'vod');
-        $query->leftJoin('order_detail', 'od', 'od.id_order_detail = vod.id_order_detail');
-        $query->leftJoin('mv_order_line_status', 'ols', 'ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor');
-        $query->where('vod.id_vendor = ' . (int)$id_vendor);
-        $query->where('vod.id_order = ' . (int)$id_order);
-
-        return Db::getInstance()->executeS($query);
-    }
 
     /**
      * Get vendor's commission summary

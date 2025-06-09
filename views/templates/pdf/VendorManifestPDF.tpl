@@ -258,7 +258,7 @@
                                     <small style="font-family: monospace; font-size: 9px;">{$manifest.orderDetail.product_mpn}</small>
                                 </div>
                             {else}
-                                <div style="font-family: monospace; font-weight: bold; font-size: 14px; border: 2px solid #000; padding: 5px; background-color: #fff; display: inline-block;">
+                                <div style="font-family: arial; font-weight: bold; font-size: 14px; border: 2px solid #000; padding: 5px; background-color: #fff; display: inline-block;">
                                     {$manifest.orderDetail.product_mpn}
                                 </div>
                             {/if}

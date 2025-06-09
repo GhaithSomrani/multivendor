@@ -307,7 +307,7 @@ function initBulkActions() {
                 ajax: true,
                 action: 'bulkUpdateVendorStatus',
                 order_detail_ids: selectedOrders,
-                id_status_type: newStatusTypeId, // Send as id_status_type
+                id_status_type: newStatusTypeId,
                 comment: bulkChangeComment,
                 token: ordersAjaxToken
             },
@@ -321,10 +321,9 @@ function initBulkActions() {
                     });
 
                     showNotification('success', response.message);
-
-                    // Check each updated row for manifest eligibility
                     $.each(response.results, function (id, success) {
-                        if (success) {
+                        if (success == true) {
+
                             checkAndAddToManifestIfNeeded(id, newStatusTypeId);
                         }
                     });
@@ -565,8 +564,8 @@ function checkAndAddToManifestIfNeeded(orderDetailId, newStatus) {
         dataType: 'json',
         success: function (response) {
             if (response.success && response.status) {
-                console.log('response.status',response.status)
-                console.log('response.status',newStatus)
+                console.log('response.status', response.status)
+                console.log('response.status', newStatus)
 
                 // If the selected status matches the "add commission" status
                 if (newStatus === response.status.id_order_line_status_type) {
@@ -615,7 +614,6 @@ function removeFromManifest(orderDetailId) {
  * and add those with the appropriate status to the manifest
  */
 function checkExistingOrderLinesForManifest() {
-    // Get the "add commission" status
     $.ajax({
         url: ordersAjaxUrl,
         type: 'POST',
@@ -631,7 +629,7 @@ function checkExistingOrderLinesForManifest() {
                 $('.order-line-status-select').each(function () {
                     const $select = $(this);
                     const currentStatus = $select.val();
-                    
+
                     const orderDetailId = $select.data('order-detail-id');
 
                     console.log('addCommissionStatus ', addCommissionStatus);
@@ -650,7 +648,6 @@ function checkExistingOrderLinesForManifest() {
  * Load status history
  */
 function loadStatusHistory(orderDetailId) {
-    // Show loading in modal
     $('#statusHistoryContent').html('<div class="mv-loading">Loading history...</div>');
     $('#statusHistoryModal').addClass('mv-modal-open');
 

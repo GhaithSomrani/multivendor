@@ -22,6 +22,27 @@ class VendorOrderDetail extends ObjectModel
     /** @var int Order ID */
     public $id_order;
 
+    /** @var int Product ID */
+    public $product_id;
+
+    /** @var string Product name */
+    public $product_name;
+
+    /** @var string Product reference (SKU) */
+    public $product_reference;
+
+    /** @var string Product MPN */
+    public $product_mpn;
+
+    /** @var float Product price */
+    public $product_price;
+
+    /** @var int Product quantity */
+    public $product_quantity;
+
+    /** @var int Product attribute ID */
+    public $product_attribute_id;
+
     /** @var float Commission rate */
     public $commission_rate;
 
@@ -44,13 +65,19 @@ class VendorOrderDetail extends ObjectModel
             'id_order_detail' => ['type' => self::TYPE_INT, 'validate' => 'isUnsignedId', 'required' => true],
             'id_vendor' => ['type' => self::TYPE_INT, 'validate' => 'isUnsignedId', 'required' => true],
             'id_order' => ['type' => self::TYPE_INT, 'validate' => 'isUnsignedId', 'required' => true],
+            'product_id' => ['type' => self::TYPE_INT, 'validate' => 'isUnsignedId', 'required' => true],
+            'product_name' => ['type' => self::TYPE_STRING, 'validate' => 'isGenericName', 'required' => true, 'size' => 255],
+            'product_reference' => ['type' => self::TYPE_STRING, 'validate' => 'isReference', 'size' => 128], // NEW FIELD
+            'product_mpn' => ['type' => self::TYPE_STRING, 'validate' => 'isGenericName', 'size' => 128],
+            'product_price' => ['type' => self::TYPE_FLOAT, 'validate' => 'isFloat', 'required' => true],
+            'product_quantity' => ['type' => self::TYPE_INT, 'validate' => 'isUnsignedInt', 'required' => true],
+            'product_attribute_id' => ['type' => self::TYPE_INT, 'validate' => 'isUnsignedId'],
             'commission_rate' => ['type' => self::TYPE_FLOAT, 'validate' => 'isFloat', 'required' => true],
             'commission_amount' => ['type' => self::TYPE_FLOAT, 'validate' => 'isFloat', 'required' => true],
             'vendor_amount' => ['type' => self::TYPE_FLOAT, 'validate' => 'isFloat', 'required' => true],
             'date_add' => ['type' => self::TYPE_DATE, 'validate' => 'isDate']
         ]
     ];
-
     /**
      * Get vendor order details by order ID
      *
@@ -67,30 +94,6 @@ class VendorOrderDetail extends ObjectModel
         return Db::getInstance()->executeS($query);
     }
 
-    /**
-     * Get vendor order detail by order detail ID and vendor ID
-     *
-     * @param int $id_order_detail Order detail ID
-     * @param int $id_vendor Vendor ID
-     * @return array|false Vendor order detail
-     */
-    public static function getByOrderDetailAndVendor($id_order_detail, $id_vendor)
-    {
-        $query = new DbQuery();
-        $query->select('ols.id_order_line_status, ols.id_order_detail, ols.id_vendor, ols.id_order_line_status_type, ols.comment, ols.date_add, ols.date_upd, olst.name as status_name, olst.color, olst.commission_action, olst.affects_commission');
-        $query->from('mv_order_line_status', 'ols');
-        $query->leftJoin('mv_order_line_status_type', 'olst', 'olst.id_order_line_status_type = ols.id_order_line_status_type');
-        $query->where('ols.id_order_detail = ' . (int)$id_order_detail);
-        $query->where('ols.id_vendor = ' . (int)$id_vendor);
-
-        $result = Db::getInstance()->getRow($query);
-
-        // Debug logging to see what we're getting
-        error_log('getByOrderDetailAndVendor SQL: ' . $query->build());
-        error_log('getByOrderDetailAndVendor result for order_detail ' . $id_order_detail . ', vendor ' . $id_vendor . ': ' . print_r($result, true));
-
-        return $result;
-    }
 
     /**
      * Get vendor order details by vendor ID
@@ -103,9 +106,8 @@ class VendorOrderDetail extends ObjectModel
     public static function getByVendorId($id_vendor, $limit = null, $offset = null)
     {
         $query = new DbQuery();
-        $query->select('vod.*, od.product_name, od.product_quantity, od.product_price, o.reference as order_reference, o.date_add as order_date');
+        $query->select('vod.*, o.reference as order_reference, o.date_add as order_date');
         $query->from('mv_vendor_order_detail', 'vod');
-        $query->leftJoin('order_detail', 'od', 'od.id_order_detail = vod.id_order_detail');
         $query->leftJoin('orders', 'o', 'o.id_order = vod.id_order');
         $query->where('vod.id_vendor = ' . (int)$id_vendor);
         $query->orderBy('o.date_add DESC');

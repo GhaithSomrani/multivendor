@@ -179,7 +179,7 @@
                                                     <br> (SKU : {$line.product_reference})
                                                 </td>
                                                 <td class="mv-text-center">{$line.product_quantity}</td>
-                                                <td>{($line.total_price_tax_incl - $line.commission_amount)|displayPrice}</td>
+                                                <td>{($line.vendor_amount)|displayPrice}</td>
                                                 <td>
                                                     {if isset($all_statuses[$line.status_type_id]) && !isset($vendor_statuses[$line.status_type_id])}
                                                         <span class="mv-status-badge"

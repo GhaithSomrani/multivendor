@@ -36,7 +36,7 @@ class OrderHelper
             }
 
             // Check if vendor order detail already exists
-            $existingVendorOrderDetail = VendorOrderDetail::getByOrderDetailAndVendor(
+            $existingVendorOrderDetail = VendorHelper::getVendorOrderDetailByOrderDetailAndVendor(
                 $orderDetail->id_order_detail,
                 $vendor['id_vendor']
             );
@@ -51,11 +51,18 @@ class OrderHelper
             $commission_amount = $total_price * ($commission_rate / 100);
             $vendor_amount = $total_price - $commission_amount;
 
-            // Create vendor order detail record
+            // Create vendor order detail record with product information including reference
             $vendorOrderDetail = new VendorOrderDetail();
             $vendorOrderDetail->id_order_detail = $orderDetail->id_order_detail;
             $vendorOrderDetail->id_vendor = $vendor['id_vendor'];
             $vendorOrderDetail->id_order = $orderDetail->id_order;
+            $vendorOrderDetail->product_id = $orderDetail->product_id;
+            $vendorOrderDetail->product_name = $orderDetail->product_name;
+            $vendorOrderDetail->product_reference = $orderDetail->product_reference;
+            $vendorOrderDetail->product_mpn = $product->mpn ;
+            $vendorOrderDetail->product_price = $orderDetail->unit_price_tax_incl;
+            $vendorOrderDetail->product_quantity = $orderDetail->product_quantity;
+            $vendorOrderDetail->product_attribute_id = $orderDetail->product_attribute_id ?: null;
             $vendorOrderDetail->commission_rate = $commission_rate;
             $vendorOrderDetail->commission_amount = $commission_amount;
             $vendorOrderDetail->vendor_amount = $vendor_amount;
@@ -63,13 +70,13 @@ class OrderHelper
 
             if ($vendorOrderDetail->save()) {
                 // Get default status
-                $defaultStatus = OrderLineStatus::getDefaultStatusTypeId();
+                $defaultStatusTypeId = OrderLineStatus::getDefaultStatusTypeId();
 
-                // Create initial order line status
+                // Create initial order line status (simple table)
                 $orderLineStatus = new OrderLineStatus();
                 $orderLineStatus->id_order_detail = $orderDetail->id_order_detail;
                 $orderLineStatus->id_vendor = $vendor['id_vendor'];
-                $orderLineStatus->id_order_line_status_type = $defaultStatus;
+                $orderLineStatus->id_order_line_status_type = $defaultStatusTypeId;
                 $orderLineStatus->date_add = date('Y-m-d H:i:s');
                 $orderLineStatus->date_upd = date('Y-m-d H:i:s');
                 $orderLineStatus->save();
@@ -79,9 +86,9 @@ class OrderHelper
                     $orderDetail->id_order_detail,
                     $vendor['id_vendor'],
                     null, // no old status
-                    $defaultStatus,
+                    $defaultStatusTypeId,
                     0, // system change
-                    'Order detail added from admin'
+                    'Commande modifiée de l\'administration - création de la ligne de commande pour le vendeur'
                 );
 
                 return true;
@@ -89,7 +96,6 @@ class OrderHelper
 
             return false;
         } catch (Exception $e) {
-            // Log error but don't break the order process
             PrestaShopLogger::addLog(
                 'Multivendor OrderHelper: Error processing order detail for vendor: ' . $e->getMessage(),
                 3,
@@ -125,7 +131,7 @@ class OrderHelper
             }
 
             // Get existing vendor order detail
-            $vendorOrderDetail = VendorOrderDetail::getByOrderDetailAndVendor(
+            $vendorOrderDetail = VendorHelper::getVendorOrderDetailByOrderDetailAndVendor(
                 $orderDetail->id_order_detail,
                 $vendor['id_vendor']
             );
@@ -137,8 +143,13 @@ class OrderHelper
                 $commission_amount = $total_price * ($commission_rate / 100);
                 $vendor_amount = $total_price - $commission_amount;
 
-                // Update the vendor order detail
+                // Update the vendor order detail with new product info including reference
                 $result = Db::getInstance()->update('mv_vendor_order_detail', [
+                    'product_name' => pSQL($orderDetail->product_name),
+                    'product_reference' => pSQL($orderDetail->product_reference), // NEW FIELD
+                    'product_mpn' => pSQL($product->mpn ?: $orderDetail->product_reference),
+                    'product_price' => (float)$orderDetail->unit_price_tax_incl,
+                    'product_quantity' => (int)$orderDetail->product_quantity,
                     'commission_rate' => (float)$commission_rate,
                     'commission_amount' => (float)$commission_amount,
                     'vendor_amount' => (float)$vendor_amount,
@@ -150,8 +161,8 @@ class OrderHelper
                     $vendor['id_vendor'],
                     'updated',
                     'updated',
-                    0, // system change
-                    'Order detail updated from admin - commission recalculated'
+                    0,
+                    'commande modifiée de l\'administration - mise à jour de la ligne de commande pour le vendeur'
                 );
 
                 return $result;
@@ -171,6 +182,7 @@ class OrderHelper
         }
     }
 
+
     /**
      * Delete vendor order detail when order detail is removed
      *
@@ -188,41 +200,26 @@ class OrderHelper
 
             if ($vendorOrderDetail) {
                 $id_vendor = $vendorOrderDetail['id_vendor'];
+                echo 'Deleting vendor order detail for vendor ID: ' . $id_vendor;
 
-                // Delete vendor order detail
-                $result1 = Db::getInstance()->delete(
-                    'mv_vendor_order_detail',
-                    'id_order_detail = ' . (int)$orderDetail->id_order_detail
-                );
-
-                // Delete order line status
-                $result2 = Db::getInstance()->delete(
-                    'mv_order_line_status',
-                    'id_order_detail = ' . (int)$orderDetail->id_order_detail .
-                        ' AND id_vendor = ' . (int)$id_vendor
-                );
-
-                // Log the deletion
-                OrderLineStatusLog::logStatusChange(
+                OrderLineStatus::updateStatus(
                     $orderDetail->id_order_detail,
                     $id_vendor,
-                    'deleted',
-                    null,
-                    0, // system change
-                    'Order detail deleted from admin'
+                    OrderLineStatus::getDeleteStatusTypeId(),
+                    0,
+                    'commande supprimée de l\'administration',
+                    true
                 );
+
+
 
                 Db::getInstance()->update('mv_vendor_transaction', [
                     'status' => 'cancelled',
                 ], 'order_detail_id = ' . (int)$orderDetail->id_order_detail .
                     ' AND id_vendor = ' . (int)$id_vendor .
                     ' AND status = "pending"');
-
-                return $result1 && $result2;
             }
-
-            return true; // Nothing to delete, consider it successful
-
+            return true;
         } catch (Exception $e) {
             PrestaShopLogger::addLog(
                 'Multivendor OrderHelper: Error deleting order detail for vendor: ' . $e->getMessage(),
@@ -309,7 +306,7 @@ class OrderHelper
                 }
 
                 // Check if vendor order detail exists
-                $existingVendorOrderDetail = VendorOrderDetail::getByOrderDetailAndVendor(
+                $existingVendorOrderDetail = VendorHelper::getVendorOrderDetailByOrderDetailAndVendor(
                     $detailData['id_order_detail'],
                     $vendor['id_vendor']
                 );
