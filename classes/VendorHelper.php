@@ -1261,4 +1261,24 @@ class VendorHelper
             return false;
         }
     }
+
+    public static function getVendorOrderStatusCounts($id_vendor)
+    {
+        $defaultStatusTypeId = OrderLineStatus::getDefaultStatusTypeId();
+
+        $query = new DbQuery();
+        $query->select('
+            COALESCE(olst.name, "Pending") as status_name,
+            COUNT(*) as count,
+            COALESCE(olst.color, "#FFA500") as color
+        ');
+        $query->from('mv_vendor_order_detail', 'vod');
+        $query->leftJoin('mv_order_line_status', 'ols', 'ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = ' . (int)$id_vendor);
+        $query->leftJoin('mv_order_line_status_type', 'olst', 'olst.id_order_line_status_type = ols.id_order_line_status_type');
+        $query->where('vod.id_vendor = ' . (int)$id_vendor);
+        $query->groupBy('COALESCE(olst.name, "Pending"), COALESCE(olst.color, "#FFA500")');
+        $query->orderBy('count DESC');
+
+        return Db::getInstance()->executeS($query);
+    }
 }

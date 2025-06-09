@@ -426,7 +426,7 @@ class AdminVendorPaymentsController extends ModuleAdminController
             ]));
         }
 
-        $result = VendorTransaction::payVendorCommissions(
+        $result = TransactionHelper::payVendorCommissions(
             $id_vendor,
             $payment_method,
             $reference,
