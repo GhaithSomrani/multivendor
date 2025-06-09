@@ -484,33 +484,30 @@ class multivendor extends Module
             $commission_amount = $vendorOrderDetail['commission_amount'];
             $vendor_amount = $vendorOrderDetail['vendor_amount'];
 
-            switch ($action) {
-                case 'add':
-                    // Create transaction record for commission
-                    $transaction = new VendorTransaction();
-                    $transaction->id_vendor = $id_vendor;
-                    $transaction->id_order = $id_order;
-                    $transaction->commission_amount = $commission_amount;
-                    $transaction->vendor_amount = $vendor_amount;
-                    $transaction->transaction_type = 'commission';
-                    $transaction->status = 'pending';
-                    $transaction->date_add = date('Y-m-d H:i:s');
-                    $transaction->save();
-                    break;
-
-                case 'cancel':
-                    // Cancel any pending transactions
-                    Db::getInstance()->update('mv_vendor_transaction', [
-                        'status' => 'cancelled',
-                    ], 'id_order = ' . (int)$id_order . ' AND id_vendor = ' . (int)$id_vendor . ' AND status = "pending"');
-                    break;
-
-                case 'pay':
-                    // Update transaction status to paid
-                    Db::getInstance()->update('mv_vendor_transaction', [
-                        'status' => 'paid',
-                    ], 'id_order = ' . (int)$id_order . ' AND id_vendor = ' . (int)$id_vendor . ' AND status = "pending"');
-                    break;
+            if (!TransactionHelper::processCommissionTransaction(
+                $vendorOrderDetail['id_order_detail'],
+                $id_vendor,
+                $action,
+                $vendorOrderDetail['product_price'],
+                $vendorOrderDetail['product_quantity'],
+                $id_order
+            )) {
+                PrestaShopLogger::addLog(
+                    'Failed to process commission for order detail ' . $vendorOrderDetail['id_order_detail'] .
+                    ' and vendor ' . $id_vendor,
+                    3,
+                    null,
+                    'multivendor'
+                );
+            } else {
+                // Log successful commission processing
+                PrestaShopLogger::addLog(
+                    'Commission processed successfully for order detail ' . $vendorOrderDetail['id_order_detail'] .
+                    ' and vendor ' . $id_vendor,
+                    1,
+                    null,
+                    'multivendor'
+                );
             }
         }
     }

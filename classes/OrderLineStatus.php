@@ -179,43 +179,14 @@ class OrderLineStatus extends ObjectModel
 
             $id_order = $vendorOrderDetail['id_order'];
 
-            switch ($action) {
-                case 'add':
-                    // Create transaction when status is set
-                    $transaction = new VendorTransaction();
-                    $transaction->id_vendor = $id_vendor;
-                    $transaction->id_order = $id_order;
-                    $transaction->order_detail_id = $id_order_detail;
-                    $transaction->commission_amount = $vendorOrderDetail['commission_amount'];
-                    $transaction->vendor_amount = $vendorOrderDetail['vendor_amount'];
-                    $transaction->transaction_type = 'commission';
-                    $transaction->status = 'pending';
-                    $transaction->date_add = date('Y-m-d H:i:s');
-                    return $transaction->save();
-
-                case 'cancel':
-                    // Cancel any pending transactions for this order detail
-                    return Db::getInstance()->update('mv_vendor_transaction', [
-                        'status' => 'cancelled',
-                    ], 'order_detail_id = ' . (int)$id_order_detail . ' AND id_vendor = ' . (int)$id_vendor . ' AND status = "pending"');
-
-                case 'refund':
-                    // Create a negative transaction for refund
-                    $transaction = new VendorTransaction();
-                    $transaction->id_vendor = $id_vendor;
-                    $transaction->id_order = $id_order;
-                    $transaction->order_detail_id = $id_order_detail;
-                    $transaction->commission_amount = -$vendorOrderDetail['commission_amount'];
-                    $transaction->vendor_amount = -$vendorOrderDetail['vendor_amount'];
-                    $transaction->transaction_type = 'refund';
-                    $transaction->status = 'pending';
-                    $transaction->date_add = date('Y-m-d H:i:s');
-                    return $transaction->save();
-
-                case 'none':
-                default:
-                    return true;
-            }
+            TransactionHelper::processCommissionTransaction(
+                $id_order_detail,
+                $id_vendor,
+                $action,
+                $vendorOrderDetail['product_price'],
+                $vendorOrderDetail['product_quantity'],
+                $id_order
+            );
         } catch (Exception $e) {
             error_log('Error in processCommissionForOrderDetail: ' . $e->getMessage());
             return false;

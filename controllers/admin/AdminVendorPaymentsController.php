@@ -288,12 +288,9 @@ class AdminVendorPaymentsController extends ModuleAdminController
 
         $defaultAction = $defaultStatus ? $defaultStatus['commission_action'] : 'none';
 
-        // Get vendors with pending commissions
-        // Pending = (Commissions Added) - (Total Paid)
         $query = new DbQuery();
         $query->select('v.id_vendor, v.shop_name');
 
-        // Subquery for commissions added - FIXED JOIN
         $query->select('(
         SELECT SUM(vod.vendor_amount) 
         FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod
@@ -307,7 +304,6 @@ class AdminVendorPaymentsController extends ModuleAdminController
         )
     ) as commissions_added');
 
-        // Subquery for total paid
         $query->select('(
         SELECT COALESCE(SUM(vp.amount), 0)
         FROM ' . _DB_PREFIX_ . 'mv_vendor_payment vp
@@ -315,26 +311,11 @@ class AdminVendorPaymentsController extends ModuleAdminController
         AND vp.status = "completed"
     ) as total_paid');
 
-        // Calculate pending amount - FIXED JOIN
         $query->select('(
-        COALESCE((
-            SELECT SUM(vod.vendor_amount) 
-            FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod
-            LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status ols ON ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor
-            LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status_type olst ON olst.id_order_line_status_type = ols.id_order_line_status_type
-            WHERE vod.id_vendor = v.id_vendor
-            AND (
-                (olst.commission_action = "add") 
-                OR 
-                (ols.id_order_line_status_type IS NULL AND "' . pSQL($defaultAction) . '" = "add")
-            )
-        ), 0) - 
-        COALESCE((
-            SELECT SUM(vp.amount)
-            FROM ' . _DB_PREFIX_ . 'mv_vendor_payment vp
-            WHERE vp.id_vendor = v.id_vendor
-            AND vp.status = "completed"
-        ), 0)
+    SELECT COALESCE(SUM(vt.vendor_amount), 0)
+    FROM ' . _DB_PREFIX_ . 'mv_vendor_transaction vt
+    WHERE vt.id_vendor = v.id_vendor
+    AND vt.status = "pending"
     ) as pending_amount');
 
         $query->from('mv_vendor', 'v');
@@ -377,38 +358,14 @@ class AdminVendorPaymentsController extends ModuleAdminController
      */
     protected function countPendingTransactions($id_vendor)
     {
-        // Get the default status and its commission action
-        $defaultStatus = Db::getInstance()->getRow(
-            '
-    SELECT * FROM `' . _DB_PREFIX_ . 'mv_order_line_status_type` 
-    WHERE active = 1 
-    ORDER BY position ASC '
-        );
-
-        $defaultAction = $defaultStatus ? $defaultStatus['commission_action'] : 'none';
-
-        // Count unpaid order details with 'add' commission action - FIXED JOIN
-        $query = '
-    SELECT COUNT(DISTINCT vod.id_order_detail)
-    FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod
-    LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status ols 
-        ON ols.id_order_detail = vod.id_order_detail 
-        AND ols.id_vendor = vod.id_vendor
-    LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status_type olst 
-        ON olst.id_order_line_status_type = ols.id_order_line_status_type
-    LEFT JOIN ' . _DB_PREFIX_ . 'mv_vendor_transaction vt 
-        ON vt.order_detail_id = vod.id_order_detail 
-        AND vt.id_vendor = vod.id_vendor
-        AND vt.transaction_type = "commission"
-    WHERE vod.id_vendor = ' . (int)$id_vendor . '
-    AND (
-        (olst.commission_action = "add") 
-        OR 
-        (ols.id_order_line_status_type IS NULL AND "' . pSQL($defaultAction) . '" = "add")
-    )
-    AND vt.id_vendor_transaction IS NULL';
-
-        return (int)Db::getInstance()->getValue($query);
+        $query = new DbQuery();
+        $query->select('COUNT(DISTINCT vt.order_detail_id) as count');
+        $query->from('mv_vendor_transaction', 'vt');
+        $query->where('vt.id_vendor = ' . (int)$id_vendor);
+        $query->where('vt.transaction_type = "commission"');
+        $query->where('vt.status = "pending"');
+        $count = Db::getInstance()->getValue($query);
+        return (int)$count;
     }
     /**
      * AJAX process pay commission
@@ -439,7 +396,6 @@ class AdminVendorPaymentsController extends ModuleAdminController
                 'message' => sprintf(
                     $this->l('Successfully paid %s for %d order lines'),
                     Tools::displayPrice($result['amount_paid']),
-                    $result['lines_paid']
                 )
             ]));
         } else {
