@@ -115,25 +115,7 @@ class VendorTransaction extends ObjectModel
         return parent::update($null_values);
     }
 
-    /**
-     * Delete transaction record
-     * Override to prevent accidental deletions
-     *
-     * @return bool Success
-     */
-    public function delete()
-    {
-        // Log the deletion for audit purposes
-        PrestaShopLogger::addLog(
-            'VendorTransaction deleted: ID ' . $this->id . ', Vendor: ' . $this->id_vendor,
-            2,
-            null,
-            'VendorTransaction',
-            $this->id
-        );
 
-        return parent::delete();
-    }
 
     
 

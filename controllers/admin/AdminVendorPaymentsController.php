@@ -77,14 +77,10 @@ class AdminVendorPaymentsController extends ModuleAdminController
 
         // Add custom actions
         $this->addRowAction('view');
-        $this->addRowAction('delete');
 
         // Add bulk actions
         $this->bulk_actions = [
-            'delete' => [
-                'text' => $this->l('Delete selected'),
-                'confirm' => $this->l('Delete selected items?')
-            ],
+  
             'markCompleted' => [
                 'text' => $this->l('Mark as Completed'),
                 'confirm' => $this->l('Mark selected payments as completed?')
@@ -292,23 +288,6 @@ class AdminVendorPaymentsController extends ModuleAdminController
             SELECT 
                 v.id_vendor, 
                 v.shop_name,
-
-                (
-                    SELECT SUM(vod.vendor_amount)
-                    FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod
-                    LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status ols 
-                        ON ols.id_order_detail = vod.id_order_detail 
-                        AND ols.id_vendor = vod.id_vendor
-                    LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status_type olst 
-                        ON olst.id_order_line_status_type = ols.id_order_line_status_type
-                    WHERE vod.id_vendor = v.id_vendor
-                    AND (
-                        (olst.commission_action = "add") 
-                        OR 
-                        (ols.id_order_line_status_type IS NULL AND "' . pSQL($defaultAction) . '" = "add")
-                    )
-                ) AS commissions_added,
-
                 (
                     SELECT COALESCE(SUM(vp.amount), 0)
                     FROM ' . _DB_PREFIX_ . 'mv_vendor_payment vp
