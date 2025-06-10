@@ -12,11 +12,39 @@ if (!defined('_PS_VERSION_')) {
 class TransactionHelper
 {
     /**
+     * Get vendor ID from order detail ID
+     * @param int $orderDetailId
+     * @return int|false
+     */
+    public static function getVendorIdFromOrderDetail($orderDetailId)
+    {
+        $sql = 'SELECT id_vendor
+                FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail
+                WHERE id_order_detail = ' . (int)$orderDetailId;
+        $result = Db::getInstance()->getValue($sql);
+
+        return $result ? (int)$result : false;
+    }
+
+    /**
+     * Get order ID from order detail ID
+     * @param int $orderDetailId
+     * @return int|false
+     */
+    public static function getOrderIdFromOrderDetail($orderDetailId)
+    {
+        $sql = 'SELECT id_order 
+                FROM ' . _DB_PREFIX_ . 'order_detail 
+                WHERE id_order_detail = ' . (int)$orderDetailId;
+
+        $result = Db::getInstance()->getValue($sql);
+        return $result ? (int)$result : false;
+    }
+
+    /**
      * Create or update transaction only when transaction_type or status changes
      * This is the core optimization - prevents duplicate transactions
      *
-     * @param int $id_vendor Vendor ID
-     * @param int $id_order Order ID
      * @param int $order_detail_id Order detail ID
      * @param float $commission_amount Commission amount
      * @param float $vendor_amount Vendor amount
@@ -25,12 +53,10 @@ class TransactionHelper
      * @param int|null $id_vendor_payment Vendor payment ID
      * @return bool Success
      */
-    public static function createOrUpdateTransaction($id_vendor, $id_order, $order_detail_id, $commission_amount, $vendor_amount, $transaction_type, $status, $id_vendor_payment = null)
+    public static function createOrUpdateTransaction($order_detail_id, $vendor_amount, $transaction_type, $status, $id_vendor_payment = null)
     {
         try {
-            // Get existing transaction for this order detail and type
-            $existing = self::getExistingTransaction($id_vendor, $order_detail_id, $transaction_type);
-
+            $existing = self::getExistingTransaction($order_detail_id, $transaction_type);
             if ($existing) {
                 if ($existing['status'] !== $status) {
                     return Db::getInstance()->update(
@@ -43,16 +69,11 @@ class TransactionHelper
                         'id_vendor_transaction = ' . (int)$existing['id_vendor_transaction']
                     );
                 }
-                // No change needed, transaction already exists with same status
                 return true;
             }
 
-            // Create new transaction
             $transaction = new VendorTransaction();
-            $transaction->id_vendor = (int)$id_vendor;
-            $transaction->id_order = (int)$id_order;
             $transaction->order_detail_id = (int)$order_detail_id;
-            $transaction->commission_amount = (float)$commission_amount;
             $transaction->vendor_amount = (float)$vendor_amount;
             $transaction->transaction_type = pSQL($transaction_type);
             $transaction->status = pSQL($status);
@@ -75,17 +96,15 @@ class TransactionHelper
     /**
      * Get existing transaction for order detail and transaction type
      *
-     * @param int $id_vendor Vendor ID
      * @param int $order_detail_id Order detail ID
      * @param string $transaction_type Transaction type
      * @return array|false Existing transaction or false
      */
-    public static function getExistingTransaction($id_vendor, $order_detail_id, $transaction_type)
+    public static function getExistingTransaction($order_detail_id, $transaction_type)
     {
         $query = new DbQuery();
         $query->select('*');
         $query->from('mv_vendor_transaction');
-        $query->where('id_vendor = ' . (int)$id_vendor);
         $query->where('order_detail_id = ' . (int)$order_detail_id);
         $query->where('transaction_type = "' . pSQL($transaction_type) . '"');
         $query->orderBy('date_add DESC');
@@ -98,31 +117,45 @@ class TransactionHelper
      * Only creates/updates transactions when necessary
      *
      * @param int $id_order_detail Order detail ID
-     * @param int $id_vendor Vendor ID
      * @param string $commission_action Commission action (add, cancel, refund, none)
      * @return bool Success
      */
-    public static function processCommissionTransaction($id_order_detail, $id_vendor, $commission_action)
+    public static function processCommissionTransaction($id_order_detail, $commission_action)
     {
         try {
+            $id_vendor = self::getVendorIdFromOrderDetail($id_order_detail);
+            if (!$id_vendor) {
+                PrestaShopLogger::addLog(
+                    'TransactionHelper::processCommissionTransaction - No vendor found for order detail: ' . $id_order_detail,
+                    2,
+                    null,
+                    'TransactionHelper',
+                    $id_order_detail
+                );
+                return false;
+            }
+
             // Get vendor order detail
             $vendorOrderDetail = VendorHelper::getVendorOrderDetailByOrderDetailAndVendor($id_order_detail, $id_vendor);
 
             if (!$vendorOrderDetail) {
+                PrestaShopLogger::addLog(
+                    'TransactionHelper::processCommissionTransaction - No vendor order detail found for order detail: ' . $id_order_detail . ', vendor: ' . $id_vendor,
+                    2,
+                    null,
+                    'TransactionHelper',
+                    $id_order_detail
+                );
                 return false;
             }
 
-            $id_order = (int)$vendorOrderDetail['id_order'];
             $commission_amount = (float)$vendorOrderDetail['commission_amount'];
             $vendor_amount = (float)$vendorOrderDetail['vendor_amount'];
 
             switch ($commission_action) {
                 case 'add':
                     return self::createOrUpdateTransaction(
-                        $id_vendor,
-                        $id_order,
                         $id_order_detail,
-                        $commission_amount,
                         $vendor_amount,
                         'commission',
                         'pending'
@@ -130,8 +163,6 @@ class TransactionHelper
 
                 case 'cancel':
                     return self::createOrUpdateTransaction(
-                        $id_vendor,
-                        $id_order,
                         $id_order_detail,
                         0,
                         0,
@@ -141,10 +172,7 @@ class TransactionHelper
 
                 case 'refund':
                     return self::createOrUpdateTransaction(
-                        $id_vendor,
-                        $id_order,
                         $id_order_detail,
-                        -$commission_amount,
                         -$vendor_amount,
                         'refund',
                         'pending'
@@ -152,8 +180,7 @@ class TransactionHelper
 
                 case 'none':
                 default:
-                    // Remove any existing transaction for this order detail
-                    return self::removeTransaction($id_vendor, $id_order_detail);
+                    return self::removeTransaction($id_order_detail);
             }
         } catch (Exception $e) {
             PrestaShopLogger::addLog(
@@ -170,15 +197,14 @@ class TransactionHelper
     /**
      * Remove transaction for order detail (when action is 'none')
      *
-     * @param int $id_vendor Vendor ID
      * @param int $order_detail_id Order detail ID
      * @return bool Success
      */
-    public static function removeTransaction($id_vendor, $order_detail_id)
+    public static function removeTransaction($order_detail_id)
     {
         return Db::getInstance()->delete(
             'mv_vendor_transaction',
-            'id_vendor = ' . (int)$id_vendor . ' AND order_detail_id = ' . (int)$order_detail_id
+            'order_detail_id = ' . (int)$order_detail_id
         );
     }
 
@@ -197,10 +223,11 @@ class TransactionHelper
         $query = new DbQuery();
         $query->select('vt.*, o.reference as order_reference, vod.product_name, vp.reference as payment_reference, vp.payment_method');
         $query->from('mv_vendor_transaction', 'vt');
-        $query->leftJoin('orders', 'o', 'o.id_order = vt.id_order');
         $query->leftJoin('mv_vendor_order_detail', 'vod', 'vod.id_order_detail = vt.order_detail_id');
+        $query->leftJoin('order_detail', 'od', 'od.id_order_detail = vt.order_detail_id');
+        $query->leftJoin('orders', 'o', 'o.id_order = od.id_order');
         $query->leftJoin('mv_vendor_payment', 'vp', 'vp.id_vendor_payment = vt.id_vendor_payment');
-        $query->where('vt.id_vendor = ' . (int)$id_vendor);
+        $query->where('vod.id_vendor = ' . (int)$id_vendor);
 
         if ($status) {
             $query->where('vt.status = "' . pSQL($status) . '"');
@@ -219,21 +246,24 @@ class TransactionHelper
         return Db::getInstance()->executeS($query);
     }
 
-
-
-
+    /**
+     * Get vendor pending commission amount
+     *
+     * @param int $id_vendor Vendor ID
+     * @return float Pending commission amount
+     */
     public static function getVendorPendingCommission($id_vendor)
     {
         $query = new DbQuery();
-        $query->select('COALESCE(SUM(vendor_amount), 0)');
-        $query->from('mv_vendor_transaction');
-        $query->where('id_vendor = ' . (int)$id_vendor);
-        $query->where('status = "pending"');
-        $query->where('transaction_type = "commission"');
+        $query->select('COALESCE(SUM(vt.vendor_amount), 0)');
+        $query->from('mv_vendor_transaction', 'vt');
+        $query->leftJoin('mv_vendor_order_detail', 'vod', 'vod.id_order_detail = vt.order_detail_id');
+        $query->where('vod.id_vendor = ' . (int)$id_vendor);
+        $query->where('vt.status = "pending"');
+        $query->where('vt.transaction_type = "commission"');
 
         return (float)Db::getInstance()->getValue($query);
     }
-
 
     /**
      * Pay vendor commissions - optimized version
@@ -257,8 +287,10 @@ class TransactionHelper
             }
 
             $totalAmount = 0;
+            $transactionIds = [];
             foreach ($pendingTransactions as $transaction) {
                 $totalAmount += $transaction['vendor_amount'];
+                $transactionIds[] = (int)$transaction['id_vendor_transaction'];
             }
 
             if ($totalAmount <= 0) {
@@ -268,10 +300,8 @@ class TransactionHelper
                 ];
             }
 
-            // Start transaction
             Db::getInstance()->execute('START TRANSACTION');
 
-            // Create payment record
             $payment = new VendorPayment();
             $payment->id_vendor = (int)$id_vendor;
             $payment->amount = $totalAmount;
@@ -284,7 +314,7 @@ class TransactionHelper
                 throw new Exception('Failed to create payment record');
             }
 
-            // Update all pending commission transactions to paid
+
             $updateResult = Db::getInstance()->update(
                 'mv_vendor_transaction',
                 [
@@ -292,7 +322,7 @@ class TransactionHelper
                     'id_vendor_payment' => (int)$payment->id,
                     'date_add' => date('Y-m-d H:i:s')
                 ],
-                'id_vendor = ' . (int)$id_vendor . ' AND status = "pending" AND transaction_type = "commission"'
+                'id_vendor_transaction IN (' . implode(',', $transactionIds) . ') AND status = "pending" AND transaction_type = "commission"'
             );
 
             if (!$updateResult) {
@@ -323,5 +353,42 @@ class TransactionHelper
                 'message' => 'Payment failed: ' . $e->getMessage()
             ];
         }
+    }
+
+    /**
+     * Get transactions by order detail ID
+     *
+     * @param int $order_detail_id Order detail ID
+     * @return array Transactions
+     */
+    public static function getTransactionsByOrderDetail($order_detail_id)
+    {
+        $query = new DbQuery();
+        $query->select('vt.*, vod.id_vendor, vod.product_name');
+        $query->from('mv_vendor_transaction', 'vt');
+        $query->leftJoin('mv_vendor_order_detail', 'vod', 'vod.id_order_detail = vt.order_detail_id');
+        $query->where('vt.order_detail_id = ' . (int)$order_detail_id);
+        $query->orderBy('vt.date_add DESC');
+
+        return Db::getInstance()->executeS($query);
+    }
+
+    /**
+     * Get total vendor earnings (all time)
+     *
+     * @param int $id_vendor Vendor ID
+     * @return float Total earnings
+     */
+    public static function getVendorTotalEarnings($id_vendor)
+    {
+        $query = new DbQuery();
+        $query->select('COALESCE(SUM(vt.vendor_amount), 0)');
+        $query->from('mv_vendor_transaction', 'vt');
+        $query->leftJoin('mv_vendor_order_detail', 'vod', 'vod.id_order_detail = vt.order_detail_id');
+        $query->where('vod.id_vendor = ' . (int)$id_vendor);
+        $query->where('vt.status IN ("pending", "paid")');
+        $query->where('vt.transaction_type = "commission"');
+
+        return (float)Db::getInstance()->getValue($query);
     }
 }

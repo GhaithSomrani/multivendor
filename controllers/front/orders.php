@@ -451,14 +451,13 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
 
             $id_order = $result['id_order'];
 
-            // Update the status using the status type ID
             $success = OrderLineStatus::updateStatus(
                 $id_order_detail,
                 $id_vendor,
-                $id_status_type, // This is the status type ID
+                $id_status_type, 
                 $this->context->customer->id,
                 $comment,
-                false // not admin
+                false 
             );
 
             if (!$success) {

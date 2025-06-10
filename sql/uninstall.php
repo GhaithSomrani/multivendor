@@ -11,16 +11,16 @@ if (!defined('_PS_VERSION_')) {
 $sql = array();
 
 // Drop all tables created by the module
-$sql[] = 'DROP TABLE IF EXISTS `' . _DB_PREFIX_ . 'mv_vendor`';
-$sql[] = 'DROP TABLE IF EXISTS `' . _DB_PREFIX_ . 'mv_vendor_commission`';
-$sql[] = 'DROP TABLE IF EXISTS `' . _DB_PREFIX_ . 'mv_vendor_transaction`';
-$sql[] = 'DROP TABLE IF EXISTS `' . _DB_PREFIX_ . 'mv_vendor_payment`';
-$sql[] = 'DROP TABLE IF EXISTS `' . _DB_PREFIX_ . 'mv_vendor_commission_log`';
-$sql[] = 'DROP TABLE IF EXISTS `' . _DB_PREFIX_ . 'mv_order_line_status`';
-$sql[] = 'DROP TABLE IF EXISTS `' . _DB_PREFIX_ . 'mv_order_line_status_log`';
-$sql[] = 'DROP TABLE IF EXISTS `' . _DB_PREFIX_ . 'mv_vendor_order_detail`';
-$sql[] = 'DROP TABLE IF EXISTS `' . _DB_PREFIX_ . 'mv_order_status_permission`';
-$sql[] = 'DROP TABLE IF EXISTS `' . _DB_PREFIX_ . 'mv_order_line_status_type`';
+// $sql[] = 'DROP TABLE IF EXISTS `' . _DB_PREFIX_ . 'mv_vendor`';
+// $sql[] = 'DROP TABLE IF EXISTS `' . _DB_PREFIX_ . 'mv_vendor_commission`';
+// $sql[] = 'DROP TABLE IF EXISTS `' . _DB_PREFIX_ . 'mv_vendor_transaction`';
+// $sql[] = 'DROP TABLE IF EXISTS `' . _DB_PREFIX_ . 'mv_vendor_payment`';
+// $sql[] = 'DROP TABLE IF EXISTS `' . _DB_PREFIX_ . 'mv_vendor_commission_log`';
+// $sql[] = 'DROP TABLE IF EXISTS `' . _DB_PREFIX_ . 'mv_order_line_status`';
+// $sql[] = 'DROP TABLE IF EXISTS `' . _DB_PREFIX_ . 'mv_order_line_status_log`';
+// $sql[] = 'DROP TABLE IF EXISTS `' . _DB_PREFIX_ . 'mv_vendor_order_detail`';
+// $sql[] = 'DROP TABLE IF EXISTS `' . _DB_PREFIX_ . 'mv_order_status_permission`';
+// $sql[] = 'DROP TABLE IF EXISTS `' . _DB_PREFIX_ . 'mv_order_line_status_type`';
 
 
 // Remove configuration values

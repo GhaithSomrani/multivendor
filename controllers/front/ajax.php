@@ -70,7 +70,7 @@ class MultivendorAjaxModuleFrontController extends ModuleFrontController
             error_log('MultivendorAjax: processUpdateVendorStatus called');
 
             $id_order_detail = (int)Tools::getValue('id_order_detail');
-            $id_status_type = (int)Tools::getValue('id_status_type'); // NOT 'status'
+            $id_status_type = (int)Tools::getValue('id_status_type'); 
             $comment = Tools::getValue('comment', '');
             $id_customer = $this->context->customer->id;
 

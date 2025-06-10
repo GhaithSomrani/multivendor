@@ -52,7 +52,7 @@ class OrderLineStatusType extends ObjectModel
         ]
     ];
 
-   public static function getAllActiveStatusTypes($vendor_only = false, $admin_only = false)
+    public static function getAllActiveStatusTypes($vendor_only = false, $admin_only = false)
     {
         $query = new DbQuery();
         $query->select('*');
@@ -97,11 +97,11 @@ class OrderLineStatusType extends ObjectModel
      * @param string $commission_action Commission action
      * @return bool Success
      */
-    public static function processCommission($id_order_detail, $id_vendor, $commission_action)
+    public static function processCommission($id_order_detail, $commission_action)
     {
         try {
             // Use TransactionHelper for all transaction processing
-            return TransactionHelper::processCommissionTransaction($id_order_detail, $id_vendor, $commission_action);
+            return TransactionHelper::processCommissionTransaction($id_order_detail, $commission_action);
         } catch (Exception $e) {
             PrestaShopLogger::addLog(
                 'OrderLineStatusType::processCommission - Error: ' . $e->getMessage(),

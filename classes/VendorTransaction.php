@@ -12,12 +12,6 @@ if (!defined('_PS_VERSION_')) {
 
 class VendorTransaction extends ObjectModel
 {
-    /** @var int Vendor ID */
-    public $id_vendor;
-
-    /** @var int Order ID */
-    public $id_order;
-
     /** @var int Order detail ID */
     public $order_detail_id;
 
@@ -46,10 +40,7 @@ class VendorTransaction extends ObjectModel
         'table' => 'mv_vendor_transaction',
         'primary' => 'id_vendor_transaction',
         'fields' => [
-            'id_vendor' => ['type' => self::TYPE_INT, 'validate' => 'isUnsignedId', 'required' => true],
-            'id_order' => ['type' => self::TYPE_INT, 'validate' => 'isUnsignedId', 'required' => false],
             'order_detail_id' => ['type' => self::TYPE_INT, 'validate' => 'isUnsignedId', 'required' => false],
-            'commission_amount' => ['type' => self::TYPE_FLOAT, 'validate' => 'isFloat', 'required' => true],
             'vendor_amount' => ['type' => self::TYPE_FLOAT, 'validate' => 'isFloat', 'required' => true],
             'transaction_type' => ['type' => self::TYPE_STRING, 'validate' => 'isGenericName', 'required' => true, 'size' => 32],
             'status' => ['type' => self::TYPE_STRING, 'validate' => 'isGenericName', 'required' => true, 'size' => 32],
@@ -58,7 +49,7 @@ class VendorTransaction extends ObjectModel
         ]
     ];
 
-   
+
     /**
      * Add a new transaction record
      * Override to ensure proper data validation
@@ -69,23 +60,19 @@ class VendorTransaction extends ObjectModel
      */
     public function add($auto_date = true, $null_values = false)
     {
-        // Validate required fields
-        if (!$this->id_vendor || !$this->transaction_type || !$this->status) {
+        if (!$this->order_detail_id || !$this->transaction_type || !$this->status) {
             return false;
         }
 
-        // Set default date if not provided
         if ($auto_date && !$this->date_add) {
             $this->date_add = date('Y-m-d H:i:s');
         }
 
-        // Validate transaction type
         $validTypes = ['commission', 'refund', 'adjustment'];
         if (!in_array($this->transaction_type, $validTypes)) {
             return false;
         }
 
-        // Validate status
         $validStatuses = ['pending', 'paid', 'cancelled'];
         if (!in_array($this->status, $validStatuses)) {
             return false;
@@ -103,7 +90,6 @@ class VendorTransaction extends ObjectModel
      */
     public function update($null_values = false)
     {
-        // Log the update for audit purposes
         PrestaShopLogger::addLog(
             'VendorTransaction updated: ID ' . $this->id . ', Status: ' . $this->status,
             1,
@@ -117,7 +103,7 @@ class VendorTransaction extends ObjectModel
 
 
 
-    
+
 
     /**
      * Get transaction type display name
@@ -151,77 +137,36 @@ class VendorTransaction extends ObjectModel
         return isset($names[$this->status]) ? $names[$this->status] : $this->status;
     }
 
-    /**
-     * Check if transaction is pending
-     *
-     * @return bool Is pending
-     */
-    public function isPending()
-    {
-        return $this->status === 'pending';
-    }
+
 
     /**
-     * Check if transaction is paid
-     *
-     * @return bool Is paid
+     * Get order ID from order detail ID
+     * @param int $orderDetailId
+     * @return int|false
      */
-    public function isPaid()
+    public static function getOrderIdFromOrderDetail($orderDetailId)
     {
-        return $this->status === 'paid';
+        $sql = 'SELECT id_order 
+            FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail
+            WHERE id_order_detail = ' . (int)$orderDetailId;
+
+        $result = Db::getInstance()->getValue($sql);
+        return $result ? (int)$result : false;
     }
+
 
     /**
-     * Check if transaction is cancelled
-     *
-     * @return bool Is cancelled
+     * Get vendor and order info from order detail ID
+     * @param int $orderDetailId
+     * @return array|false
      */
-    public function isCancelled()
+    public static function getVendorOrderInfoFromOrderDetail($orderDetailId)
     {
-        return $this->status === 'cancelled';
+        $sql = 'SELECT vod.id_vendor, vod.id_order, vod.product_id
+            FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod
+            WHERE vod.id_order_detail = ' . (int)$orderDetailId . '
+            LIMIT 1';
+
+        return Db::getInstance()->getRow($sql);
     }
-
-    /**
-     * Get formatted amount for display
-     *
-     * @param Context|null $context Context for currency formatting
-     * @return string Formatted amount
-     */
-    public function getFormattedAmount($context = null)
-    {
-        if (!$context) {
-            $context = Context::getContext();
-        }
-
-        return Tools::displayPrice($this->vendor_amount, $context->currency);
-    }
-
-    /**
-     * Get related order if exists
-     *
-     * @return Order|false Order object or false
-     */
-    public function getOrder()
-    {
-        if (!$this->id_order) {
-            return false;
-        }
-
-        return new Order($this->id_order);
-    }
-
-    /**
-     * Get related vendor
-     *
-     * @return Vendor|false Vendor object or false
-     */
-    public function getVendor()
-    {
-        if (!$this->id_vendor) {
-            return false;
-        }
-
-        return new Vendor($this->id_vendor);
-    }
-
 }

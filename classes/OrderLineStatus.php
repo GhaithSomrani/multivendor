@@ -141,7 +141,7 @@ class OrderLineStatus extends ObjectModel
 
             // Process commission if needed - FIXED VERSION
             if ($success && $statusType->affects_commission == 1) {
-                self::processCommissionForOrderDetail($id_order_detail, $id_vendor, $statusType->commission_action);
+                self::processCommissionForOrderDetail($id_order_detail, $statusType->commission_action);
             }
 
             return $success;
@@ -160,39 +160,15 @@ class OrderLineStatus extends ObjectModel
      * @param string $action Commission action
      * @return bool Success
      */
-    protected static function processCommissionForOrderDetail($id_order_detail, $id_vendor, $action)
+    protected static function processCommissionForOrderDetail($id_order_detail, $action)
     {
         try {
-            // Get vendor order detail
-            $vendorOrderDetail = Db::getInstance()->getRow(
-                '
-                SELECT vod.* 
-                FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod
-                WHERE vod.id_order_detail = ' . (int)$id_order_detail . ' 
-                AND vod.id_vendor = ' . (int)$id_vendor
-            );
-
-            if (!$vendorOrderDetail) {
-                error_log('Vendor order detail not found for order_detail: ' . $id_order_detail . ', vendor: ' . $id_vendor);
-                return false;
-            }
-
-            $id_order = $vendorOrderDetail['id_order'];
-
-            TransactionHelper::processCommissionTransaction(
-                $id_order_detail,
-                $id_vendor,
-                $action,
-                $vendorOrderDetail['product_price'],
-                $vendorOrderDetail['product_quantity'],
-                $id_order
-            );
+            return TransactionHelper::processCommissionTransaction($id_order_detail, $action);
         } catch (Exception $e) {
             error_log('Error in processCommissionForOrderDetail: ' . $e->getMessage());
             return false;
         }
     }
-
     /**
      * Get default status type ID
      *
@@ -206,7 +182,7 @@ class OrderLineStatus extends ObjectModel
             ORDER BY position ASC 
         ');
 
-        return (int)$defaultStatusType['id_order_line_status_type'] ;
+        return (int)$defaultStatusType['id_order_line_status_type'];
     }
 
     public static function getDeleteStatusTypeId()
@@ -215,9 +191,9 @@ class OrderLineStatus extends ObjectModel
             SELECT id_order_line_status_type FROM `' . _DB_PREFIX_ . 'mv_order_line_status_type` 
             WHERE active = 1 
             ORDER BY position desc
-        '); 
+        ');
 
-        return (int)$deleteStatusType['id_order_line_status_type'] ;
+        return (int)$deleteStatusType['id_order_line_status_type'];
     }
     /**
      * Get status with full type information by order detail and vendor

@@ -54,11 +54,8 @@ $sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'mv_vendor_commission` (
 // Create Vendor Transaction table
 $sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'mv_vendor_transaction` (
     `id_vendor_transaction` int(10) unsigned NOT NULL AUTO_INCREMENT,
-    `id_vendor` int(10) unsigned NOT NULL,
-    `id_order` int(10) unsigned NOT NULL,
     `order_detail_id` int(10) unsigned DEFAULT NULL,
     `id_vendor_payment` int(10) unsigned DEFAULT NULL,
-    `commission_amount` decimal(20,6) NOT NULL DEFAULT "0.000000",
     `vendor_amount` decimal(20,6) NOT NULL DEFAULT "0.000000",
     `transaction_type` varchar(32) NOT NULL,
     `status` varchar(32) NOT NULL,

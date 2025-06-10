@@ -476,21 +476,15 @@ class multivendor extends Module
      */
     protected function processCommissionForOrder($id_order, $action)
     {
-        // Get all vendor order details for this order
         $vendorOrderDetails = VendorOrderDetail::getByOrderId($id_order);
 
         foreach ($vendorOrderDetails as $vendorOrderDetail) {
             $id_vendor = $vendorOrderDetail['id_vendor'];
-            $commission_amount = $vendorOrderDetail['commission_amount'];
-            $vendor_amount = $vendorOrderDetail['vendor_amount'];
+         
 
             if (!TransactionHelper::processCommissionTransaction(
                 $vendorOrderDetail['id_order_detail'],
-                $id_vendor,
-                $action,
-                $vendorOrderDetail['product_price'],
-                $vendorOrderDetail['product_quantity'],
-                $id_order
+                $action
             )) {
                 PrestaShopLogger::addLog(
                     'Failed to process commission for order detail ' . $vendorOrderDetail['id_order_detail'] .
@@ -500,7 +494,6 @@ class multivendor extends Module
                     'multivendor'
                 );
             } else {
-                // Log successful commission processing
                 PrestaShopLogger::addLog(
                     'Commission processed successfully for order detail ' . $vendorOrderDetail['id_order_detail'] .
                     ' and vendor ' . $id_vendor,
@@ -533,7 +526,6 @@ class multivendor extends Module
         $vendor = Vendor::getVendorBySupplier($id_supplier);
 
         if ($vendor) {
-            // Calculate commission
             $commission_rate = VendorHelper::getCommissionRate($vendor['id_vendor']);
             $product_price = $detail['product_price'];
             $quantity = $detail['product_quantity'];
@@ -541,7 +533,6 @@ class multivendor extends Module
             $commission_amount = $total_price * ($commission_rate / 100);
             $vendor_amount = $total_price - $commission_amount;
 
-            // Create vendor order detail record with product information including reference
             $vendorOrderDetail = new VendorOrderDetail();
             $vendorOrderDetail->id_order_detail = $detail['id_order_detail'];
             $vendorOrderDetail->id_vendor = $vendor['id_vendor'];
