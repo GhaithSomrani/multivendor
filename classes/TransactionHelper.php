@@ -149,7 +149,6 @@ class TransactionHelper
                 return false;
             }
 
-            $commission_amount = (float)$vendorOrderDetail['commission_amount'];
             $vendor_amount = (float)$vendorOrderDetail['vendor_amount'];
 
             switch ($commission_action) {

@@ -210,7 +210,6 @@ class AdminOrderLineStatusController  extends ModuleAdminController
             WHERE `' . $this->identifier . '` = ' . (int)$this->object->id
         );
         $this->fields_value['position'] = $position ? $position : 1;
-        // Your existing renderForm code...
         $this->fields_form = [
             'legend' => [
                 'title' => $this->l('Order Line Status'),
@@ -300,6 +299,17 @@ class AdminOrderLineStatusController  extends ModuleAdminController
                     ]
                 ],
                 [
+                    'type' => 'checkbox',
+                    'label' => $this->l('Available Status Transitions'),
+                    'name' => 'available_status',
+                    'values' => [
+                        'query' => $this->getAvailableStatusOptions(),
+                        'id' => 'id_status',
+                        'name' => 'name'
+                    ],
+                    'hint' => $this->l('Select which statuses this status can transition to. Leave empty to allow all transitions.')
+                ],
+                [
                     'type' => 'text',
                     'label' => $this->l('Position'),
                     'name' => 'position',
@@ -358,12 +368,10 @@ class AdminOrderLineStatusController  extends ModuleAdminController
         }
 
         parent::initPageHeaderToolbar();
-
-
     }
 
 
-    protected function countUsedStatuses( $id_status_type)
+    protected function countUsedStatuses($id_status_type)
     {
         return Db::getInstance()->getValue(
             'SELECT COUNT(*) 
@@ -417,4 +425,41 @@ class AdminOrderLineStatusController  extends ModuleAdminController
 
         return parent::processBulkDelete();
     }
+
+    protected function getAvailableStatusOptions()
+    {
+        $statusTypes = OrderLineStatusType::getAllActiveStatusTypes();
+        $statusOptions = [];
+        foreach ($statusTypes as $status) {
+            if ($status['id_order_line_status_type'] != $this->object->id) {
+                $statusOptions[] = [
+                    'id_status' => $status['id_order_line_status_type'],
+                    'name' => $status['name']
+                ];
+            }
+        }
+
+        return $statusOptions;
+    }
+    public function processSave()
+    {
+        $available_status = [];
+
+        foreach ($_POST as $key => $value) {
+            if (strpos($key, 'available_status_') === 0 && $value) {
+                $status_id = str_replace('available_status_', '', $key);
+                if (is_numeric($status_id)) {
+                    $available_status[] = (int)$status_id;
+                }
+            }
+        }
+
+        $_POST['available_status'] = implode(',', $available_status);
+
+        return parent::processSave();
+    }
+
+
+
+   
 }

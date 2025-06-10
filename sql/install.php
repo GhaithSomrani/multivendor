@@ -180,6 +180,7 @@ $sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'mv_order_line_status_ty
             `is_admin_allowed` tinyint(1) unsigned NOT NULL DEFAULT "1",
             `affects_commission` tinyint(1) unsigned NOT NULL DEFAULT "0",
             `commission_action` varchar(32) DEFAULT "none",
+            `available_status` VARCHAR(255) NULL COMMENT "Comma-separated list of status IDs",
             `position` int(10) unsigned NOT NULL DEFAULT "0",
             `active` tinyint(1) unsigned NOT NULL DEFAULT "1",
             `date_add` datetime NOT NULL,

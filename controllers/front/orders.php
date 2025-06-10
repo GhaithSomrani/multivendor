@@ -180,6 +180,40 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
         return (int)Db::getInstance()->getValue($query);
     }
 
+
+
+
+    /**
+     * Validate if status transition is allowed based on available_status column
+     * 
+     * @param int $from_status_id Current status ID
+     * @param int $to_status_id Target status ID
+     * @return bool True if transition is allowed
+     */
+    public static function canChangeStatusTo($from_status_id, $to_status_id)
+    {
+        // Get the current status type
+        $query = new DbQuery();
+        $query->select('available_status');
+        $query->from('mv_order_line_status_type');
+        $query->where('id_order_line_status_type = ' . (int)$from_status_id);
+        $query->where('active = 1');
+
+        $available_status = Db::getInstance()->getValue($query);
+
+        // If no available_status is set, allow all transitions (backward compatibility)
+        if (empty($available_status)) {
+            return true;
+        }
+
+        // Check if target status is in the comma-separated list
+        $allowed_statuses = explode(',', $available_status);
+        $allowed_statuses = array_map('trim', $allowed_statuses);
+        $allowed_statuses = array_map('intval', $allowed_statuses);
+
+        return in_array((int)$to_status_id, $allowed_statuses);
+    }
+
     /**
      * Process order line status update
      */
@@ -209,10 +243,10 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
         $success = OrderLineStatus::updateStatus(
             $id_order_detail,
             $id_vendor,
-            $id_status_type, 
+            $id_status_type,
             $this->context->customer->id,
             $comment,
-            false 
+            false
         );
 
         if ($success) {
@@ -454,10 +488,10 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
             $success = OrderLineStatus::updateStatus(
                 $id_order_detail,
                 $id_vendor,
-                $id_status_type, 
+                $id_status_type,
                 $this->context->customer->id,
                 $comment,
-                false 
+                false
             );
 
             if (!$success) {

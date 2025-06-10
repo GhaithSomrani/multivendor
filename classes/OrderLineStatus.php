@@ -64,13 +64,7 @@ class OrderLineStatus extends ObjectModel
         return Db::getInstance()->getRow($query);
     }
 
-    /**
-     * Get status by order detail ID and vendor ID with status type details
-     *
-     * @param int $id_order_detail Order detail ID
-     * @param int $id_vendor Vendor ID
-     * @return array|false Status data with type information
-     */
+
 
 
     /**

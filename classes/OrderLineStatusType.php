@@ -29,6 +29,9 @@ class OrderLineStatusType extends ObjectModel
     /** @var int Position */
     public $position;
 
+    /** @var string  Available status */
+    public $available_status;
+    
     /** @var bool Active */
     public $active;
 
