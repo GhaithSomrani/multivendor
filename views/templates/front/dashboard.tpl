@@ -52,40 +52,12 @@
                     <div class="mv-card-body">
                         <form action="{$vendor_dashboard_url}" method="post" class="mv-date-filter-form">
                             <div class="mv-date-filter-options">
-                                <div class="mv-date-option">
-                                    <input type="radio" id="filter-all" name="date_filter_type" value="all" {if $date_filter_type == 'all'}checked{/if}>
-                                    <label for="filter-all">{l s='Tout le temps' mod='multivendor'}</label>
-                                </div>
-                                
-                                <div class="mv-date-option">
-                                    <input type="radio" id="filter-today" name="date_filter_type" value="today" {if $date_filter_type == 'today'}checked{/if}>
-                                    <label for="filter-today">{l s='Aujourd\'hui' mod='multivendor'}</label>
-                                </div>
-                                
-                                <div class="mv-date-option">
-                                    <input type="radio" id="filter-yesterday" name="date_filter_type" value="yesterday" {if $date_filter_type == 'yesterday'}checked{/if}>
-                                    <label for="filter-yesterday">{l s='Hier' mod='multivendor'}</label>
-                                </div>
-                                
-                                <div class="mv-date-option">
-                                    <input type="radio" id="filter-this-week" name="date_filter_type" value="this_week" {if $date_filter_type == 'this_week'}checked{/if}>
-                                    <label for="filter-this-week">{l s='Cette semaine' mod='multivendor'}</label>
-                                </div>
-                                
-                                <div class="mv-date-option">
-                                    <input type="radio" id="filter-last-week" name="date_filter_type" value="last_week" {if $date_filter_type == 'last_week'}checked{/if}>
-                                    <label for="filter-last-week">{l s='Semaine dernière' mod='multivendor'}</label>
-                                </div>
-                                
+
                                 <div class="mv-date-option">
                                     <input type="radio" id="filter-this-month" name="date_filter_type" value="this_month" {if $date_filter_type == 'this_month'}checked{/if}>
                                     <label for="filter-this-month">{l s='Ce mois' mod='multivendor'}</label>
                                 </div>
-                                
-                                <div class="mv-date-option">
-                                    <input type="radio" id="filter-last-month" name="date_filter_type" value="last_month" {if $date_filter_type == 'last_month'}checked{/if}>
-                                    <label for="filter-last-month">{l s='Mois dernier' mod='multivendor'}</label>
-                                </div>
+
                                 
                                 <div class="mv-date-option">
                                     <input type="radio" id="filter-custom" name="date_filter_type" value="custom" {if $date_filter_type == 'custom'}checked{/if}>

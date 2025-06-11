@@ -2,9 +2,9 @@
     <span class="link-item">
       <i class="material-icons">store</i>
       {if $is_vendor}
-        {l s='My Vendor Dashboard' d='Module.LamodeMarketplace.Shop'}
+        {l s='Mon Tableau de Bord Vendeur' d='Module.LamodeMarketplace.Shop'}
       {else}
-        {l s='Become a Vendor' d='Module.LamodeMarketplace.Shop'}
+        {l s='Devenir Vendeur' d='Module.LamodeMarketplace.Shop'}
       {/if}
     </span>
-  </a>
+</a>

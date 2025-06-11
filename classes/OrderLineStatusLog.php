@@ -96,31 +96,4 @@ class OrderLineStatusLog extends ObjectModel
 
         return Db::getInstance()->executeS($query);
     }
-
-    /**
-     * Get recent status changes for a vendor
-     *
-     * @param int $id_vendor Vendor ID
-     * @param int $limit Number of records to return
-     * @return array Recent status changes
-     */
-    public static function getRecentStatusChanges($id_vendor, $limit = 10)
-    {
-        $query = new DbQuery();
-        $query->select('l.*, 
-            old_st.name as old_status_name, 
-            new_st.name as new_status_name,
-            vod.product_name,
-            o.reference as order_reference');
-        $query->from('mv_order_line_status_log', 'l');
-        $query->leftJoin('mv_order_line_status_type', 'old_st', 'old_st.id_order_line_status_type = l.old_id_order_line_status_type');
-        $query->leftJoin('mv_order_line_status_type', 'new_st', 'new_st.id_order_line_status_type = l.new_id_order_line_status_type');
-        $query->leftJoin('mv_vendor_order_detail', 'vod', 'vod.id_order_detail = l.id_order_detail');
-        $query->leftJoin('orders', 'o', 'o.id_order = vod.id_order');
-        $query->where('l.id_vendor = ' . (int)$id_vendor);
-        $query->orderBy('l.date_add DESC');
-        $query->limit($limit);
-
-        return Db::getInstance()->executeS($query);
-    }
 }

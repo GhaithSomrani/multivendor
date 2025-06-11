@@ -76,22 +76,6 @@ class Vendor extends ObjectModel
         return Db::getInstance()->getRow($query);
     }
 
-    /**
-     * Get all active vendors
-     * 
-     * @return array List of active vendors
-     */
-    public static function getActiveVendors()
-    {
-        $query = new DbQuery();
-        $query->select('v.*, c.firstname, c.lastname, c.email, s.name as supplier_name');
-        $query->from('mv_vendor', 'v');
-        $query->leftJoin('customer', 'c', 'c.id_customer = v.id_customer');
-        $query->leftJoin('supplier', 's', 's.id_supplier = v.id_supplier');
-        $query->where('v.status = 1');
-
-        return Db::getInstance()->executeS($query);
-    }
 
     /**
      * Get all vendors
@@ -109,43 +93,7 @@ class Vendor extends ObjectModel
         return Db::getInstance()->executeS($query);
     }
 
-    /**
-     * Get vendor orders
-     * 
-     * @param int $id_vendor Vendor ID
-     * @param int $limit Limit
-     * @param int $offset Offset
-     * @return array List of orders
-     */
-    public static function getVendorOrders($id_vendor, $limit = 10, $offset = 0)
-    {
-        $query = new DbQuery();
-        $query->select('DISTINCT vod.id_order, o.reference, o.total_paid, o.date_add, osl.name as status');
-        $query->from('mv_vendor_order_detail', 'vod');
-        $query->leftJoin('orders', 'o', 'o.id_order = vod.id_order');
-        $query->leftJoin('order_state_lang', 'osl', 'osl.id_order_state = o.current_state AND osl.id_lang = ' . (int)Context::getContext()->language->id);
-        $query->where('vod.id_vendor = ' . (int)$id_vendor);
-        $query->orderBy('o.date_add DESC');
-        $query->limit($limit, $offset);
-
-        return Db::getInstance()->executeS($query);
-    }
-
-    /**
-     * Count vendor orders
-     * 
-     * @param int $id_vendor Vendor ID
-     * @return int Number of orders
-     */
-    public static function countVendorOrders($id_vendor)
-    {
-        $query = new DbQuery();
-        $query->select('COUNT(DISTINCT id_order)');
-        $query->from('mv_vendor_order_detail');
-        $query->where('id_vendor = ' . (int)$id_vendor);
-
-        return (int)Db::getInstance()->getValue($query);
-    }
+  
 
 
     /**

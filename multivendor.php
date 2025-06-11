@@ -52,8 +52,8 @@ class multivendor extends Module
         }
 
         $this->displayName = $this->l('Multi-Vendor Marketplace');
-        $this->description = $this->l('Transform your PrestaShop store into a multi-vendor marketplace.');
-        $this->confirmUninstall = $this->l('Are you sure you want to uninstall this module?');
+        $this->description = $this->l('Transformez votre boutique PrestaShop en une place de marché multi-vendeurs.');
+        $this->confirmUninstall = $this->l('Êtes-vous sûr de vouloir désinstaller ce module ?');
     }
 
     /**
@@ -449,68 +449,14 @@ class multivendor extends Module
      * Hook: When a new order is validated
      */
     public function hookActionValidateOrder($params)
-{
-    $order = $params['order'];
-    $cart = $params['cart'];
-
-    $defaultStatusTypeId = OrderLineStatus::getDefaultStatusTypeId();
-
-    // Get order details
-    $orderDetails = OrderDetail::getList($order->id);
-
-    foreach ($orderDetails as $detail) {
-        $product = new Product($detail['product_id']);
-        $id_supplier = $product->id_supplier;
-
-        // Check if this supplier is associated with a vendor
-        $vendor = Vendor::getVendorBySupplier($id_supplier);
-
-        if ($vendor) {
-            $commission_rate = VendorHelper::getCommissionRate($vendor['id_vendor']);
-            $product_price = $detail['product_price'];
-            $quantity = $detail['product_quantity'];
-            $total_price = $quantity * $product_price ; 
-            $commission_amount = $total_price * ($commission_rate / 100);
-            $vendor_amount = $total_price - $commission_amount;
-
-            $vendorOrderDetail = new VendorOrderDetail();
-            $vendorOrderDetail->id_order_detail = $detail['id_order_detail'];
-            $vendorOrderDetail->id_vendor = $vendor['id_vendor'];
-            $vendorOrderDetail->id_order = $order->id;
-            $vendorOrderDetail->product_id = $detail['product_id'];
-            $vendorOrderDetail->product_name = $detail['product_name'];
-            $vendorOrderDetail->product_reference = $detail['product_reference'];
-            $vendorOrderDetail->product_mpn = $product->mpn ;
-            $vendorOrderDetail->product_price = $detail['product_price'];
-            $vendorOrderDetail->product_quantity = $detail['product_quantity'];
-            $vendorOrderDetail->product_attribute_id = $detail['product_attribute_id'] ?: null;
-            $vendorOrderDetail->commission_rate = $commission_rate;
-            $vendorOrderDetail->commission_amount = $commission_amount;
-            $vendorOrderDetail->vendor_amount = $vendor_amount;
-            $vendorOrderDetail->date_add = date('Y-m-d H:i:s');
-            $vendorOrderDetail->save();
-
-            // Create initial order line status (simple table)
-            $orderLineStatus = new OrderLineStatus();
-            $orderLineStatus->id_order_detail = $detail['id_order_detail'];
-            $orderLineStatus->id_vendor = $vendor['id_vendor'];
-            $orderLineStatus->id_order_line_status_type = $defaultStatusTypeId;
-            $orderLineStatus->date_add = date('Y-m-d H:i:s');
-            $orderLineStatus->date_upd = date('Y-m-d H:i:s');
-            $orderLineStatus->save();
-
-            // Log status change
-            OrderLineStatusLog::logStatusChange(
-                $detail['id_order_detail'],
-                $vendor['id_vendor'],
-                null,
-                $defaultStatusTypeId,
-                0, // System
-                'New order created'
-            );
+    {
+        $order = $params['order'];
+        $orderDetails = OrderDetail::getList($order->id);
+        foreach ($orderDetails as $detail) {
+            $orderDetail = new OrderDetail($detail['id_order_detail']);
+            OrderHelper::processOrderDetailForVendor($orderDetail);
         }
     }
-}
 
     /**
      * Hook: Display vendor tabs in customer account
@@ -547,55 +493,6 @@ class multivendor extends Module
         }
 
         return '';
-    }
-
-    /**
-     * Hook: Display on admin order page
-     */
-    public function hookDisplayAdminOrder($params)
-    {
-        $id_order = $params['id_order'];
-
-        // Get all vendor order details for this order
-        $vendorOrderDetails = VendorOrderDetail::getByOrderId($id_order);
-        $orderDetails = [];
-
-        foreach ($vendorOrderDetails as $vodDetail) {
-            $orderDetail = new OrderDetail($vodDetail['id_order_detail']);
-            $vendor = new Vendor($vodDetail['id_vendor']);
-            $lineStatus = OrderLineStatus::getByOrderDetail($vodDetail['id_order_detail']);
-
-            $orderDetails[] = [
-                'id_order_detail' => $vodDetail['id_order_detail'],
-                'id_vendor' => $vodDetail['id_vendor'],
-                'vendor_name' => $vendor->shop_name,
-                'product_name' => $orderDetail->product_name,
-                'product_quantity' => $orderDetail->product_quantity,
-                'product_price' => $orderDetail->product_price,
-                'commission_rate' => $vodDetail['commission_rate'],
-                'commission_amount' => $vodDetail['commission_amount'],
-                'vendor_amount' => $vodDetail['vendor_amount'],
-                'status' => $lineStatus ? $lineStatus['status'] : 'unknown'
-            ];
-        }
-
-        // Get available line statuses
-        $statuses = [
-            'pending' => $this->l('Pending'),
-            'processing' => $this->l('Processing'),
-            'shipped' => $this->l('Shipped'),
-            'delivered' => $this->l('Delivered'),
-            'cancelled' => $this->l('Cancelled')
-        ];
-
-        $this->context->smarty->assign([
-            'order_details' => $orderDetails,
-            'statuses' => $statuses,
-            'id_order' => $id_order,
-            'update_status_url' => $this->context->link->getAdminLink('AdminOrders') . '&ajax=1&action=updateVendorLineStatus&id_order=' . $id_order
-        ]);
-
-        return $this->display(__FILE__, 'views/templates/admin/order_detail.tpl');
     }
 
     /**

@@ -188,34 +188,5 @@ class OrderLineStatus extends ObjectModel
 
         return (int)$deleteStatusType['id_order_line_status_type'];
     }
-    /**
-     * Get status with full type information by order detail and vendor
-     *
-     * @param int $id_order_detail Order detail ID
-     * @param int $id_vendor Vendor ID
-     * @return array Status information including type details
-     */
-    public static function getFullStatusInfo($id_order_detail, $id_vendor)
-    {
-        $status = VendorHelper::getOrderLineStatusByOrderDetailAndVendor($id_order_detail, $id_vendor);
 
-        if (!$status) {
-            // Return default status if no status exists
-            $defaultStatusTypeId = self::getDefaultStatusTypeId();
-            $defaultStatusType = new OrderLineStatusType($defaultStatusTypeId);
-
-            return [
-                'id_order_line_status_type' => $defaultStatusTypeId,
-                'status_name' => $defaultStatusType->name,
-                'color' => $defaultStatusType->color,
-                'commission_action' => $defaultStatusType->commission_action,
-                'affects_commission' => $defaultStatusType->affects_commission,
-                'comment' => null,
-                'date_add' => null,
-                'date_upd' => null
-            ];
-        }
-
-        return $status;
-    }
 }

@@ -283,7 +283,6 @@ class AdminVendorPaymentsController extends ModuleAdminController
 
         $defaultAction = $defaultStatus ? $defaultStatus['commission_action'] : 'none';
 
-        // FIXED: Get pending commissions using the new structure
         $sql = '
             SELECT 
                 v.id_vendor, 

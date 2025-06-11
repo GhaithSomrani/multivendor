@@ -20,21 +20,21 @@
 
             {if $is_pending}
                 <div class="info-box">
-                    <h3>{l s='What happens next?' mod='multivendor'}</h3>
+                    <h3>{l s='Que se passe-t-il ensuite ?' mod='multivendor'}</h3>
                     <ul>
-                        <li>{l s='Our team will review your vendor application' mod='multivendor'}</li>
-                        <li>{l s='You will receive an email notification once approved' mod='multivendor'}</li>
-                        <li>{l s='The review process typically takes 1-3 business days' mod='multivendor'}</li>
+                        <li>{l s='Notre équipe examinera votre demande de vendeur' mod='multivendor'}</li>
+                        <li>{l s='Vous recevrez une notification par e-mail une fois approuvé' mod='multivendor'}</li>
+                        <li>{l s='Le processus d\'examen prend généralement 1 à 3 jours ouvrables' mod='multivendor'}</li>
                     </ul>
                 </div>
             {/if}
 
             <div class="action-buttons">
                 <button onclick="location.reload();" class="btn btn-primary">
-                    {l s='Refresh Status' mod='multivendor'}
+                    {l s='Actualiser le statut' mod='multivendor'}
                 </button>
                 <a href="{$link->getPageLink('my-account')}" class="btn btn-secondary">
-                    {l s='Back to My Account' mod='multivendor'}
+                    {l s='Retour à Mon Compte' mod='multivendor'}
                 </a>
             </div>
         </div>

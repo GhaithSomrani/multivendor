@@ -79,50 +79,6 @@ class OrderLineStatusType extends ObjectModel
         return Db::getInstance()->executeS($query);
     }
 
-
-    /**
-     * Process commission based on status type - uses TransactionHelper
-     *
-     * @param int $id_order_detail Order detail ID
-     * @param int $id_vendor Vendor ID
-     * @param string $commission_action Commission action
-     * @return bool Success
-     */
-    public static function processCommission($id_order_detail, $commission_action)
-    {
-        try {
-            // Use TransactionHelper for all transaction processing
-            return TransactionHelper::processCommissionTransaction($id_order_detail, $commission_action);
-        } catch (Exception $e) {
-            PrestaShopLogger::addLog(
-                'OrderLineStatusType::processCommission - Error: ' . $e->getMessage(),
-                3,
-                null,
-                'OrderLineStatusType',
-                $id_order_detail
-            );
-            return false;
-        }
-    }
-
-
-    /**
-     * Get default status type ID
-     *
-     * @return int Default status type ID
-     */
-    public static function getDefaultStatusTypeId()
-    {
-        $query = new DbQuery();
-        $query->select('id_order_line_status_type');
-        $query->from('mv_order_line_status_type');
-        $query->where('active = 1');
-        $query->orderBy('position ASC');
-
-        $result = Db::getInstance()->getValue($query);
-        return (int)$result;
-    }
-
     protected function isActiveStatus($id_order_line_status_type)
     {
         $query = new DbQuery();

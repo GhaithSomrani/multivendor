@@ -33,10 +33,7 @@ class VendorHelper
     {
         $cacheKey = 'vendor_by_customer_' . $id_customer;
 
-        // Check if data is in cache
-        if (self::getCachedData($cacheKey)) {
-            return self::getCachedData($cacheKey);
-        }
+
 
         $query = new DbQuery();
         $query->select('*');
@@ -45,107 +42,12 @@ class VendorHelper
 
         $result = Db::getInstance()->getRow($query);
 
-        // Store in cache
-        self::setCachedData($cacheKey, $result);
-
         return $result;
     }
 
 
-    /**
-     * Calculate commission rate for a vendor 
-     * 
-     * @param int $id_vendor Vendor ID
-     * @return float Commission rate percentage
-     */
-    public static function getCommissionRate($id_vendor)
-    {
-        try {
-            $vendorCommission = VendorCommission::getCommissionRate($id_vendor);
-            return $vendorCommission;
-        } catch (Exception $e) {
-            PrestaShopLogger::addLog('Error getting commission rate: ' . $e->getMessage(), 3, null, 'Vendor', $id_vendor);
-        }
-    }
 
-    /**
-     * Get order lines by status with efficient querying
-     * 
-     * @param int $id_vendor Vendor ID
-     * @param string $status Status to filter by (optional)
-     * @param int $limit Limit number of results (optional)
-     * @param int $offset Offset for pagination (optional)
-     * @return array Order lines
-     */
-    public static function getOrderLinesByStatusGrouped($id_vendor)
-    {
-        $defaultStatusTypeId = OrderLineStatus::getDefaultStatusTypeId();
-        $defaultStatusType = new OrderLineStatusType($defaultStatusTypeId);
 
-        $query = new DbQuery();
-        $query->select('
-        vod.id_order_detail, 
-        vod.product_name, 
-        vod.product_reference ,
-        vod.product_quantity,
-        vod.product_price,
-        vod.id_order,
-        vod.commission_amount, 
-        vod.vendor_amount,
-        vod.product_mpn,
-        o.reference as order_reference, 
-        o.date_add as order_date,
-        c.firstname, 
-        c.lastname,
-        a.address1, 
-        a.city, 
-        a.postcode,
-        COALESCE(olst.name, "' . pSQL($defaultStatusType->name) . '") as line_status,
-        COALESCE(olst.commission_action, "' . pSQL($defaultStatusType->commission_action) . '") as commission_action,
-        COALESCE(olst.color, "' . pSQL($defaultStatusType->color) . '") as status_color,
-        COALESCE(ols.id_order_line_status_type, ' . (int)$defaultStatusTypeId . ') as status_type_id
-    ');
-        $query->from('mv_vendor_order_detail', 'vod');
-        $query->leftJoin('orders', 'o', 'o.id_order = vod.id_order');
-        $query->leftJoin('customer', 'c', 'c.id_customer = o.id_customer');
-        $query->leftJoin('address', 'a', 'a.id_address = o.id_address_delivery');
-        $query->leftJoin('mv_order_line_status', 'ols', 'ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor');
-        $query->leftJoin('mv_order_line_status_type', 'olst', 'olst.id_order_line_status_type = ols.id_order_line_status_type');
-        $query->where('vod.id_vendor = ' . (int)$id_vendor);
-        $query->orderBy('o.date_add DESC');
-
-        $orderLines = Db::getInstance()->executeS($query);
-
-        // Group logic remains the same...
-        $grouped = [
-            'no_commission' => [],
-            'pending' => [],
-            'ready' => []
-        ];
-
-        foreach ($orderLines as $line) {
-            if ($line['commission_action'] == 'cancel' || $line['commission_action'] == 'refund') {
-                $grouped['no_commission'][] = $line;
-            } elseif ($line['line_status'] == 'Processing' || $line['line_status'] == 'processing') {
-                $grouped['pending'][] = $line;
-            } elseif (
-                $line['line_status'] == 'Shipped' || $line['line_status'] == 'shipped' ||
-                $line['line_status'] == 'Ready' || $line['line_status'] == 'ready'
-            ) {
-                $grouped['ready'][] = $line;
-            } else {
-                if ($line['commission_action'] == 'add') {
-                    $grouped['pending'][] = $line;
-                } else if ($line['commission_action'] == 'none') {
-                    continue;
-                } else {
-                    $grouped['pending'][] = $line;
-                }
-            }
-        }
-
-        return $grouped;
-    }
 
 
     public static function getOrderLinesByStatus($id_vendor)
@@ -236,11 +138,6 @@ class VendorHelper
             $year = date('Y');
         }
 
-        $cacheKey = "monthly_sales_{$id_vendor}_{$year}";
-
-        if (self::getCachedData($cacheKey)) {
-            return self::getCachedData($cacheKey);
-        }
 
         $query = '
             SELECT 
@@ -271,7 +168,6 @@ class VendorHelper
             $monthlyData[$index]['sales'] = (float)$row['sales'];
         }
 
-        self::setCachedData($cacheKey, $monthlyData);
 
         return $monthlyData;
     }
@@ -288,9 +184,6 @@ class VendorHelper
     {
         $cacheKey = "daily_sales_{$id_vendor}_{$start_date}_{$end_date}";
 
-        if (self::getCachedData($cacheKey)) {
-            return self::getCachedData($cacheKey);
-        }
 
         $query = '
             SELECT 
@@ -345,7 +238,6 @@ class VendorHelper
             $dailySales = array_values($allDates);
         }
 
-        self::setCachedData($cacheKey, $dailySales);
 
         return $dailySales;
     }
@@ -360,9 +252,6 @@ class VendorHelper
     {
         $cacheKey = "status_breakdown_{$id_vendor}";
 
-        if (self::getCachedData($cacheKey)) {
-            return self::getCachedData($cacheKey);
-        }
 
         $defaultStatusTypeId = OrderLineStatus::getDefaultStatusTypeId();
 
@@ -391,80 +280,11 @@ class VendorHelper
 
         $results = Db::getInstance()->executeS($query);
 
-        self::setCachedData($cacheKey, $results);
 
         return $results;
     }
 
-    /**
-     * Get the default order line status (first by position)
-     * 
-     * @return string Default status name
-     */
-    public static function getDefaultOrderStatus()
-    {
-        $cacheKey = "default_order_status";
 
-        if (self::getCachedData($cacheKey)) {
-            return self::getCachedData($cacheKey);
-        }
-
-        $defaultStatus = Db::getInstance()->getValue('
-            SELECT name FROM `' . _DB_PREFIX_ . 'mv_order_line_status_type` 
-            WHERE active = 1 
-            ORDER BY position ASC 
-        ');
-
-        if (!$defaultStatus) {
-            $defaultStatus = 'Pending';
-        }
-
-        self::setCachedData($cacheKey, $defaultStatus);
-
-        return $defaultStatus;
-    }
-
-    /**
-     * Get cached data
-     * 
-     * @param string $key Cache key
-     * @return mixed Cached data or false if not found/expired
-     */
-    private static function getCachedData($key)
-    {
-        if (!isset(self::$cache[$key])) {
-            return false;
-        }
-
-        $cacheItem = self::$cache[$key];
-
-        // Check if cache has expired
-        if ($cacheItem['expires'] < time()) {
-            unset(self::$cache[$key]);
-            return false;
-        }
-
-        return $cacheItem['data'];
-    }
-
-    /**
-     * Set cached data
-     * 
-     * @param string $key Cache key
-     * @param mixed $data Data to cache
-     * @param int $timeout Cache timeout in seconds (null for default)
-     */
-    private static function setCachedData($key, $data, $timeout = null)
-    {
-        if ($timeout === null) {
-            $timeout = self::$cacheTimeout;
-        }
-
-        self::$cache[$key] = [
-            'data' => $data,
-            'expires' => time() + $timeout
-        ];
-    }
 
 
 
@@ -1112,16 +932,6 @@ class VendorHelper
         }
     }
 
-    /**
-     * Check if vendor is active
-     */
-    public static function isVendorActive($id_vendor)
-    {
-        $status = Db::getInstance()->getValue(
-            'SELECT status FROM ' . _DB_PREFIX_ . 'mv_vendor WHERE id_vendor = ' . (int)$id_vendor
-        );
-        return ((int)$status === 1);
-    }
 
     /**
      * Get order line status by order detail and vendor
@@ -1217,23 +1027,5 @@ class VendorHelper
         }
     }
 
-    public static function getVendorOrderStatusCounts($id_vendor)
-    {
-        $defaultStatusTypeId = OrderLineStatus::getDefaultStatusTypeId();
 
-        $query = new DbQuery();
-        $query->select('
-            COALESCE(olst.name, "Pending") as status_name,
-            COUNT(*) as count,
-            COALESCE(olst.color, "#FFA500") as color
-        ');
-        $query->from('mv_vendor_order_detail', 'vod');
-        $query->leftJoin('mv_order_line_status', 'ols', 'ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = ' . (int)$id_vendor);
-        $query->leftJoin('mv_order_line_status_type', 'olst', 'olst.id_order_line_status_type = ols.id_order_line_status_type');
-        $query->where('vod.id_vendor = ' . (int)$id_vendor);
-        $query->groupBy('COALESCE(olst.name, "Pending"), COALESCE(olst.color, "#FFA500")');
-        $query->orderBy('count DESC');
-
-        return Db::getInstance()->executeS($query);
-    }
 }

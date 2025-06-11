@@ -266,7 +266,7 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
             return false;
         }
 
-        $commission_rate = VendorHelper::getCommissionRate($id_vendor, $orderDetail->product_id);
+        $commission_rate = VendorCommission::getCommissionRate($id_vendor, $orderDetail->product_id);
         $product_price = $orderDetail->unit_price_tax_incl;
         $quantity = $orderDetail->product_quantity;
         $total_price = $product_price * $quantity;
@@ -341,19 +341,7 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
 
 
 
-    /**
-     * Get order line status data
-     */
-    public function getOrderLineStatusData($id_order_detail, $id_vendor)
-    {
-        $lineStatus = VendorHelper::getOrderLineStatusByOrderDetailAndVendor($id_order_detail, $id_vendor);
 
-        return [
-            'status' => $lineStatus ? $lineStatus['status'] : 'Pending',
-            'last_update' => $lineStatus ? date('Y-m-d H:i:s', strtotime($lineStatus['date_upd'])) : null,
-            'comment' => $lineStatus ? $lineStatus['comment'] : null
-        ];
-    }
 
     public function processBulkUpdateVendorStatus()
     {

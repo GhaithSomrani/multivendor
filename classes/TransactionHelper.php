@@ -26,20 +26,6 @@ class TransactionHelper
         return $result ? (int)$result : false;
     }
 
-    /**
-     * Get order ID from order detail ID
-     * @param int $orderDetailId
-     * @return int|false
-     */
-    public static function getOrderIdFromOrderDetail($orderDetailId)
-    {
-        $sql = 'SELECT id_order 
-                FROM ' . _DB_PREFIX_ . 'order_detail 
-                WHERE id_order_detail = ' . (int)$orderDetailId;
-
-        $result = Db::getInstance()->getValue($sql);
-        return $result ? (int)$result : false;
-    }
 
     /**
      * Create or update transaction only when transaction_type or status changes
@@ -352,24 +338,6 @@ class TransactionHelper
                 'message' => 'Payment failed: ' . $e->getMessage()
             ];
         }
-    }
-
-    /**
-     * Get transactions by order detail ID
-     *
-     * @param int $order_detail_id Order detail ID
-     * @return array Transactions
-     */
-    public static function getTransactionsByOrderDetail($order_detail_id)
-    {
-        $query = new DbQuery();
-        $query->select('vt.*, vod.id_vendor, vod.product_name');
-        $query->from('mv_vendor_transaction', 'vt');
-        $query->leftJoin('mv_vendor_order_detail', 'vod', 'vod.id_order_detail = vt.order_detail_id');
-        $query->where('vt.order_detail_id = ' . (int)$order_detail_id);
-        $query->orderBy('vt.date_add DESC');
-
-        return Db::getInstance()->executeS($query);
     }
 
     /**

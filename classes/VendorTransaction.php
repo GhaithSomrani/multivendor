@@ -139,20 +139,7 @@ class VendorTransaction extends ObjectModel
 
 
 
-    /**
-     * Get order ID from order detail ID
-     * @param int $orderDetailId
-     * @return int|false
-     */
-    public static function getOrderIdFromOrderDetail($orderDetailId)
-    {
-        $sql = 'SELECT id_order 
-            FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail
-            WHERE id_order_detail = ' . (int)$orderDetailId;
 
-        $result = Db::getInstance()->getValue($sql);
-        return $result ? (int)$result : false;
-    }
 
 
     /**

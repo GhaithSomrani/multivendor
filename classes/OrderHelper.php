@@ -19,39 +19,37 @@ class OrderHelper
     public static function processOrderDetailForVendor($orderDetail)
     {
         try {
-            // Get the product to check if it belongs to a vendor
             $product = new Product($orderDetail->product_id);
 
             if (!Validate::isLoadedObject($product) || !$product->id_supplier) {
-                return false; // No supplier, not a vendor product
+                return false;
             }
 
             $id_supplier = $product->id_supplier;
 
-            // Check if this supplier is associated with a vendor
             $vendor = Vendor::getVendorBySupplier($id_supplier);
 
             if (!$vendor) {
-                return false; // No vendor associated with this supplier
+                return false;
             }
 
-            // Check if vendor order detail already exists
             $existingVendorOrderDetail = VendorHelper::getVendorOrderDetailByOrderDetailAndVendor(
                 $orderDetail->id_order_detail,
                 $vendor['id_vendor']
             );
 
             if ($existingVendorOrderDetail) {
-                return true; // Already exists, no need to create again
+                return true;
             }
+            $defaultStatusTypeId = OrderLineStatus::getDefaultStatusTypeId();
 
-            // Calculate commission
-            $commission_rate = VendorHelper::getCommissionRate($vendor['id_vendor']);
-            $total_price = $orderDetail->total_price_tax_incl;
+            $commission_rate = VendorCommission::getCommissionRate($vendor['id_vendor']);
+            $product_price = $orderDetail->product_price;
+            $quantity = $orderDetail->product_quantity;
+            $total_price = $quantity * $product_price;
             $commission_amount = $total_price * ($commission_rate / 100);
             $vendor_amount = $total_price - $commission_amount;
 
-            // Create vendor order detail record with product information including reference
             $vendorOrderDetail = new VendorOrderDetail();
             $vendorOrderDetail->id_order_detail = $orderDetail->id_order_detail;
             $vendorOrderDetail->id_vendor = $vendor['id_vendor'];
@@ -59,42 +57,32 @@ class OrderHelper
             $vendorOrderDetail->product_id = $orderDetail->product_id;
             $vendorOrderDetail->product_name = $orderDetail->product_name;
             $vendorOrderDetail->product_reference = $orderDetail->product_reference;
-            $vendorOrderDetail->product_mpn = $product->mpn;
-            $vendorOrderDetail->product_price = $orderDetail->unit_price_tax_incl;
+            $vendorOrderDetail->product_mpn = $orderDetail->product_mpn;
+            $vendorOrderDetail->product_price = $orderDetail->product_price;
             $vendorOrderDetail->product_quantity = $orderDetail->product_quantity;
             $vendorOrderDetail->product_attribute_id = $orderDetail->product_attribute_id ?: null;
             $vendorOrderDetail->commission_rate = $commission_rate;
             $vendorOrderDetail->commission_amount = $commission_amount;
             $vendorOrderDetail->vendor_amount = $vendor_amount;
             $vendorOrderDetail->date_add = date('Y-m-d H:i:s');
+            $vendorOrderDetail->save();
+            $orderLineStatus = new OrderLineStatus();
+            $orderLineStatus->id_order_detail = $orderDetail->id_order_detail;
+            $orderLineStatus->id_vendor = $vendor['id_vendor'];
+            $orderLineStatus->id_order_line_status_type = $defaultStatusTypeId;
+            $orderLineStatus->date_add = date('Y-m-d H:i:s');
+            $orderLineStatus->date_upd = date('Y-m-d H:i:s');
+            $orderLineStatus->save();
 
-            if ($vendorOrderDetail->save()) {
-                // Get default status
-                $defaultStatusTypeId = OrderLineStatus::getDefaultStatusTypeId();
+            OrderLineStatusLog::logStatusChange(
+                $orderDetail->id_order_detail,
+                $vendor['id_vendor'],
+                null,
+                $defaultStatusTypeId,
+                0,
+            );
 
-                // Create initial order line status (simple table)
-                $orderLineStatus = new OrderLineStatus();
-                $orderLineStatus->id_order_detail = $orderDetail->id_order_detail;
-                $orderLineStatus->id_vendor = $vendor['id_vendor'];
-                $orderLineStatus->id_order_line_status_type = $defaultStatusTypeId;
-                $orderLineStatus->date_add = date('Y-m-d H:i:s');
-                $orderLineStatus->date_upd = date('Y-m-d H:i:s');
-                $orderLineStatus->save();
-
-                // Log status change
-                OrderLineStatusLog::logStatusChange(
-                    $orderDetail->id_order_detail,
-                    $vendor['id_vendor'],
-                    null, // no old status
-                    $defaultStatusTypeId,
-                    0, // system change
-                    'Commande modifiée de l\'administration - création de la ligne de commande pour le vendeur'
-                );
-
-                return true;
-            }
-
-            return false;
+            return true;
         } catch (Exception $e) {
             PrestaShopLogger::addLog(
                 'Multivendor OrderHelper: Error processing order detail for vendor: ' . $e->getMessage(),
@@ -138,7 +126,7 @@ class OrderHelper
 
             if ($vendorOrderDetail) {
                 // Recalculate commission based on updated order detail
-                $commission_rate = VendorHelper::getCommissionRate($vendor['id_vendor']);
+                $commission_rate = VendorCommission::getCommissionRate($vendor['id_vendor']);
                 $total_price = $orderDetail->total_price_tax_incl;
                 $commission_amount = $total_price * ($commission_rate / 100);
                 $vendor_amount = $total_price - $commission_amount;
