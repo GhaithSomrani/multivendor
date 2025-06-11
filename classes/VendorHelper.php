@@ -466,51 +466,7 @@ class VendorHelper
         ];
     }
 
-    /**
-     * Create vendor order detail if it doesn't exist
-     * 
-     * @param int $id_order_detail Order detail ID
-     * @param int $id_vendor Vendor ID
-     * @return bool Success
-     */
-    public static function createVendorOrderDetailIfNotExists($id_order_detail, $id_vendor)
-    {
-        $existing = VendorHelper::getVendorOrderDetailByOrderDetailAndVendor($id_order_detail, $id_vendor);
 
-        if ($existing) {
-            return true;
-        }
-
-        $orderDetail = new OrderDetail($id_order_detail);
-
-        if (!Validate::isLoadedObject($orderDetail)) {
-            return false;
-        }
-
-        $product = new Product($orderDetail->product_id);
-
-        if (!Validate::isLoadedObject($product)) {
-            return false;
-        }
-
-        $commission_rate = self::getCommissionRate($id_vendor);
-        $product_price = $orderDetail->unit_price_tax_incl;
-        $quantity = $orderDetail->product_quantity;
-        $total_price = $product_price * $quantity;
-        $commission_amount = $total_price * ($commission_rate / 100);
-        $vendor_amount = $total_price - $commission_amount;
-
-        $vendorOrderDetail = new VendorOrderDetail();
-        $vendorOrderDetail->id_order_detail = $id_order_detail;
-        $vendorOrderDetail->id_vendor = $id_vendor;
-        $vendorOrderDetail->id_order = $orderDetail->id_order;
-        $vendorOrderDetail->commission_rate = $commission_rate;
-        $vendorOrderDetail->commission_amount = $commission_amount;
-        $vendorOrderDetail->vendor_amount = $vendor_amount;
-        $vendorOrderDetail->date_add = date('Y-m-d H:i:s');
-
-        return $vendorOrderDetail->save();
-    }
 
     /**
      * Process get order line statuses for admin
@@ -1207,7 +1163,6 @@ class VendorHelper
         $query->select('vod.*');
         $query->from('mv_vendor_order_detail', 'vod');
         $query->where('vod.id_order_detail = ' . (int)$id_order_detail);
-        $query->where('vod.id_vendor = ' . (int)$id_vendor);
 
         return Db::getInstance()->getRow($query);
     }

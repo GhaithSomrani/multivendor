@@ -203,6 +203,7 @@ class AdminOrderLineStatusController  extends ModuleAdminController
 
     public function renderForm()
     {
+
         $position = Db::getInstance()->getValue(
             '
             SELECT `position` 
@@ -301,7 +302,7 @@ class AdminOrderLineStatusController  extends ModuleAdminController
                 [
                     'type' => 'checkbox',
                     'label' => $this->l('Available Status Transitions'),
-                    'name' => 'available_status',
+                    'name' => 'AvailableData',
                     'values' => [
                         'query' => $this->getAvailableStatusOptions(),
                         'id' => 'id_status',
@@ -354,6 +355,8 @@ class AdminOrderLineStatusController  extends ModuleAdminController
                 $_POST['position'] = $max_position + 1;
             }
         }
+        $this->processAvailableStatus();
+
 
         return parent::postProcess();
     }
@@ -426,6 +429,23 @@ class AdminOrderLineStatusController  extends ModuleAdminController
         return parent::processBulkDelete();
     }
 
+    protected function processAvailableStatus()
+    {
+        $available_status = [];
+
+        // Loop through all POST data to find available_status checkboxes
+        foreach ($_POST as $key => $value) {
+            if (strpos($key, 'AvailableData_') === 0 && $value) {
+                $status_id = str_replace('AvailableData_', '', $key);
+                if (is_numeric($status_id)) {
+                    $available_status[] = (int)$status_id;
+                }
+            }
+        }
+
+        // Set the available_status as comma-separated string
+        $_POST['available_status'] = implode(',', $available_status);
+    }
     protected function getAvailableStatusOptions()
     {
         $statusTypes = OrderLineStatusType::getAllActiveStatusTypes();
@@ -434,32 +454,24 @@ class AdminOrderLineStatusController  extends ModuleAdminController
             if ($status['id_order_line_status_type'] != $this->object->id) {
                 $statusOptions[] = [
                     'id_status' => $status['id_order_line_status_type'],
-                    'name' => $status['name']
+                    'name' => $status['name'],
                 ];
             }
         }
 
         return $statusOptions;
     }
-    public function processSave()
+
+
+    public function getFieldsValue($obj)
     {
-        $available_status = [];
-
-        foreach ($_POST as $key => $value) {
-            if (strpos($key, 'available_status_') === 0 && $value) {
-                $status_id = str_replace('available_status_', '', $key);
-                if (is_numeric($status_id)) {
-                    $available_status[] = (int)$status_id;
-                }
-            }
+        $fields = parent::getFieldsValue($obj);
+        $available_status = OrderLineStatusType::getAvailableStatusListBystatusId($this->object->id);
+        foreach ($available_status as $id) {
+            $fields['AvailableData_' .  $id] = true;
         }
-
-        $_POST['available_status'] = implode(',', $available_status);
-
-        return parent::processSave();
+        return $fields;
     }
 
 
-
-   
 }

@@ -64,12 +64,12 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
 
         // Get only vendor-allowed statuses for dropdown
         $vendorStatusTypes = OrderLineStatusType::getAllActiveStatusTypes(true); // true = vendor only
+
         foreach ($vendorStatusTypes as $status) {
             $vendorStatuses[$status['id_order_line_status_type']] = $status['name'];
             $status_colors[$status['name']] = $status['color'];
         }
 
-        // Get ALL statuses (including admin-only) for display
         $allStatusTypes = OrderLineStatusType::getAllActiveStatusTypes();
         foreach ($allStatusTypes as $status) {
             $allStatuses[$status['id_order_line_status_type']] = $status['name'];
@@ -228,11 +228,9 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
             return;
         }
 
-        // Check if vendor order detail exists, if not create it
         $vendorOrderDetail = VendorHelper::getVendorOrderDetailByOrderDetailAndVendor($id_order_detail, $id_vendor);
 
         if (!$vendorOrderDetail) {
-            // Create a new vendor order detail record
             if (!$this->createVendorOrderDetail($id_order_detail, $id_vendor)) {
                 $this->errors[] = $this->module->l('Failed to create vendor order detail.');
                 return;
@@ -262,14 +260,12 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
      */
     protected function createVendorOrderDetail($id_order_detail, $id_vendor)
     {
-        // Get order detail info
         $orderDetail = new OrderDetail($id_order_detail);
 
         if (!Validate::isLoadedObject($orderDetail)) {
             return false;
         }
 
-        // Get default commission rate
         $commission_rate = VendorHelper::getCommissionRate($id_vendor, $orderDetail->product_id);
         $product_price = $orderDetail->unit_price_tax_incl;
         $quantity = $orderDetail->product_quantity;
@@ -277,7 +273,6 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
         $commission_amount = $total_price * ($commission_rate / 100);
         $vendor_amount = $total_price - $commission_amount;
 
-        // Create vendor order detail record
         $vendorOrderDetail = new VendorOrderDetail();
         $vendorOrderDetail->id_order_detail = $id_order_detail;
         $vendorOrderDetail->id_vendor = $id_vendor;
@@ -343,211 +338,8 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
             'status_breakdown' => $statusBreakdown
         ];
     }
-    /**
-     * Get order line statuses for admin
-     */
-    public function processGetOrderLineStatusesForAdmin()
-    {
-        try {
 
 
-            $id_order = (int)Tools::getValue('id_order');
-            $statusData = [];
-
-            $vendorOrderDetails = VendorOrderDetail::getByOrderId($id_order);
-
-            if (!empty($vendorOrderDetails)) {
-                foreach ($vendorOrderDetails as $detail) {
-                    $id_order_detail = $detail['id_order_detail'];
-                    $id_vendor = $detail['id_vendor'];
-                    $vendor = new Vendor($id_vendor);
-                    $lineStatus = VendorHelper::getOrderLineStatusByOrderDetailAndVendor($id_order_detail, $id_vendor);
-
-                    $statusData[$id_order_detail] = [
-                        'id_vendor' => $id_vendor,
-                        'vendor_name' => Validate::isLoadedObject($vendor) ? $vendor->shop_name : 'Unknown vendor',
-                        'status' => $lineStatus ? $lineStatus['status'] : 'Pending',
-                        'status_date' => $lineStatus ? $lineStatus['date_upd'] : null,
-                        'is_vendor_product' => true
-                    ];
-                }
-            }
-
-            // Get all order details for this order to handle non-vendor products
-            $allOrderDetails = OrderDetail::getList($id_order);
-
-            // Process all order details to include non-vendor products
-            foreach ($allOrderDetails as $orderDetail) {
-                $id_order_detail = $orderDetail['id_order_detail'];
-
-                // Skip if this order detail is already handled by a vendor
-                if (isset($statusData[$id_order_detail])) {
-                    continue;
-                }
-
-                // This is a non-vendor product, add it with appropriate indication
-                $statusData[$id_order_detail] = [
-                    'id_vendor' => 0,
-                    'vendor_name' => null,
-                    'status' => 'Not a vendor product',
-                    'status_date' => null,
-                    'is_vendor_product' => false
-                ];
-            }
-
-            // Get all available statuses that admin can set
-            $availableStatuses = OrderLineStatusType::getAllActiveStatusTypes(false, true);
-
-            die(json_encode([
-                'success' => true,
-                'statusData' => $statusData,
-                'availableStatuses' => $availableStatuses
-            ]));
-        } catch (Exception $e) {
-            die(json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]));
-        }
-    }
-
-    /**
-     * Update order line status
-     */
-    public function processUpdateOrderLineStatus()
-    {
-        try {
-            // Get parameters
-            $id_order_detail = (int)Tools::getValue('id_order_detail');
-            $id_vendor = (int)Tools::getValue('id_vendor');
-            $id_status_type = (int)Tools::getValue('status'); // Admin sends this as 'status' but it's actually the status type ID
-
-            // Validate required parameters
-            if (!$id_order_detail || !$id_vendor || !$id_status_type) {
-                die(json_encode([
-                    'success' => false,
-                    'message' => 'Missing required parameters. Received: order_detail=' . $id_order_detail . ', vendor=' . $id_vendor . ', status=' . $id_status_type
-                ]));
-            }
-
-            // Get employee ID - try different methods to get it
-            $employee_id = 1; // Default fallback
-
-            if (isset($this->context->employee) && $this->context->employee->id) {
-                $employee_id = $this->context->employee->id;
-            } elseif (Tools::getValue('employee_id')) {
-                $employee_id = (int)Tools::getValue('employee_id');
-            }
-
-            // Debug logging
-            error_log('Admin status update: order_detail=' . $id_order_detail . ', vendor=' . $id_vendor . ', status_type=' . $id_status_type . ', employee=' . $employee_id);
-
-            // Update the status
-            $result = VendorHelper::updateOrderLineStatusAsAdmin($id_order_detail, $id_vendor, $id_status_type, $employee_id);
-
-            die(json_encode($result));
-        } catch (Exception $e) {
-            error_log('Error in processUpdateOrderLineStatus: ' . $e->getMessage());
-            die(json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]));
-        }
-    }
-
-
-    /**
-     * Process vendor status update
-     */
-    public function processUpdateVendorStatus()
-    {
-        // Check if customer is a vendor
-        $id_customer = $this->context->customer->id;
-        $vendor = VendorHelper::getVendorByCustomer($id_customer);
-
-        if (!$vendor) {
-            die(json_encode(['success' => false, 'message' => 'Not authorized']));
-        }
-
-        $id_vendor = $vendor['id_vendor'];
-        $id_supplier = $vendor['id_supplier'];
-        $id_order_detail = (int)Tools::getValue('id_order_detail');
-        $id_status_type = (int)Tools::getValue('id_status_type');
-        $comment = Tools::getValue('comment');
-
-        try {
-            // Verify authorization
-            $query = new DbQuery();
-            $query->select('p.id_supplier, od.id_order');
-            $query->from('order_detail', 'od');
-            $query->innerJoin('product', 'p', 'p.id_product = od.product_id');
-            $query->where('od.id_order_detail = ' . (int)$id_order_detail);
-
-            $result = Db::getInstance()->getRow($query);
-
-            if (!$result || (int)$result['id_supplier'] !== (int)$id_supplier) {
-                throw new Exception('Not authorized for this product');
-            }
-
-            $id_order = $result['id_order'];
-
-            $success = OrderLineStatus::updateStatus(
-                $id_order_detail,
-                $id_vendor,
-                $id_status_type,
-                $this->context->customer->id,
-                $comment,
-                false
-            );
-
-            if (!$success) {
-                throw new Exception('Failed to update status');
-            }
-
-            // Get updated status data
-            $statusData = $this->getOrderLineStatusData($id_order_detail, $id_vendor);
-
-            die(json_encode([
-                'success' => true,
-                'statusData' => $statusData,
-                'message' => 'Status updated successfully'
-            ]));
-        } catch (Exception $e) {
-            die(json_encode(['success' => false, 'message' => $e->getMessage()]));
-        }
-    }
-    /**
-     * Get status history for an order line
-     */
-    public function processGetStatusHistory()
-    {
-        $id_order_detail = (int)Tools::getValue('id_order_detail');
-
-        // Check authorization
-        $id_customer = $this->context->customer->id;
-        $vendor = VendorHelper::getVendorByCustomer($id_customer);
-
-        if (!$vendor) {
-            die(json_encode(['success' => false, 'message' => 'Not authorized']));
-        }
-
-        try {
-            $history = OrderLineStatusLog::getStatusHistory($id_order_detail);
-
-            // Format the history data
-            $formattedHistory = [];
-            foreach ($history as $log) {
-                $formattedHistory[] = [
-                    'date' => date('Y-m-d H:i:s', strtotime($log['date_add'])),
-                    'old_status' => $log['old_status'] ?: 'Initial',
-                    'new_status' => $log['new_status'],
-                    'comment' => $log['comment'],
-                    'changed_by' => $log['changed_by_firstname'] . ' ' . $log['changed_by_lastname']
-                ];
-            }
-
-            die(json_encode([
-                'success' => true,
-                'history' => $formattedHistory
-            ]));
-        } catch (Exception $e) {
-            die(json_encode(['success' => false, 'message' => $e->getMessage()]));
-        }
-    }
 
     /**
      * Get order line status data
@@ -576,93 +368,6 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
 
 
 
-    public function processExportOrdersCSV()
-    {
-        // Check if customer is a vendor
-        $id_customer = $this->context->customer->id;
-        $vendor = VendorHelper::getVendorByCustomer($id_customer);
-
-        if (!$vendor) {
-            // For direct download, we can't return JSON error
-            // Instead, output a simple error message
-            header('Content-Type: text/plain');
-            die('Error: Not authorized');
-        }
-
-        $id_vendor = $vendor['id_vendor'];
-
-        // Get all order lines for this vendor with complete data
-        $query = new DbQuery();
-        $query->select('
-        od.id_order_detail,
-        od.product_name,
-        od.product_reference,
-        od.product_quantity,
-        od.unit_price_tax_incl,
-        od.total_price_tax_incl,
-        o.reference as order_reference,
-        o.date_add as order_date,
-        o.id_order,
-        vod.commission_amount,
-        vod.vendor_amount,
-        COALESCE(ols.status, "Pending") as line_status
-    ');
-        $query->from('mv_vendor_order_detail', 'vod');
-        $query->leftJoin('order_detail', 'od', 'od.id_order_detail = vod.id_order_detail');
-        $query->leftJoin('orders', 'o', 'o.id_order = vod.id_order');
-        $query->leftJoin('mv_order_line_status', 'ols', 'ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor');
-        $query->where('vod.id_vendor = ' . (int)$id_vendor);
-        $query->orderBy('o.date_add DESC');
-
-        $orderLines = Db::getInstance()->executeS($query);
-
-        if (!$orderLines || empty($orderLines)) {
-            // For direct download, output a simple error message
-            header('Content-Type: text/plain');
-            die('Error: No order data found');
-        }
-
-        // Set headers for CSV download
-        header('Content-Type: text/csv; charset=utf-8');
-        header('Content-Disposition: attachment; filename=vendor_orders_export_' . date('Y-m-d') . '.csv');
-        // Disable caching
-        header('Cache-Control: no-cache, no-store, must-revalidate');
-        header('Pragma: no-cache');
-        header('Expires: 0');
-
-        // Create output stream
-        $output = fopen('php://output', 'w');
-
-        // Add UTF-8 BOM for Excel compatibility
-        fprintf($output, chr(0xEF) . chr(0xBB) . chr(0xBF));
-
-        // Add CSV headers
-        fputcsv($output, [
-            $this->module->l('Order Reference'),
-            $this->module->l('Product Name'),
-            $this->module->l('SKU'),
-            $this->module->l('Quantity'),
-            $this->module->l('Vendor Amount'),
-            $this->module->l('Status'),
-            $this->module->l('Order Date')
-        ]);
-
-        // Add data rows
-        foreach ($orderLines as $line) {
-            fputcsv($output, [
-                $line['order_reference'],
-                $line['product_name'],
-                $line['product_reference'],
-                $line['product_quantity'],
-                $line['vendor_amount'],
-                $line['line_status'],
-                date('Y-m-d H:i:s', strtotime($line['order_date']))
-            ]);
-        }
-
-        fclose($output);
-        exit; // Important: stop execution after sending the file
-    }
     /**
      * Process get add commission status
      * Returns the first status that has commission_action = 'add' and is vendor allowed

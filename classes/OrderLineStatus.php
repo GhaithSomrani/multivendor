@@ -81,11 +81,12 @@ class OrderLineStatus extends ObjectModel
     public static function updateStatus($id_order_detail, $id_vendor, $id_status_type, $changed_by, $comment = null, $is_admin = false)
     {
         try {
-            // Get current status
             $currentStatus = VendorHelper::getOrderLineStatusByOrderDetailAndVendor($id_order_detail, $id_vendor);
-
-            // Get status type info
             $statusType = new OrderLineStatusType($id_status_type);
+            if (!OrderHelper::isChangableStatusType($id_order_detail, $id_status_type)) {
+                error_log('Invalid Status');
+                return false;
+            }
 
             if (!Validate::isLoadedObject($statusType)) {
                 error_log('Invalid status type ID: ' . $id_status_type);
@@ -114,12 +115,10 @@ class OrderLineStatus extends ObjectModel
                 $orderLineStatus->date_upd = date('Y-m-d H:i:s');
                 $success = $orderLineStatus->save();
 
-                // Log the status change
                 if ($success) {
                     OrderLineStatusLog::logStatusChange($id_order_detail, $id_vendor, null, $id_status_type, $changed_by, $comment);
                 }
             } else {
-                // Update existing status
                 $old_status_type_id = $currentStatus['id_order_line_status_type'];
 
                 $success = Db::getInstance()->update('mv_order_line_status', [

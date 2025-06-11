@@ -192,11 +192,17 @@
                                                             data-order-detail-id="{$line.id_order_detail}"
                                                             data-original-status-type-id="{$line.status_type_id}">
                                                             {foreach from=$vendor_statuses key=status_type_id item=status_label}
-                                                                <option value="{$status_type_id}"
-                                                                    {if $line.status_type_id == $status_type_id}selected{/if}
-                                                                    style="background-color: {$status_colors[$status_label]}; color: white;">
-                                                                    {$status_label|escape:'html':'UTF-8'|capitalize}
-                                                                </option>
+                                                                {assign var="is_changeable" value=OrderHelper::isChangableStatusType($line.id_order_detail, $status_type_id)}
+                                    
+                                                                {if $is_changeable ||  $line.status_type_id == $status_type_id}
+                                                                    <option value="{$status_type_id}"
+                                                                        {if $line.status_type_id == $status_type_id}selected{/if}
+                                                                        style="background-color: {$status_colors[$status_label]}; color: white;">
+                                                                        {$status_label|escape:'html':'UTF-8'|capitalize}
+
+                                                                    </option>
+                                                                {/if}
+
                                                             {/foreach}
                                                         </select>
                                                     {/if}

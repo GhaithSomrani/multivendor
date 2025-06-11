@@ -16,11 +16,14 @@
 }
 
 .mv-alert {
+    position: fixed;
     padding: 16px;
     margin-bottom: 24px;
     border-radius: 8px;
     font-size: 14px;
     line-height: 1.5;
+    top :10px;
+    right: 10px;
 }
 
 .mv-alert-warning {
@@ -120,9 +123,15 @@
     margin-bottom: 24px;
 }
 span.mv-status-badge {
-    padding: 8px;
-    color: white;
-    border-radius: 5px;
+    padding: 6px 8px;
+    font-size: 12px;
+    border-radius: 6px;
+    border: 1px solid #ddd;
+    color: rgb(255, 255, 255);
+    font-weight: 600;
+    cursor: pointer;
+    min-width: 120px;
+    display: block;
 }
 .mv-stat-card {
     background: white;

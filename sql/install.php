@@ -150,19 +150,7 @@ $sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'mv_vendor_order_detail`
     KEY `product_attribute_id` (`product_attribute_id`)
 ) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8;';
 
-// Create Order Status Permission table
-$sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'mv_order_status_permission` (
-    `id_order_status_permission` int(10) unsigned NOT NULL AUTO_INCREMENT,
-    `id_order_status` int(10) unsigned NOT NULL,
-    `is_vendor_allowed` tinyint(1) unsigned NOT NULL DEFAULT "0",
-    `is_admin_allowed` tinyint(1) unsigned NOT NULL DEFAULT "1",
-    `affects_commission` tinyint(1) unsigned NOT NULL DEFAULT "0",
-    `commission_action` varchar(32) DEFAULT NULL,
-    `date_add` datetime NOT NULL,
-    `date_upd` datetime NOT NULL,
-    PRIMARY KEY (`id_order_status_permission`),
-    KEY `id_order_status` (`id_order_status`)
-) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8;';
+
 
 // Add default configuration values
 $sql[] = 'INSERT INTO `' . _DB_PREFIX_ . 'configuration` (`name`, `value`, `date_add`, `date_upd`) 

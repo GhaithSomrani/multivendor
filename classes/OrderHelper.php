@@ -59,7 +59,7 @@ class OrderHelper
             $vendorOrderDetail->product_id = $orderDetail->product_id;
             $vendorOrderDetail->product_name = $orderDetail->product_name;
             $vendorOrderDetail->product_reference = $orderDetail->product_reference;
-            $vendorOrderDetail->product_mpn = $product->mpn ;
+            $vendorOrderDetail->product_mpn = $product->mpn;
             $vendorOrderDetail->product_price = $orderDetail->unit_price_tax_incl;
             $vendorOrderDetail->product_quantity = $orderDetail->product_quantity;
             $vendorOrderDetail->product_attribute_id = $orderDetail->product_attribute_id ?: null;
@@ -233,34 +233,7 @@ class OrderHelper
     }
 
 
-    /**
-     * Process multiple order details for vendors (bulk operation)
-     *
-     * @param array $orderDetails Array of OrderDetail objects
-     * @return array Results with success/failure count
-     */
-    public static function processBulkOrderDetailsForVendor($orderDetails)
-    {
-        $results = [
-            'success' => 0,
-            'failed' => 0,
-            'skipped' => 0
-        ];
 
-        foreach ($orderDetails as $orderDetail) {
-            $result = self::processOrderDetailForVendor($orderDetail);
-
-            if ($result === true) {
-                $results['success']++;
-            } elseif ($result === false) {
-                $results['failed']++;
-            } else {
-                $results['skipped']++;
-            }
-        }
-
-        return $results;
-    }
 
     /**
      * Synchronize all existing order details with vendor order details
@@ -342,32 +315,6 @@ class OrderHelper
         return $results;
     }
 
-    /**
-     * Check if an order detail belongs to a vendor
-     *
-     * @param int $id_order_detail Order detail ID
-     * @return array|false Vendor data or false if not found
-     */
-    public static function getVendorByOrderDetail($id_order_detail)
-    {
-        try {
-            $query = new DbQuery();
-            $query->select('v.*');
-            $query->from('mv_vendor_order_detail', 'vod');
-            $query->leftJoin('mv_vendor', 'v', 'v.id_vendor = vod.id_vendor');
-            $query->where('vod.id_order_detail = ' . (int)$id_order_detail);
-
-            return Db::getInstance()->getRow($query);
-        } catch (Exception $e) {
-            PrestaShopLogger::addLog(
-                'Multivendor OrderHelper: Error getting vendor by order detail: ' . $e->getMessage(),
-                3,
-                null,
-                'OrderHelper'
-            );
-            return false;
-        }
-    }
 
     /**
      * Get vendor order details statistics
@@ -447,7 +394,7 @@ class OrderHelper
 
             // Insert default French status types
             $insertQuery = 'INSERT INTO `' . _DB_PREFIX_ . 'mv_order_line_status_type` 
-                (`name`, `color`, `is_admin_allowed`, `is_vendor_allowed`, `affects_commission`, `commission_action`, `position`, `active`, `date_add`, `date_upd`) 
+                (`name`, `color`, `is_admin_allowed`, `is_vendor_allowed`, `affects_commission`, ,`commission_action`, `position`, `active`, `date_add`, `date_upd`) 
                 VALUES 
                 ("en attente client", "#0079FF", 1, 0, 0, "none", 1, 1, NOW(), NOW()),
                 ("à traiter", "#FF865D", 1, 1, 0, "none", 2, 1, NOW(), NOW()),
@@ -467,8 +414,7 @@ class OrderHelper
                 ("payé", "#00DFA2", 1, 0, 0, "add", 16, 1, NOW(), NOW()),
                 ("non conforme", "#FF0060", 1, 0, 1, "cancel", 17, 1, NOW(), NOW()),
                 ("rupture de stock", "#FF0060", 1, 1, 0, "none", 18, 1, NOW(), NOW()),
-                ("annulé par client", "#000000", 1, 0, 0, "none", 19, 1, NOW(), NOW()),
-                ("retour fournisseur", "#FF0060", 1, 0, 0, "refund", 20, 1, NOW(), NOW())';
+                ("annulé par client", "#000000", 1, 0, 0, "none", 19, 1, NOW(), NOW()),';
 
             return Db::getInstance()->execute($insertQuery);
         } catch (Exception $e) {
@@ -479,5 +425,24 @@ class OrderHelper
     public static function getStatusTotalCount()
     {
         return (int)Db::getInstance()->getValue('SELECT COUNT(*) FROM `' . _DB_PREFIX_ . 'mv_order_line_status_type`');
+    }
+
+    public function getCurrentOrderDetailStatus($id_order_detail)
+    {
+
+        $query = new DbQuery();
+        $query->select('id_order_line_status_type');
+        $query->from('mv_order_line_status');
+        $query->where('id_order_detail = ' . (int)$id_order_detail);
+        $id_order_line_status_type = Db::getInstance()->getValue($query);
+
+        return $id_order_line_status_type;
+    }
+
+    public static function isChangableStatusType($id_order_detail, $next_status_id)
+    {
+        $current_status_id  = self::getCurrentOrderDetailStatus($id_order_detail);
+
+        return  OrderLineStatusType::isAvailableStatus($current_status_id, $next_status_id);
     }
 }

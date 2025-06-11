@@ -443,67 +443,7 @@ class multivendor extends Module
         return $helper->generateForm([$fields_form]);
     }
 
-    /**
-     * Hook: When an order status is updated
-     */
-    public function hookActionOrderStatusUpdate($params)
-    {
-        $id_order = $params['id_order'];
-        $new_order_status = $params['newOrderStatus'];
 
-        // Check if this order status affects commission
-        $orderStatusPermission = $this->getOrderStatusPermission($new_order_status->id);
-
-        if ($orderStatusPermission && $orderStatusPermission['affects_commission']) {
-            // Process commissions based on the action
-            $this->processCommissionForOrder($id_order, $orderStatusPermission['commission_action']);
-        }
-    }
-
-    /**
-     * Get order status permission record
-     */
-    protected function getOrderStatusPermission($id_order_status)
-    {
-        return Db::getInstance()->getRow(
-            'SELECT * FROM `' . _DB_PREFIX_ . 'mv_order_status_permission`
-            WHERE `id_order_status` = ' . (int)$id_order_status
-        );
-    }
-
-    /**
-     * Process commission for an order
-     */
-    protected function processCommissionForOrder($id_order, $action)
-    {
-        $vendorOrderDetails = VendorOrderDetail::getByOrderId($id_order);
-
-        foreach ($vendorOrderDetails as $vendorOrderDetail) {
-            $id_vendor = $vendorOrderDetail['id_vendor'];
-         
-
-            if (!TransactionHelper::processCommissionTransaction(
-                $vendorOrderDetail['id_order_detail'],
-                $action
-            )) {
-                PrestaShopLogger::addLog(
-                    'Failed to process commission for order detail ' . $vendorOrderDetail['id_order_detail'] .
-                    ' and vendor ' . $id_vendor,
-                    3,
-                    null,
-                    'multivendor'
-                );
-            } else {
-                PrestaShopLogger::addLog(
-                    'Commission processed successfully for order detail ' . $vendorOrderDetail['id_order_detail'] .
-                    ' and vendor ' . $id_vendor,
-                    1,
-                    null,
-                    'multivendor'
-                );
-            }
-        }
-    }
 
     /**
      * Hook: When a new order is validated

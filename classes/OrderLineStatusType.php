@@ -31,12 +31,14 @@ class OrderLineStatusType extends ObjectModel
 
     /** @var string  Available status */
     public $available_status;
-    
+
     /** @var bool Active */
     public $active;
 
     /** @var bool affect Commission */
     public $affects_commission;
+
+
     /**
      * @see ObjectModel::$definition
      */
@@ -50,6 +52,7 @@ class OrderLineStatusType extends ObjectModel
             'is_vendor_allowed' => ['type' => self::TYPE_BOOL, 'validate' => 'isBool', 'required' => true],
             'is_admin_allowed' => ['type' => self::TYPE_BOOL, 'validate' => 'isBool', 'required' => true],
             'affects_commission' => ['type' => self::TYPE_BOOL, 'validate' => 'isBool', 'required' => true],
+            'available_status' => ['type' => self::TYPE_STRING, 'validate' => 'isGenericName', 'required' => false, 'size' => 255],
             'position' => ['type' => self::TYPE_INT, 'validate' => 'isUnsignedInt', 'required' => true],
             'active' => ['type' => self::TYPE_BOOL, 'validate' => 'isBool', 'required' => true]
         ]
@@ -72,25 +75,10 @@ class OrderLineStatusType extends ObjectModel
 
         $query->orderBy('position ASC');
 
+
         return Db::getInstance()->executeS($query);
     }
 
-    /**
-     * Get status type by name
-     *
-     * @param string $name Status name
-     * @return array|false Status type
-     */
-    public static function getByName($name)
-    {
-        $query = new DbQuery();
-        $query->select('*');
-        $query->from('mv_order_line_status_type');
-        $query->where('name = "' . pSQL($name) . '"');
-        $query->where('active = 1');
-
-        return Db::getInstance()->getRow($query);
-    }
 
     /**
      * Process commission based on status type - uses TransactionHelper
@@ -117,15 +105,6 @@ class OrderLineStatusType extends ObjectModel
         }
     }
 
-    /**
-     * Get commission actions that create transactions
-     *
-     * @return array Actions that require transaction creation
-     */
-    public static function getTransactionActions()
-    {
-        return ['add', 'cancel', 'refund'];
-    }
 
     /**
      * Get default status type ID
@@ -144,126 +123,38 @@ class OrderLineStatusType extends ObjectModel
         return (int)$result;
     }
 
-    /**
-     * Get statuses by commission action
-     *
-     * @param string $commission_action Commission action (add, cancel, refund, none)
-     * @return array Status types with this commission action
-     */
-    public static function getByCommissionAction($commission_action)
+    protected function isActiveStatus($id_order_line_status_type)
     {
         $query = new DbQuery();
-        $query->select('*');
+        $query->select('active');
         $query->from('mv_order_line_status_type');
-        $query->where('commission_action = "' . pSQL($commission_action) . '"');
-        $query->where('active = 1');
-        $query->orderBy('position ASC');
-
-        return Db::getInstance()->executeS($query);
+        $query->where('id_order_line_status_type = ' . (int)$id_order_line_status_type);
+        $active = Db::getInstance()->getValue($query);
+        return (bool)$active;
     }
 
-    /**
-     * Validate commission action
-     *
-     * @param string $action Action to validate
-     * @return bool Is valid action
-     */
-    public static function isValidCommissionAction($action)
-    {
-        $validActions = ['add', 'cancel', 'refund', 'none'];
-        return in_array($action, $validActions);
-    }
-
-    /**
-     * Get status types available for vendor
-     *
-     * @return array Vendor-allowed status types
-     */
-    public static function getVendorAllowedStatuses()
-    {
-        return self::getAllActiveStatusTypes(true, false);
-    }
-
-    /**
-     * Get status types available for admin only
-     *
-     * @return array Admin-only status types
-     */
-    public static function getAdminOnlyStatuses()
+    public static function getAvailableStatusListBystatusId($id_order_line_status_type)
     {
         $query = new DbQuery();
-        $query->select('*');
+        $query->select('available_status');
         $query->from('mv_order_line_status_type');
-        $query->where('active = 1');
-        $query->where('is_admin_allowed = 1');
-        $query->where('is_vendor_allowed = 0');
-        $query->orderBy('position ASC');
-
-        return Db::getInstance()->executeS($query);
+        $query->where('id_order_line_status_type = ' . $id_order_line_status_type);
+        $result = Db::getInstance()->getValue($query);
+        if (!$result) {
+            return [];
+        }
+        $available_status = explode(',', $result);
+        return $available_status;
     }
 
-    /**
-     * Check if status allows vendor modification
-     *
-     * @param int $id_status_type Status type ID
-     * @return bool Can vendor modify
-     */
-    public static function canVendorModify($id_status_type)
+
+    public static function isAvailableStatus($current_status_id, $next_status_id)
     {
-        $query = new DbQuery();
-        $query->select('is_vendor_allowed');
-        $query->from('mv_order_line_status_type');
-        $query->where('id_order_line_status_type = ' . (int)$id_status_type);
-        $query->where('active = 1');
-
-        return (bool)Db::getInstance()->getValue($query);
-    }
-
-    /**
-     * Update status position (for admin reordering)
-     *
-     * @param int $id_status_type Status type ID
-     * @param int $new_position New position
-     * @return bool Success
-     */
-    public static function updatePosition($id_status_type, $new_position)
-    {
-        return Db::getInstance()->update(
-            'mv_order_line_status_type',
-            ['position' => (int)$new_position],
-            'id_order_line_status_type = ' . (int)$id_status_type
-        );
-    }
-
-    /**
-     * Get next position for new status
-     *
-     * @return int Next available position
-     */
-    public static function getNextPosition()
-    {
-        $query = new DbQuery();
-        $query->select('MAX(position) + 1');
-        $query->from('mv_order_line_status_type');
-
-        $position = Db::getInstance()->getValue($query);
-        return $position ? (int)$position : 1;
-    }
-
-    /**
-     * Toggle status active state
-     *
-     * @param int $id_status_type Status type ID
-     * @return bool Success
-     */
-    public static function toggleActive($id_status_type)
-    {
-        $current = new self($id_status_type);
-        if (!Validate::isLoadedObject($current)) {
+        if (self::isActiveStatus($next_status_id)) {
+            $available_status = self::getAvailableStatusListBystatusId($current_status_id);
+            return in_array($next_status_id, $available_status);
+        } else {
             return false;
         }
-
-        $current->active = !$current->active;
-        return $current->save();
     }
 }

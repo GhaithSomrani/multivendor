@@ -581,7 +581,6 @@ function checkAndAddToManifestIfNeeded(orderDetailId, newStatus) {
                     // If the status was changed to something else, remove from manifest if present
                     if (verifiedOrderDetails.has(parseInt(orderDetailId))) {
                         removeFromManifest(orderDetailId);
-                        showNotification('info', 'Removed from pickup manifest');
                     }
                 }
             }
