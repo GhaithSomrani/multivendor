@@ -19,7 +19,7 @@ class AdminOrderLineStatusController  extends ModuleAdminController
         $this->identifier = 'id_order_line_status_type';
         $this->_defaultOrderBy = 'position';
         $this->_defaultOrderWay = 'ASC';
-        $this->position_identifier = 'id_order_line_status_type';
+        $this->position_identifier = 'position';
 
         parent::__construct();
 
@@ -108,98 +108,6 @@ class AdminOrderLineStatusController  extends ModuleAdminController
         return isset($actions[$action]) ? $actions[$action] : $action;
     }
 
-    public function ajaxProcessUpdatePositions()
-    {
-        $way = (int)Tools::getValue('way');
-        $id = (int)Tools::getValue('id');
-        $positions = Tools::getValue($this->table);
-
-        if (is_array($positions)) {
-            // Update all positions based on the new order
-            foreach ($positions as $position => $value) {
-                $pos = explode('_', $value);
-
-                if (isset($pos[2])) {
-                    $item_id = (int)$pos[2];
-                    $new_position = (int)$position;
-
-                    // Update each item with its new position
-                    Db::getInstance()->execute(
-                        '
-                    UPDATE `' . _DB_PREFIX_ . $this->table . '` 
-                    SET `position` = ' . $new_position . ' 
-                    WHERE `' . $this->identifier . '` = ' . $item_id
-                    );
-                }
-            }
-        } else {
-            // Single item position change (using way parameter)
-            $object = new $this->className($id);
-            if (Validate::isLoadedObject($object)) {
-                $current_position = $object->position;
-
-                if ($way == 1) {
-                    // Move up (decrease position)
-                    $new_position = $current_position - 1;
-
-                    // Find item currently at that position and swap
-                    $other_item = Db::getInstance()->getRow(
-                        '
-                    SELECT `' . $this->identifier . '`, `position` 
-                    FROM `' . _DB_PREFIX_ . $this->table . '` 
-                    WHERE `position` = ' . (int)$new_position
-                    );
-
-                    if ($other_item) {
-                        // Swap positions
-                        Db::getInstance()->execute(
-                            '
-                        UPDATE `' . _DB_PREFIX_ . $this->table . '` 
-                        SET `position` = ' . (int)$current_position . ' 
-                        WHERE `' . $this->identifier . '` = ' . (int)$other_item[$this->identifier]
-                        );
-                    }
-
-                    Db::getInstance()->execute(
-                        '
-                    UPDATE `' . _DB_PREFIX_ . $this->table . '` 
-                    SET `position` = ' . (int)$new_position . ' 
-                    WHERE `' . $this->identifier . '` = ' . (int)$id
-                    );
-                } elseif ($way == 0) {
-                    // Move down (increase position)
-                    $new_position = $current_position + 1;
-
-                    // Find item currently at that position and swap
-                    $other_item = Db::getInstance()->getRow(
-                        '
-                    SELECT `' . $this->identifier . '`, `position` 
-                    FROM `' . _DB_PREFIX_ . $this->table . '` 
-                    WHERE `position` = ' . (int)$new_position
-                    );
-
-                    if ($other_item) {
-                        // Swap positions
-                        Db::getInstance()->execute(
-                            '
-                        UPDATE `' . _DB_PREFIX_ . $this->table . '` 
-                        SET `position` = ' . (int)$current_position . ' 
-                        WHERE `' . $this->identifier . '` = ' . (int)$other_item[$this->identifier]
-                        );
-                    }
-
-                    Db::getInstance()->execute(
-                        '
-                    UPDATE `' . _DB_PREFIX_ . $this->table . '` 
-                    SET `position` = ' . (int)$new_position . ' 
-                    WHERE `' . $this->identifier . '` = ' . (int)$id
-                    );
-                }
-            }
-        }
-
-        die('OK');
-    }
 
     public function renderForm()
     {
@@ -310,13 +218,7 @@ class AdminOrderLineStatusController  extends ModuleAdminController
                     ],
                     'hint' => $this->l('Select which statuses this status can transition to. Leave empty to allow all transitions.')
                 ],
-                [
-                    'type' => 'text',
-                    'label' => $this->l('Position'),
-                    'name' => 'position',
-                    'hint' => $this->l('Position in the status list (lower numbers appear first)'),
-                    'class' => 'fixed-width-sm'
-                ],
+
                 [
                     'type' => 'switch',
                     'label' => $this->l('Active'),

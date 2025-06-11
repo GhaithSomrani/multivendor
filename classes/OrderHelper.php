@@ -394,7 +394,7 @@ class OrderHelper
 
             // Insert default French status types
             $insertQuery = 'INSERT INTO `' . _DB_PREFIX_ . 'mv_order_line_status_type` 
-                (`name`, `color`, `is_admin_allowed`, `is_vendor_allowed`, `affects_commission`, ,`commission_action`, `position`, `active`, `date_add`, `date_upd`) 
+                (`name`, `color`, `is_admin_allowed`, `is_vendor_allowed`, `affects_commission`,`commission_action`, `position`, `active`, `date_add`, `date_upd`) 
                 VALUES 
                 ("en attente client", "#0079FF", 1, 0, 0, "none", 1, 1, NOW(), NOW()),
                 ("à traiter", "#FF865D", 1, 1, 0, "none", 2, 1, NOW(), NOW()),
@@ -414,7 +414,7 @@ class OrderHelper
                 ("payé", "#00DFA2", 1, 0, 0, "add", 16, 1, NOW(), NOW()),
                 ("non conforme", "#FF0060", 1, 0, 1, "cancel", 17, 1, NOW(), NOW()),
                 ("rupture de stock", "#FF0060", 1, 1, 0, "none", 18, 1, NOW(), NOW()),
-                ("annulé par client", "#000000", 1, 0, 0, "none", 19, 1, NOW(), NOW()),';
+                ("annulé par client", "#000000", 1, 0, 0, "none", 19, 1, NOW(), NOW())';
 
             return Db::getInstance()->execute($insertQuery);
         } catch (Exception $e) {

@@ -133,15 +133,18 @@ class OrderLineStatusType extends ObjectModel
         return (bool)$active;
     }
 
-    public static function getAvailableStatusListBystatusId($id_order_line_status_type)
+    public static function getAvailableStatusListBystatusId($id_order_line_status_type = 0)
     {
         $query = new DbQuery();
         $query->select('available_status');
         $query->from('mv_order_line_status_type');
-        $query->where('id_order_line_status_type = ' . $id_order_line_status_type);
+        if ($id_order_line_status_type > 0) {
+            $query->where('id_order_line_status_type = ' . $id_order_line_status_type);
+        } else {
+            return [];
+        }
         $result = Db::getInstance()->getValue($query);
         if (!$result) {
-            return [];
         }
         $available_status = explode(',', $result);
         return $available_status;
