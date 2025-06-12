@@ -322,6 +322,42 @@ class VendorHelper
                         $currentStatusName = $defaultStatusType->name;
                     }
 
+                    // Get available statuses for this current status + include current status
+                    $availableStatusIds = OrderLineStatusType::getAvailableStatusListBystatusId($currentStatusTypeId);
+
+                    // Always include the current status first
+                    $availableStatuses = [];
+                    $currentStatusType = new OrderLineStatusType($currentStatusTypeId);
+                    if (Validate::isLoadedObject($currentStatusType)) {
+                        $availableStatuses[] = [
+                            'id_order_line_status_type' => $currentStatusType->id,
+                            'name' => $currentStatusType->name,
+                            'color' => $currentStatusType->color
+                        ];
+                    }
+
+                    // Add other available statuses
+                    if (!empty($availableStatusIds)) {
+                        foreach ($availableStatusIds as $statusId) {
+                            $statusId = (int)trim($statusId);
+                            if ($statusId > 0 && $statusId != $currentStatusTypeId) { // Don't duplicate current status
+                                $statusType = new OrderLineStatusType($statusId);
+                                if (
+                                    Validate::isLoadedObject($statusType) &&
+                                    $statusType->active == 1 &&
+                                    $statusType->is_admin_allowed == 1
+                                ) {
+
+                                    $availableStatuses[] = [
+                                        'id_order_line_status_type' => $statusType->id,
+                                        'name' => $statusType->name,
+                                        'color' => $statusType->color
+                                    ];
+                                }
+                            }
+                        }
+                    }
+
                     $statusData[$id_order_detail] = [
                         'id_vendor' => $id_vendor,
                         'vendor_name' => Validate::isLoadedObject($vendor) ? $vendor->shop_name : 'Unknown vendor',
@@ -335,10 +371,9 @@ class VendorHelper
 
             // Get all order details for this order to handle non-vendor products
             $allOrderDetails = Db::getInstance()->executeS(
-                '
-            SELECT id_order_detail 
-            FROM ' . _DB_PREFIX_ . 'order_detail 
-            WHERE id_order = ' . (int)$id_order
+                'SELECT id_order_detail 
+             FROM ' . _DB_PREFIX_ . 'order_detail 
+             WHERE id_order = ' . (int)$id_order
             );
 
             // Process all order details to include non-vendor products
@@ -361,20 +396,75 @@ class VendorHelper
                 ];
             }
 
-            // Get all available statuses that admin can set
-            $availableStatuses = OrderLineStatusType::getAllActiveStatusTypes(false, true);
+            // Return available statuses (including current statuses)
+            $availableStatuses = [];
+            foreach ($statusData as $id_order_detail => $data) {
+                if ($data['is_vendor_product'] && isset($data['status_type_id'])) {
+                    $currentStatusId = $data['status_type_id'];
+
+                    // Always include current status first
+                    $currentStatusType = new OrderLineStatusType($currentStatusId);
+                    if (Validate::isLoadedObject($currentStatusType)) {
+                        $found = false;
+                        foreach ($availableStatuses as $existing) {
+                            if ($existing['id_order_line_status_type'] == $currentStatusType->id) {
+                                $found = true;
+                                break;
+                            }
+                        }
+                        if (!$found) {
+                            $availableStatuses[] = [
+                                'id_order_line_status_type' => $currentStatusType->id,
+                                'name' => $currentStatusType->name,
+                                'color' => $currentStatusType->color
+                            ];
+                        }
+                    }
+
+                    // Add available transition statuses
+                    $availableStatusIds = OrderLineStatusType::getAvailableStatusListBystatusId($currentStatusId);
+                    foreach ($availableStatusIds as $statusId) {
+                        $statusId = (int)trim($statusId);
+                        if ($statusId > 0) {
+                            $statusType = new OrderLineStatusType($statusId);
+                            if (
+                                Validate::isLoadedObject($statusType) &&
+                                $statusType->active == 1 &&
+                                $statusType->is_admin_allowed == 1
+                            ) {
+
+                                // Add to available statuses if not already there
+                                $found = false;
+                                foreach ($availableStatuses as $existing) {
+                                    if ($existing['id_order_line_status_type'] == $statusType->id) {
+                                        $found = true;
+                                        break;
+                                    }
+                                }
+
+                                if (!$found) {
+                                    $availableStatuses[] = [
+                                        'id_order_line_status_type' => $statusType->id,
+                                        'name' => $statusType->name,
+                                        'color' => $statusType->color
+                                    ];
+                                }
+                            }
+                        }
+                    }
+                }
+            }
 
             return [
                 'success' => true,
                 'statusData' => $statusData,
-                'availableStatuses' => $availableStatuses
+                'availableStatuses' => $availableStatuses  // Only available transitions, not all statuses
             ];
         } catch (Exception $e) {
             error_log('Error in getOrderLineStatusesForAdmin: ' . $e->getMessage());
             return ['success' => false, 'message' => 'Error: ' . $e->getMessage()];
         }
     }
-
     /**
      * Update order line status as admin
      * 
@@ -1026,6 +1116,4 @@ class VendorHelper
             return false;
         }
     }
-
-
 }

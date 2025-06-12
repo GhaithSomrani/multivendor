@@ -99,16 +99,12 @@ class AdminVendorPaymentsController extends ModuleAdminController
         parent::initPageHeaderToolbar();
 
         if (empty($this->display)) {
-            $this->page_header_toolbar_btn['new_payment'] = [
-                'href' => self::$currentIndex . '&addvendor_payment&token=' . $this->token,
-                'desc' => $this->l('Add New Payment'),
-                'icon' => 'process-icon-new'
-            ];
+      
 
             $this->page_header_toolbar_btn['pending_commissions'] = [
                 'href' => self::$currentIndex . '&pending_commissions&token=' . $this->token,
                 'desc' => $this->l('View Pending Commissions'),
-                'icon' => 'process-icon-money'
+                'icon' => 'process-icon-new'
             ];
         }
     }
