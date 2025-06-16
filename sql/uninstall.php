@@ -23,7 +23,7 @@ $sql = array();
 
 
 // Remove configuration values
-$sql[] = 'DELETE FROM `' . _DB_PREFIX_ . 'configuration` WHERE `name` LIKE "MV_%"';
+// $sql[] = 'DELETE FROM `' . _DB_PREFIX_ . 'configuration` WHERE `name` LIKE "MV_%"';
 
 // Execute all SQL queries
 foreach ($sql as $query) {

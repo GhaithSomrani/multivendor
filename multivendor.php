@@ -24,6 +24,9 @@ require_once(dirname(__FILE__) . '/classes/VendorHelper.php');
 require_once(dirname(__FILE__) . '/classes/pdf/HTMLTemplateVendorManifestPDF.php');
 require_once(dirname(__FILE__) . '/classes/OrderHelper.php');
 require_once(dirname(__FILE__) . '/classes/TransactionHelper.php');
+require_once(dirname(__FILE__) . '/classes/webservice/WebserviceOrderLineStatusType.php');
+require_once(dirname(__FILE__) . '/classes/webservice/WebserviceOrderLineHistory.php');
+require_once(dirname(__FILE__) . '/classes/webservice/WebserviceOrderLineStatusUpdate.php');
 
 class multivendor extends Module
 {
@@ -78,6 +81,7 @@ class multivendor extends Module
             !$this->registerHook('actionObjectOrderDetailAddAfter') ||
             !$this->registerHook('actionObjectOrderDetailUpdateAfter') ||
             !$this->registerHook('actionObjectOrderDetailDeleteAfter') ||
+            !$this->registerHook('addWebserviceResources') ||
             !$this->installTab()
         ) {
             return false;
@@ -525,6 +529,30 @@ class multivendor extends Module
         if (isset($params['object'])) {
             OrderHelper::deleteOrderDetailForVendor($params['object']);
         }
+    }
+
+    public function hookAddWebserviceResources()
+    {
+        return [
+            'order_line_status_types' => [
+                'description' => 'Multi-vendor order line status types',
+                'class' => 'WebserviceOrderLineStatusType',
+                'forbidden_method' => ['PUT', 'DELETE']
+
+            ],
+            'order_line_history' => [
+                'description' => 'Multi-vendor order line status history',
+                'class' => 'WebserviceOrderLineHistory',
+                'forbidden_method' => ['POST', 'PUT', 'DELETE']
+
+            ],
+            'order_line_status_update' => [
+                'description' => 'Multi-vendor order line status update',
+                'class' => 'WebserviceOrderLineStatusUpdate',
+                'forbidden_method' => ['GET', 'DELETE']
+
+            ]
+        ];
     }
 
     /**
