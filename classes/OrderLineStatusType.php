@@ -58,6 +58,21 @@ class OrderLineStatusType extends ObjectModel
         ]
     ];
 
+      protected $webserviceParameters = [
+        'objectsNodeName' => 'order_line_status_types',
+        'objectNodeName' => 'order_line_status_type',
+        'fields' => [
+            'id_order_line_status_type' => [],
+            'name' => [],
+            'color' => [],
+            'is_vendor_allowed' => [],
+            'is_admin_allowed' => [],
+            'affects_commission' => [],
+            'commission_action' => [],
+            'position' => [],
+            'active' => []
+        ]];
+
     public static function getAllActiveStatusTypes($vendor_only = false, $admin_only = false)
     {
         $query = new DbQuery();
@@ -116,4 +131,5 @@ class OrderLineStatusType extends ObjectModel
             return false;
         }
     }
+
 }

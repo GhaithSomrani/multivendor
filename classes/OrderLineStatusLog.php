@@ -45,7 +45,19 @@ class OrderLineStatusLog extends ObjectModel
             'date_add' => ['type' => self::TYPE_DATE, 'validate' => 'isDate']
         ]
     ];
-
+    protected $webserviceParameters = [
+        'objectsNodeName' => 'order_line_history',
+        'objectNodeName' => 'order_line_history',
+        'fields' => [
+            'id_order_detail' => [],
+            'id_vendor' => [],
+            'old_id_order_line_status_type' => [],
+            'new_id_order_line_status_type' => [],
+            'comment' => [],
+            'changed_by' => [],
+            'date_add' => []
+        ]
+    ];
     /**
      * Log status change
      *
