@@ -1116,4 +1116,23 @@ class VendorHelper
             return false;
         }
     }
+    /**
+     * Get supplier address details by vendor ID from ps_address table
+     *
+     * @param int $id_vendor Vendor ID
+     * @return array|false Supplier address data or false if not found
+     */
+    public static function getSupplierAddressByVendor($id_vendor)
+    {
+        $query = new DbQuery();
+        $query->select('s.name, a.address1 as address, a.address2, a.postcode, a.city, a.phone, co.name as country');
+        $query->from('mv_vendor', 'v');
+        $query->leftJoin('supplier', 's', 's.id_supplier = v.id_supplier');
+        $query->leftJoin('address', 'a', 'a.id_supplier = s.id_supplier');
+        $query->leftJoin('country_lang', 'co', 'co.id_country = a.id_country');
+        $query->where('v.id_vendor = ' . (int)$id_vendor);
+        $query->where('a.deleted = 0');
+
+        return Db::getInstance()->getRow($query);
+    }
 }

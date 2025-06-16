@@ -55,6 +55,7 @@ class HTMLTemplateVendorManifestPDF extends HTMLTemplate
 
             $manifestData = [];
             $vendorObj = new Vendor($vendor['id_vendor']);
+            $supplierAddress = VendorHelper::getSupplierAddressByVendor($vendor['id_vendor']);
 
             foreach ($orderDetailIds as $id_order_detail) {
 
@@ -70,6 +71,7 @@ class HTMLTemplateVendorManifestPDF extends HTMLTemplate
                         'id' => $vendorObj->id,
                         'name' => $vendorObj->shop_name,
                     ],
+                    'supplier_address' => $supplierAddress,
                     'order' => [
                         'id' => $order->id,
                         'reference' => $order->reference,

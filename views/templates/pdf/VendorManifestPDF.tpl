@@ -151,26 +151,22 @@
                 <td width="50%">
                     <div class="pickup-box">
                         <div class="pickup-label">RAMASSAGE CHEZ (FOURNISSEUR) :</div>
-                        <strong>{$first_manifest.vendor.name|default:"Nom du fournisseur"}</strong><br>
-                        {if isset($first_manifest.vendor.email) && $first_manifest.vendor.email}
-                            Email : {$first_manifest.vendor.email}<br>
+                        <strong>{$first_manifest.supplier_address.name|default:"Nom du fournisseur"}</strong><br>
+                        {if isset($first_manifest.supplier_address.address) && $first_manifest.supplier_address.address}
+                            {$first_manifest.supplier_address.address}<br>
                         {/if}
-                        {if isset($first_manifest.shop_address.address1) && $first_manifest.shop_address.address1}
-                            {$first_manifest.shop_address.address1}<br>
+                        {if isset($first_manifest.supplier_address.address2) && $first_manifest.supplier_address.address2}
+                            {$first_manifest.supplier_address.address2}<br>
                         {/if}
-                        {if isset($first_manifest.shop_address.address2) && $first_manifest.shop_address.address2}
-                            {$first_manifest.shop_address.address2}<br>
+                        {if isset($first_manifest.supplier_address.city) && isset($first_manifest.supplier_address.postcode)}
+                            {$first_manifest.supplier_address.city}, {$first_manifest.supplier_address.postcode}<br>
                         {/if}
-                        {if isset($first_manifest.shop_address.city) && isset($first_manifest.shop_address.postcode)}
-                            {$first_manifest.shop_address.city}, {$first_manifest.shop_address.postcode}<br>
+                        {if isset($first_manifest.supplier_address.country) && $first_manifest.supplier_address.country}
+                            {$first_manifest.supplier_address.country}<br>
                         {/if}
-                        {if isset($first_manifest.shop_address.country) && $first_manifest.shop_address.country}
-                            {$first_manifest.shop_address.country}<br>
-                        {/if}
-                        {if isset($first_manifest.shop_address.phone) && $first_manifest.shop_address.phone}
-                            Téléphone : {$first_manifest.shop_address.phone}<br>
-                        {/if}
-                    </div>
+                        {if isset($first_manifest.supplier_address.phone) && $first_manifest.supplier_address.phone}
+                            Téléphone : {$first_manifest.supplier_address.phone}<br>
+                        {/if} </div>
                 </td>
                 <td width="50%">
                     <div class="pickup-box">
@@ -307,7 +303,7 @@
 
 
         {* Section Signatures *}
-        <table style="margin-top: 60px; bottom:0; position: fixed; width: 100%;">   
+        <table style="margin-top: 60px; bottom:0; position: fixed; width: 100%;">
             <tr>
                 <td width="33%" style="text-align: center;">
                     <div class="signature-box">

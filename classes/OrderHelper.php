@@ -44,7 +44,7 @@ class OrderHelper
             $defaultStatusTypeId = OrderLineStatus::getDefaultStatusTypeId();
 
             $commission_rate = VendorCommission::getCommissionRate($vendor['id_vendor']);
-            $product_price = $orderDetail->product_price;
+            $product_price = $orderDetail->unit_price_tax_incl;
             $quantity = $orderDetail->product_quantity;
             $total_price = $quantity * $product_price;
             $commission_amount = $total_price * ($commission_rate / 100);
@@ -58,7 +58,7 @@ class OrderHelper
             $vendorOrderDetail->product_name = $orderDetail->product_name;
             $vendorOrderDetail->product_reference = $orderDetail->product_reference;
             $vendorOrderDetail->product_mpn = $orderDetail->product_mpn;
-            $vendorOrderDetail->product_price = $orderDetail->product_price;
+            $vendorOrderDetail->product_price = $orderDetail->unit_price_tax_incl;
             $vendorOrderDetail->product_quantity = $orderDetail->product_quantity;
             $vendorOrderDetail->product_attribute_id = $orderDetail->product_attribute_id ?: null;
             $vendorOrderDetail->commission_rate = $commission_rate;
