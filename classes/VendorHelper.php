@@ -1135,4 +1135,21 @@ class VendorHelper
 
         return Db::getInstance()->getRow($query);
     }
+    /**
+     * Get vendor by order detail ID
+     * 
+     * @param int $id_customer Customer ID
+     * @return array|false Vendor data or false if not found
+     */ 
+     public static function getVendorByIdOrderDetail($id_order_detail)
+     {
+         $query = new DbQuery();
+         $query->select('v.*');
+         $query->from('mv_vendor_order_detail', 'vod');
+         $query->leftJoin('mv_vendor', 'v', 'v.id_vendor = vod.id_vendor');
+         $query->where('vod.id_order_detail = ' . (int)$id_order_detail);
+         $query->groupBy('v.id_vendor');
+
+         return Db::getInstance()->getRow($query);
+     }
 }

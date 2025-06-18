@@ -536,7 +536,7 @@ class multivendor extends Module
                 'description' => 'Multi-vendor order line status types',
                 'class' => 'OrderLineStatusType',
                 'specific_management' => false,
-                'forbidden_method' => ['PUT', 'DELETE']
+                'forbidden_method' => ['PUT', 'DELETE', 'POST'],
 
             ],
             'order_line_history' => [
@@ -546,6 +546,14 @@ class multivendor extends Module
                 'forbidden_method' => ['POST', 'PUT', 'DELETE']
 
             ],
+            'order_line_statuses' => [
+                'description' => 'Multi-vendor order line status history',
+                'class' => 'OrderLineStatus',
+                'specific_management' => false,
+                'forbidden_method' => ['DELETE']
+
+            ],
+
         ];
     }
 
