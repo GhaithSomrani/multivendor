@@ -431,8 +431,17 @@ class OrderHelper
 
     public static function isChangableStatusType($id_order_detail, $next_status_id)
     {
-        $current_status_id  = self::getCurrentOrderDetailStatus($id_order_detail);
-
+        $current_status_id  = self::getCurrentOrderDetailStatus($id_order_detail) ;
+        if (!$current_status_id) {
+            PrestaShopLogger::addLog(
+                'Multivendor OrderHelper: No current status found for order detail ID ' . $id_order_detail,
+                3,
+                null,
+                'OrderDetail',
+                $id_order_detail
+            );
+            return false; // No current status, cannot change
+        }
         return  OrderLineStatusType::isAvailableStatus($current_status_id, $next_status_id);
     }
 }

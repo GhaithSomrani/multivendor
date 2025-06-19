@@ -70,6 +70,14 @@ class OrderLineStatusType extends ObjectModel
             'commission_action' => [],
             'position' => [],
             'active' => []
+        ],
+        'hidden_fields' => [
+            'is_vendor_allowed',
+            'is_admin_allowed',
+            'affects_commission', 
+            'commission_action',
+            'color',
+
         ]
     ];
 

@@ -1,7 +1,7 @@
 <?php
 
 /**
- * OrderLineStatus model class - FIXED VERSION for Webservice
+ * OrderLineStatus model class - UPDATED VERSION with update() override
  */
 
 if (!defined('_PS_VERSION_')) {
@@ -10,6 +10,7 @@ if (!defined('_PS_VERSION_')) {
 
 class OrderLineStatus extends ObjectModel
 {
+
     /** @var int Order line status ID */
     public $id;
 
@@ -51,15 +52,178 @@ class OrderLineStatus extends ObjectModel
         'objectsNodeName' => 'order_line_statuses',
         'objectNodeName' => 'order_line_status',
         'fields' => [
-            'id_order_line_status' => ['required' => false],
-            'id_order_detail' => ['xlink_resource' => 'order_line_statuses'],
-            'id_vendor' => ['required' => false], // Make optional for webservice
+            'id' => [],
+            'id_order_detail' => ['xlink_resource' => 'order_line_statuses', 'setter' => 'setorderlinedetails'],
+            'id_vendor' => ['required' => false],
             'id_order_line_status_type' => [],
-            'comment' => [],
+            // 'comment' => [],
             'date_add' => [],
             'date_upd' => []
-        ]
+        ],
+
+
     ];
+
+    /**
+     * Override update method to handle status updates with changability validation
+     */
+    public function update($nullValues = false)
+    {
+        try {
+            // Auto-determine vendor if not set
+            if (empty($this->id_vendor) && !empty($this->id_order_detail)) {
+                $this->id_vendor = self::getVendorByOrderDetail($this->id_order_detail);
+
+                if (!$this->id_vendor) {
+                    $error_msg = 'Impossible de déterminer le vendeur pour l\'ID de détail de commande : ' . $this->id_order_detail;
+                    error_log($error_msg);
+                    PrestaShopLogger::addLog($error_msg, 3, null, 'OrderLineStatus', $this->id, true);
+
+                    if ($this->isApiCall()) {
+                        $this->setWsError($error_msg, 400);
+                        return false;
+                    }
+                    return false;
+                }
+            }
+
+            // Check if status change is allowed (changability validation)
+            if (!OrderHelper::isChangableStatusType($this->id_order_detail, $this->id_order_line_status_type)) {
+                $error_msg = 'Changement de statut non autorisé pour le détail de commande : ' . $this->id_order_detail;
+                error_log($error_msg);
+                PrestaShopLogger::addLog($error_msg, 3, null, 'OrderLineStatus', $this->id, true);
+
+                if ($this->isApiCall()) {
+                    $this->setWsError($error_msg, 403);
+                    return false;
+                }
+                return false;
+            }
+
+            // Validate status type
+            $statusType = new OrderLineStatusType($this->id_order_line_status_type);
+            if (!Validate::isLoadedObject($statusType)) {
+                $error_msg = 'ID de type de statut invalide : ' . $this->id_order_line_status_type;
+                error_log($error_msg);
+                PrestaShopLogger::addLog($error_msg, 3, null, 'OrderLineStatus', $this->id, true);
+
+                if ($this->isApiCall()) {
+                    $this->setWsError($error_msg, 400);
+                    return false;
+                }
+                return false;
+            }
+
+            // Check user permissions
+            $is_api_call = $this->isApiCall();
+            $is_admin = $is_api_call ? true : (Context::getContext()->employee ? (bool)Context::getContext()->employee->id : false);
+
+            if (!$is_api_call) {
+                if (!$is_admin && $statusType->is_vendor_allowed != 1) {
+                    $error_msg = 'Vendeur non autorisé à définir le statut : ' . $statusType->name;
+                    error_log($error_msg);
+                    PrestaShopLogger::addLog($error_msg, 3, null, 'OrderLineStatus', $this->id, true);
+                    return false;
+                }
+
+                if ($is_admin && $statusType->is_admin_allowed != 1) {
+                    $error_msg = 'Administrateur non autorisé à définir le statut : ' . $statusType->name;
+                    error_log($error_msg);
+                    PrestaShopLogger::addLog($error_msg, 3, null, 'OrderLineStatus', $this->id, true);
+                    return false;
+                }
+            }
+
+            // Get current status for logging
+            $currentStatus = self::getByOrderDetailAndVendor($this->id_order_detail, $this->id_vendor);
+            $old_status_type_id = $currentStatus ? $currentStatus['id_order_line_status_type'] : null;
+
+            // Perform the update
+            $success = parent::update($nullValues);
+
+            // Log status change if successful
+            if ($success) {
+                OrderLineStatusLog::logStatusChange(
+                    $this->id_order_detail,
+                    $this->id_vendor,
+                    $old_status_type_id,
+                    $this->id_order_line_status_type,
+                    $this->getChangedBy(),
+                    $this->comment
+                );
+            }
+
+            // Process commission if the status affects commission
+            if ($success && $statusType->affects_commission == 1) {
+                self::processCommissionForOrderDetail($this->id_order_detail, $statusType->commission_action);
+            }
+
+            return $success;
+        } catch (Exception $e) {
+            $error_msg = 'Erreur dans OrderLineStatus::update : ' . $e->getMessage();
+            PrestaShopLogger::addLog($error_msg . ' \n - Trace de la pile : ' . $e->getTraceAsString(), 3, null, 'OrderLineStatus', $this->id, true);
+
+            if ($this->isApiCall()) {
+                $this->setWsError($error_msg, 500);
+                return false;
+            }
+            return false;
+        }
+    }
+
+    /**
+     * Standard save method without changability validation - used for initial creation
+     */
+    public function save($nullValues = false, $autodate = true)
+    {
+        try {
+            // Auto-determine vendor if not set
+            if (empty($this->id_vendor) && !empty($this->id_order_detail)) {
+                $this->id_vendor = self::getVendorByOrderDetail($this->id_order_detail);
+
+                if (!$this->id_vendor) {
+                    error_log('Impossible de déterminer le vendeur pour l\'ID de détail de commande : ' . $this->id_order_detail);
+                    PrestaShopLogger::addLog(
+                        'Impossible de déterminer le vendeur pour l\'ID de détail de commande : ' . $this->id_order_detail,
+                        3,
+                        null,
+                        'OrderLineStatus',
+                        $this->id,
+                        true
+                    );
+                    return false;
+                }
+            }
+
+            return parent::save($nullValues, $autodate);
+        } catch (Exception $e) {
+            PrestaShopLogger::addLog(
+                'Erreur dans OrderLineStatus::save : ' . $e->getMessage() . ' \n - Trace de la pile : ' . $e->getTraceAsString(),
+                3,
+                null,
+                'OrderLineStatus',
+                $this->id,
+                true
+            );
+            return false;
+        }
+    }
+
+    /**
+     * Get the user who made the change
+     *
+     * @return int User ID
+     */
+    protected function getChangedBy()
+    {
+        if (Context::getContext()->employee && Context::getContext()->employee->id) {
+            return (int)Context::getContext()->employee->id;
+        }
+        if (Context::getContext()->customer && Context::getContext()->customer->id) {
+            return (int)Context::getContext()->customer->id;
+        }
+        return 0; // System/webservice
+    }
 
     /**
      * Get vendor ID by order detail ID
@@ -73,9 +237,26 @@ class OrderLineStatus extends ObjectModel
         $query->select('id_vendor');
         $query->from('mv_vendor_order_detail');
         $query->where('id_order_detail = ' . (int)$id_order_detail);
-        
+
         $result = Db::getInstance()->getValue($query);
         return $result ? (int)$result : false;
+    }
+
+    /**
+     * Get status by order detail ID and vendor ID
+     *
+     * @param int $id_order_detail Order detail ID
+     * @param int $id_vendor Vendor ID
+     * @return array|false Status data
+     */
+    public static function getByOrderDetailAndVendor($id_order_detail, $id_vendor)
+    {
+        $query = new DbQuery();
+        $query->select('*');
+        $query->from('mv_order_line_status');
+        $query->where('id_order_detail = ' . (int)$id_order_detail . ' AND id_vendor = ' . (int)$id_vendor);
+
+        return Db::getInstance()->getRow($query);
     }
 
     /**
@@ -96,86 +277,6 @@ class OrderLineStatus extends ObjectModel
     }
 
     /**
-     * Update status using webservice with only order detail ID and status type ID
-     *
-     * @param int $id_order_detail Order detail ID
-     * @param int $id_status_type Status type ID
-     * @return bool Success
-     */
-    public static function updateStatusByWebservice($id_order_detail, $id_status_type)
-    {
-        // Get vendor ID automatically from order detail
-        $id_vendor = self::getVendorByOrderDetail($id_order_detail);
-        
-        if (!$id_vendor) {
-            error_log('Vendor not found for order detail ID: ' . $id_order_detail);
-            return false;
-        }
-
-        $changed_by = 0; // System/webservice user
-        $comment = 'Updated via webservice';
-        $is_admin = true; // Webservice has admin privileges
-
-        return self::updateStatus($id_order_detail, $id_vendor, $id_status_type, $changed_by, $comment, $is_admin);
-    }
-
-    /**
-     * Override add method for webservice compatibility
-     */
-    public function add($autodate = true, $nullValues = false)
-    {
-        // If vendor ID is not provided, try to get it from order detail
-        if (empty($this->id_vendor) && !empty($this->id_order_detail)) {
-            $this->id_vendor = self::getVendorByOrderDetail($this->id_order_detail);
-            
-            if (!$this->id_vendor) {
-                error_log('Cannot determine vendor for order detail ID: ' . $this->id_order_detail);
-                return false;
-            }
-        }
-
-        if ($this->id_order_detail && $this->id_order_line_status_type) {
-            // Use the updateStatusByWebservice method which handles both create and update
-            $success = self::updateStatusByWebservice($this->id_order_detail, $this->id_order_line_status_type);
-            
-            if ($success) {
-                // Set the ID for webservice response - find the created/updated record
-                $existingRecord = self::getByOrderDetailId($this->id_order_detail);
-                if ($existingRecord) {
-                    $this->id = $existingRecord['id_order_line_status'];
-                }
-            }
-            
-            return $success;
-        }
-
-        error_log('Missing required fields: id_order_detail=' . $this->id_order_detail . 
-                 ', id_order_line_status_type=' . $this->id_order_line_status_type . 
-                 ', id_vendor=' . $this->id_vendor);
-        return false;
-    }
-
-    /**
-     * Override update method for webservice compatibility
-     */
-    public function update($autodate = true, $nullValues = false)
-    {
-        // If vendor ID is not provided, try to get it from order detail
-        if (empty($this->id_vendor) && !empty($this->id_order_detail)) {
-            $this->id_vendor = self::getVendorByOrderDetail($this->id_order_detail);
-        }
-
-        if ($this->id_order_detail && $this->id_order_line_status_type && $this->id_vendor) {
-            return self::updateStatusByWebservice($this->id_order_detail, $this->id_order_line_status_type);
-        }
-
-        error_log('Missing required fields for update: id_order_detail=' . $this->id_order_detail . 
-                 ', id_order_line_status_type=' . $this->id_order_line_status_type . 
-                 ', id_vendor=' . $this->id_vendor);
-        return false;
-    }
-
-    /**
      * Get existing order line status by order detail ID
      *
      * @param int $id_order_detail Order detail ID
@@ -187,89 +288,8 @@ class OrderLineStatus extends ObjectModel
         $query->select('*');
         $query->from('mv_order_line_status');
         $query->where('id_order_detail = ' . (int)$id_order_detail);
-        
+
         return Db::getInstance()->getRow($query);
-    }
-
-    /**
-     * Update status of an order line - FIXED VERSION
-     *
-     * @param int $id_order_detail Order detail ID
-     * @param int $id_vendor Vendor ID
-     * @param int $id_status_type Status type ID
-     * @param int $changed_by ID of the employee or customer who made the change
-     * @param string $comment Optional comment
-     * @param bool $is_admin Whether the change was made by an admin
-     * @return bool Success
-     */
-    public static function updateStatus($id_order_detail, $id_vendor, $id_status_type, $changed_by, $comment = null, $is_admin = false)
-    {
-        try {
-            $currentStatus = VendorHelper::getOrderLineStatusByOrderDetailAndVendor($id_order_detail, $id_vendor);
-            $statusType = new OrderLineStatusType($id_status_type);
-            
-            if (!OrderHelper::isChangableStatusType($id_order_detail, $id_status_type)) {
-                error_log('Status change not allowed for order detail: ' . $id_order_detail);
-                return false;
-            }
-
-            if (!Validate::isLoadedObject($statusType)) {
-                error_log('Invalid status type ID: ' . $id_status_type);
-                return false;
-            }
-
-            if (!$is_admin && $statusType->is_vendor_allowed != 1) {
-                error_log('Vendor not allowed to set status: ' . $statusType->name);
-                return false;
-            }
-
-            if ($is_admin && $statusType->is_admin_allowed != 1) {
-                error_log('Admin not allowed to set status: ' . $statusType->name);
-                return false;
-            }
-
-            $success = false;
-
-            if (!$currentStatus) {
-                // Create new status record
-                $orderLineStatus = new OrderLineStatus();
-                $orderLineStatus->id_order_detail = (int)$id_order_detail;
-                $orderLineStatus->id_vendor = (int)$id_vendor;
-                $orderLineStatus->id_order_line_status_type = (int)$id_status_type;
-                $orderLineStatus->comment = $comment;
-                $orderLineStatus->date_add = date('Y-m-d H:i:s');
-                $orderLineStatus->date_upd = date('Y-m-d H:i:s');
-                $success = $orderLineStatus->save();
-
-                if ($success) {
-                    OrderLineStatusLog::logStatusChange($id_order_detail, $id_vendor, null, $id_status_type, $changed_by, $comment);
-                }
-            } else {
-                // Update existing status record
-                $old_status_type_id = $currentStatus['id_order_line_status_type'];
-
-                $success = Db::getInstance()->update('mv_order_line_status', [
-                    'id_order_line_status_type' => (int)$id_status_type,
-                    'comment' => pSQL($comment),
-                    'date_upd' => date('Y-m-d H:i:s')
-                ], 'id_order_detail = ' . (int)$id_order_detail . ' AND id_vendor = ' . (int)$id_vendor);
-
-                if ($success) {
-                    OrderLineStatusLog::logStatusChange($id_order_detail, $id_vendor, $old_status_type_id, $id_status_type, $changed_by, $comment);
-                }
-            }
-
-            // Process commission if needed
-            if ($success && $statusType->affects_commission == 1) {
-                self::processCommissionForOrderDetail($id_order_detail, $statusType->commission_action);
-            }
-
-            return $success;
-        } catch (Exception $e) {
-            error_log('Error in OrderLineStatus::updateStatus: ' . $e->getMessage());
-            error_log('Stack trace: ' . $e->getTraceAsString());
-            return false;
-        }
     }
 
     /**
@@ -284,7 +304,7 @@ class OrderLineStatus extends ObjectModel
         try {
             return TransactionHelper::processCommissionTransaction($id_order_detail, $action);
         } catch (Exception $e) {
-            error_log('Error in processCommissionForOrderDetail: ' . $e->getMessage());
+            error_log('Erreur dans processCommissionForOrderDetail : ' . $e->getMessage());
             return false;
         }
     }
@@ -319,5 +339,129 @@ class OrderLineStatus extends ObjectModel
         ');
 
         return (int)$deleteStatusType['id_order_line_status_type'];
+    }
+
+    /**
+     * Legacy method for backward compatibility - creates or updates status
+     */
+    public static function updateStatus($id_order_detail, $id_vendor, $id_status_type, $changed_by, $comment = null, $is_admin = false)
+    {
+        // Check if status already exists
+        $currentStatus = self::getByOrderDetailAndVendor($id_order_detail, $id_vendor);
+
+        if ($currentStatus) {
+            $orderLineStatus = new OrderLineStatus($currentStatus['id_order_line_status']);
+            $orderLineStatus->id_order_line_status_type = (int)$id_status_type;
+            $orderLineStatus->comment = $comment;
+
+            return $orderLineStatus->update();
+        } else {
+            // Create new status
+            $orderLineStatus = new OrderLineStatus();
+            $orderLineStatus->id_order_detail = (int)$id_order_detail;
+            $orderLineStatus->id_vendor = (int)$id_vendor;
+            $orderLineStatus->id_order_line_status_type = (int)$id_status_type;
+            $orderLineStatus->comment = $comment;
+
+            return $orderLineStatus->save();
+        }
+    }
+
+    /**
+     * Update status using webservice - simplified
+     */
+    public static function updateStatusByWebservice($id_order_detail, $id_status_type)
+    {
+        // Check if status already exists
+        $vendor_id = self::getVendorByOrderDetail($id_order_detail);
+        if (!$vendor_id) {
+            return false;
+        }
+
+        $currentStatus = self::getByOrderDetailAndVendor($id_order_detail, $vendor_id);
+
+        if ($currentStatus) {
+            // Update existing status
+            $orderLineStatus = new OrderLineStatus($currentStatus['id_order_line_status']);
+            $orderLineStatus->id_order_line_status_type = (int)$id_status_type;
+            $orderLineStatus->comment = 'Mis à jour via le service web';
+
+            return $orderLineStatus->update();
+        } else {
+            // Create new status
+            $orderLineStatus = new OrderLineStatus();
+            $orderLineStatus->id_order_detail = (int)$id_order_detail;
+            $orderLineStatus->id_vendor = $vendor_id;
+            $orderLineStatus->id_order_line_status_type = (int)$id_status_type;
+            $orderLineStatus->comment = 'Mis à jour via le service web';
+
+            return $orderLineStatus->save();
+        }
+    }
+    /**
+     * Set webservice error for API calls
+     *
+     * @param string $message Error message
+     * @param int $code HTTP status code
+     */
+    protected function setWsError($message, $code = 400)
+    {
+        if (class_exists('WebserviceRequest') && method_exists('WebserviceRequest', 'getInstance')) {
+            $webservice = WebserviceRequest::getInstance();
+            if (method_exists($webservice, 'setError')) {
+                $webservice->setError($code, $message, 999);
+            }
+        }
+
+        if (Context::getContext()->controller) {
+            Context::getContext()->controller->errors[] = $message;
+        }
+
+        error_log('Erreur du service web ' . $code . ' : ' . $message);
+    }
+
+    /**
+     * Check if the current request is an API call
+     */
+    protected function isApiCall()
+    {
+        return (Tools::getValue('ws_key') || Tools::getValue('key')) ||
+            (isset($_SERVER['REQUEST_URI']) && strpos($_SERVER['REQUEST_URI'], '/api/') !== false) ||
+            (Context::getContext()->controller && Context::getContext()->controller instanceof WebserviceRequestCore) ||
+            (isset($_SERVER['HTTP_USER_AGENT']) && strpos($_SERVER['HTTP_USER_AGENT'], 'PrestaShop Webservice') !== false);
+    }
+
+
+    public function setorderlinedetails($id_order_detail)
+    {
+        // First, validate that the order detail exists
+        $query = new DbQuery();
+        $query->select('id_order_detail');
+        $query->from('order_detail');
+        $query->where('id_order_detail = ' . (int)$id_order_detail);
+
+        $existing_order_detail = Db::getInstance()->getValue($query);
+
+        if (!$existing_order_detail) {
+            $this->setWsError('L\'ID de détail de commande n\'existe pas : ' . $id_order_detail, 400);
+            return false;
+        }
+
+        if ($this->id) {
+            $query = new DbQuery();
+            $query->select('id_order_detail');
+            $query->from('mv_order_line_status');
+            $query->where('id_order_line_status = ' . (int)$this->id);
+
+            $current_order_detail = Db::getInstance()->getValue($query);
+
+            if ($current_order_detail && $current_order_detail != $id_order_detail) {
+                $this->setWsError('Impossible de modifier l\'ID de détail de commande pour un statut de ligne de commande existant. Actuel : ' . $current_order_detail . ', Demandé : ' . $id_order_detail, 400);
+                return false;
+            }
+        }
+
+        $this->id_order_detail = (int)$id_order_detail;
+        return true;
     }
 }
