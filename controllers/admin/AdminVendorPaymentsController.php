@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Admin Vendor Payments Controller
+ * Complete Admin Vendor Payments Controller
  */
 
 if (!defined('_PS_VERSION_')) {
@@ -75,10 +75,8 @@ class AdminVendorPaymentsController extends ModuleAdminController
             LEFT JOIN `' . _DB_PREFIX_ . 'mv_vendor` v ON (v.id_vendor = a.id_vendor)
         ';
 
-        // Add custom actions
         $this->addRowAction('view');
 
-        // Add bulk actions
         $this->bulk_actions = [
             'markCompleted' => [
                 'text' => $this->l('Mark as Completed'),
@@ -91,16 +89,11 @@ class AdminVendorPaymentsController extends ModuleAdminController
         ];
     }
 
-    /**
-     * Initialize page header toolbar
-     */
     public function initPageHeaderToolbar()
     {
         parent::initPageHeaderToolbar();
 
         if (empty($this->display)) {
-      
-
             $this->page_header_toolbar_btn['pending_commissions'] = [
                 'href' => self::$currentIndex . '&pending_commissions&token=' . $this->token,
                 'desc' => $this->l('View Pending Commissions'),
@@ -110,17 +103,276 @@ class AdminVendorPaymentsController extends ModuleAdminController
     }
 
     /**
-     * Process bulk actions
+     * SIMPLIFIED: Pay commission method - Clean and efficient
      */
+    public function ajaxProcessPayCommission()
+    {
+        $id_vendor = (int)Tools::getValue('id_vendor');
+        $payment_method = Tools::getValue('payment_method');
+        $reference = Tools::getValue('reference');
+
+        if (!$id_vendor || !$payment_method || !$reference) {
+            die(json_encode(['success' => false, 'message' => $this->l('Missing required parameters')]));
+        }
+
+        try {
+            // Get unpaid commission amount and details
+            $pendingData = $this->getUnpaidCommissionDetails($id_vendor);
+            
+            if (empty($pendingData['order_details']) || $pendingData['total_amount'] <= 0) {
+                die(json_encode(['success' => false, 'message' => $this->l('No unpaid commissions found')]));
+            }
+
+            Db::getInstance()->execute('START TRANSACTION');
+
+            // Create payment record
+            $payment = new VendorPayment();
+            $payment->id_vendor = $id_vendor;
+            $payment->amount = $pendingData['total_amount'];
+            $payment->payment_method = pSQL($payment_method);
+            $payment->reference = pSQL($reference);
+            $payment->status = 'completed';
+            $payment->date_add = date('Y-m-d H:i:s');
+
+            if (!$payment->save()) {
+                throw new Exception('Failed to create payment record');
+            }
+
+            // Mark all unpaid transactions as paid
+            $this->markTransactionsAsPaid($pendingData['order_details'], $payment->id);
+
+            Db::getInstance()->execute('COMMIT');
+
+            die(json_encode([
+                'success' => true,
+                'message' => $this->l('Payment processed successfully'),
+                'amount_paid' => $pendingData['total_amount'],
+                'transactions_count' => count($pendingData['order_details'])
+            ]));
+
+        } catch (Exception $e) {
+            Db::getInstance()->execute('ROLLBACK');
+            PrestaShopLogger::addLog('Payment error: ' . $e->getMessage(), 3);
+            die(json_encode(['success' => false, 'message' => $e->getMessage()]));
+        }
+    }
+
+    /**
+     * Get unpaid commission details for a vendor - FIXED to get only unpaid order details
+     */
+    private function getUnpaidCommissionDetails($id_vendor)
+    {
+        // Get only order details that haven't been paid yet
+        $defaultStatusTypeId = OrderLineStatus::getDefaultStatusTypeId();
+        $defaultStatusType = new OrderLineStatusType($defaultStatusTypeId);
+
+        $query = '
+            SELECT 
+                vod.id_order_detail,
+                vod.vendor_amount,
+                vod.product_name,
+                vod.product_reference,
+                vod.product_quantity,
+                o.reference as order_reference,
+                o.date_add as order_date
+            FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod
+            LEFT JOIN ' . _DB_PREFIX_ . 'orders o ON o.id_order = vod.id_order
+            LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status ols ON ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor
+            LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status_type olst ON olst.id_order_line_status_type = ols.id_order_line_status_type
+            LEFT JOIN ' . _DB_PREFIX_ . 'mv_vendor_transaction vt ON vt.order_detail_id = vod.id_order_detail AND vt.transaction_type = "commission"
+            WHERE vod.id_vendor = ' . (int)$id_vendor . '
+            AND (
+                (olst.commission_action = "add") 
+                OR 
+                (ols.id_order_line_status_type IS NULL AND "' . pSQL($defaultStatusType->commission_action) . '" = "add")
+            )
+            AND (vt.status IS NULL OR vt.status != "paid")
+            ORDER BY o.date_add DESC
+        ';
+
+        $orderDetails = Db::getInstance()->executeS($query);
+        
+        // Calculate total from unpaid order details
+        $totalAmount = 0;
+        foreach ($orderDetails as $detail) {
+            $totalAmount += (float)$detail['vendor_amount'];
+        }
+
+        return [
+            'order_details' => $orderDetails,
+            'total_amount' => $totalAmount
+        ];
+    }
+
+    /**
+     * Mark transactions as paid - ONLY for unpaid order details
+     */
+    private function markTransactionsAsPaid($orderDetails, $paymentId)
+    {
+        foreach ($orderDetails as $detail) {
+            // Check if transaction exists and is unpaid
+            $existingTransaction = Db::getInstance()->getRow(
+                'SELECT id_vendor_transaction, status FROM ' . _DB_PREFIX_ . 'mv_vendor_transaction 
+                 WHERE order_detail_id = ' . (int)$detail['id_order_detail'] . ' 
+                 AND transaction_type = "commission"'
+            );
+
+            if ($existingTransaction) {
+                // Only update if not already paid
+                if ($existingTransaction['status'] != 'paid') {
+                    Db::getInstance()->update('mv_vendor_transaction', [
+                        'status' => 'paid',
+                        'id_vendor_payment' => (int)$paymentId,
+                        'date_add' => date('Y-m-d H:i:s')
+                    ], 'id_vendor_transaction = ' . (int)$existingTransaction['id_vendor_transaction']);
+                }
+            } else {
+                // Create new transaction record for unpaid commission
+                Db::getInstance()->insert('mv_vendor_transaction', [
+                    'order_detail_id' => (int)$detail['id_order_detail'],
+                    'vendor_amount' => (float)$detail['vendor_amount'],
+                    'transaction_type' => 'commission',
+                    'status' => 'paid',
+                    'id_vendor_payment' => (int)$paymentId,
+                    'date_add' => date('Y-m-d H:i:s')
+                ]);
+            }
+        }
+    }
+
+    /**
+     * FIXED: Init content for pending commissions - Updated to match commission summary logic
+     */
+    public function initContentPendingCommissions()
+    {
+        $this->display = '';
+
+        // Get the default status and its commission action
+        $defaultStatusTypeId = OrderLineStatus::getDefaultStatusTypeId();
+        $defaultStatusType = new OrderLineStatusType($defaultStatusTypeId);
+        $defaultAction = $defaultStatusType->commission_action;
+
+        // Use the same logic as getVendorCommissionSummary
+        $sql = '
+            SELECT 
+                v.id_vendor, 
+                v.shop_name,
+                (
+                    SELECT COALESCE(SUM(vp.amount), 0)
+                    FROM ' . _DB_PREFIX_ . 'mv_vendor_payment vp
+                    WHERE vp.id_vendor = v.id_vendor
+                    AND vp.status = "completed"
+                ) AS total_paid,
+                (
+                    SELECT COALESCE(SUM(vod.vendor_amount), 0) 
+                    FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod
+                    LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status ols ON ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor
+                    LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status_type olst ON olst.id_order_line_status_type = ols.id_order_line_status_type
+                    WHERE vod.id_vendor = v.id_vendor
+                    AND (
+                        (olst.commission_action = "add") 
+                        OR 
+                        (ols.id_order_line_status_type IS NULL AND "' . pSQL($defaultAction) . '" = "add")
+                    )
+                ) AS total_commission_added
+            FROM ' . _DB_PREFIX_ . 'mv_vendor v
+            HAVING (total_commission_added - total_paid) > 0
+            ORDER BY (total_commission_added - total_paid) DESC
+        ';
+
+        $pendingCommissions = Db::getInstance()->executeS($sql);
+        
+        // Calculate pending amount for each vendor
+        foreach ($pendingCommissions as &$commission) {
+            $commission['total_commission_added'] = (float)$commission['total_commission_added'];
+            $commission['total_paid'] = (float)$commission['total_paid'];
+            $commission['pending_amount'] = $commission['total_commission_added'] - $commission['total_paid'];
+            $commission['transaction_count'] = $this->countPendingTransactionsFixed($commission['id_vendor']);
+        }
+
+        // Get payment methods
+        $paymentMethods = [
+            'bank_transfer' => $this->l('Virement bancaire'),
+            'cash' => $this->l('Espèces'),
+            'check' => $this->l('Chèque'),
+            'other' => $this->l('Other')
+        ];
+
+        $this->context->smarty->assign([
+            'pending_commissions' => $pendingCommissions,
+            'payment_methods' => $paymentMethods,
+            'current_url' => self::$currentIndex . '&token=' . $this->token,
+            'currency' => $this->context->currency
+        ]);
+
+        $this->content = $this->context->smarty->fetch(_PS_MODULE_DIR_ . 'multivendor/views/templates/admin/pending_commissions.tpl');
+        $this->context->smarty->assign('content', $this->content);
+    }
+
+    /**
+     * FIXED: Count only unpaid transactions
+     */
+    protected function countPendingTransactionsFixed($id_vendor)
+    {
+        $defaultStatusTypeId = OrderLineStatus::getDefaultStatusTypeId();
+        $defaultStatusType = new OrderLineStatusType($defaultStatusTypeId);
+
+        $query = '
+            SELECT COUNT(DISTINCT vod.id_order_detail) as count
+            FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod
+            LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status ols ON ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor
+            LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status_type olst ON olst.id_order_line_status_type = ols.id_order_line_status_type
+            LEFT JOIN ' . _DB_PREFIX_ . 'mv_vendor_transaction vt ON vt.order_detail_id = vod.id_order_detail AND vt.transaction_type = "commission"
+            WHERE vod.id_vendor = ' . (int)$id_vendor . '
+            AND (
+                (olst.commission_action = "add") 
+                OR 
+                (ols.id_order_line_status_type IS NULL AND "' . pSQL($defaultStatusType->commission_action) . '" = "add")
+            )
+            AND (vt.status IS NULL OR vt.status != "paid")
+        ';
+        
+        return (int)Db::getInstance()->getValue($query);
+    }
+
+    /**
+     * ENHANCED: Get payment details with complete order line information
+     */
+    protected function getPaymentTransactionDetails($id_vendor_payment)
+    {
+        $query = '
+            SELECT 
+                vt.id_vendor_transaction,
+                vt.vendor_amount,
+                vt.transaction_type,
+                vt.status,
+                vt.date_add as transaction_date,
+                vod.product_name,
+                vod.product_reference,
+                vod.product_quantity,
+                vod.id_vendor,
+                o.id_order,
+                o.reference as order_reference,
+                o.date_add as order_date,
+                vt.vendor_amount as commission_amount
+            FROM ' . _DB_PREFIX_ . 'mv_vendor_transaction vt
+            LEFT JOIN ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod ON vod.id_order_detail = vt.order_detail_id
+            LEFT JOIN ' . _DB_PREFIX_ . 'orders o ON o.id_order = vod.id_order
+            WHERE vt.id_vendor_payment = ' . (int)$id_vendor_payment . '
+            AND vt.transaction_type = "commission"
+            ORDER BY o.date_add DESC
+        ';
+
+        return Db::getInstance()->executeS($query);
+    }
+
     public function processBulkMarkCompleted()
     {
         if (is_array($this->boxes) && !empty($this->boxes)) {
             $success = true;
-
             foreach ($this->boxes as $id) {
                 $success &= $this->updatePaymentStatus($id, 'completed');
             }
-
             if ($success) {
                 $this->confirmations[] = $this->l('Selected payments have been marked as completed.');
             } else {
@@ -131,18 +383,13 @@ class AdminVendorPaymentsController extends ModuleAdminController
         }
     }
 
-    /**
-     * Process bulk actions
-     */
     public function processBulkMarkCancelled()
     {
         if (is_array($this->boxes) && !empty($this->boxes)) {
             $success = true;
-
             foreach ($this->boxes as $id) {
                 $success &= $this->updatePaymentStatus($id, 'cancelled');
             }
-
             if ($success) {
                 $this->confirmations[] = $this->l('Selected payments have been marked as cancelled.');
             } else {
@@ -153,27 +400,18 @@ class AdminVendorPaymentsController extends ModuleAdminController
         }
     }
 
-    /**
-     * Update payment status
-     */
     protected function updatePaymentStatus($id_payment, $status)
     {
         $payment = new VendorPayment($id_payment);
-
         if (!Validate::isLoadedObject($payment)) {
             return false;
         }
-
         $payment->status = $status;
         return $payment->save();
     }
 
-    /**
-     * Render form
-     */
     public function renderForm()
     {
-        // Get vendors
         $vendors = Vendor::getAllVendors();
         $vendorsArray = [];
         foreach ($vendors as $vendor) {
@@ -183,11 +421,10 @@ class AdminVendorPaymentsController extends ModuleAdminController
             ];
         }
 
-        // Get payment methods
         $paymentMethods = [
-            ['id' => 'bank_transfer', 'name' => $this->l('Bank Transfer')],
-            ['id' => 'paypal', 'name' => $this->l('PayPal')],
-            ['id' => 'check', 'name' => $this->l('Check')],
+            ['id' => 'bank_transfer', 'name' => $this->l('Virement bancaire')],
+            ['id' => 'cash', 'name' => $this->l('Espèces')],
+            ['id' => 'check', 'name' => $this->l('Chèque')],
             ['id' => 'other', 'name' => $this->l('Other')]
         ];
 
@@ -206,16 +443,14 @@ class AdminVendorPaymentsController extends ModuleAdminController
                         'id' => 'id',
                         'name' => 'name'
                     ],
-                    'required' => true,
-                    'desc' => $this->l('Select vendor to pay')
+                    'required' => true
                 ],
                 [
                     'type' => 'text',
                     'label' => $this->l('Amount'),
                     'name' => 'amount',
                     'required' => true,
-                    'suffix' => $this->context->currency->sign,
-                    'desc' => $this->l('Enter payment amount')
+                    'suffix' => $this->context->currency->sign
                 ],
                 [
                     'type' => 'select',
@@ -232,8 +467,7 @@ class AdminVendorPaymentsController extends ModuleAdminController
                     'type' => 'text',
                     'label' => $this->l('Reference'),
                     'name' => 'reference',
-                    'required' => true,
-                    'desc' => $this->l('Enter payment reference (e.g., transaction ID, check number)')
+                    'required' => true
                 ],
                 [
                     'type' => 'select',
@@ -263,162 +497,6 @@ class AdminVendorPaymentsController extends ModuleAdminController
         return parent::renderForm();
     }
 
-    /**
-     * Init content for pending commissions - FIXED FOR NEW STRUCTURE
-     */
-    public function initContentPendingCommissions()
-    {
-        $this->display = '';
-
-        // Get the default status and its commission action
-        $defaultStatus = Db::getInstance()->getRow(
-            'SELECT * FROM `' . _DB_PREFIX_ . 'mv_order_line_status_type` 
-             WHERE active = 1 
-             ORDER BY position ASC'
-        );
-
-        $defaultAction = $defaultStatus ? $defaultStatus['commission_action'] : 'none';
-
-        $sql = '
-            SELECT 
-                v.id_vendor, 
-                v.shop_name,
-                (
-                    SELECT COALESCE(SUM(vp.amount), 0)
-                    FROM ' . _DB_PREFIX_ . 'mv_vendor_payment vp
-                    WHERE vp.id_vendor = v.id_vendor
-                    AND vp.status = "completed"
-                ) AS total_paid,
-                (
-                    SELECT COALESCE(SUM(vt.vendor_amount), 0)
-                    FROM ' . _DB_PREFIX_ . 'mv_vendor_transaction vt
-                    LEFT JOIN ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod ON vod.id_order_detail = vt.order_detail_id
-                    WHERE vod.id_vendor = v.id_vendor
-                    AND vt.status = "pending"
-                    AND vt.transaction_type = "commission"
-                ) AS pending_amount
-            FROM ' . _DB_PREFIX_ . 'mv_vendor v
-            HAVING pending_amount > 0
-            ORDER BY pending_amount DESC
-        ';
-
-        $pendingCommissions = Db::getInstance()->executeS($sql);
-        
-        foreach ($pendingCommissions as &$commission) {
-            $commission['pending_amount'] = (float)$commission['pending_amount'];
-            $commission['transaction_count'] = $this->countPendingTransactions($commission['id_vendor']);
-        }
-
-        // Get payment methods
-        $paymentMethods = [
-            'bank_transfer' => $this->l('Bank Transfer'),
-            'paypal' => $this->l('PayPal'),
-            'check' => $this->l('Check'),
-            'other' => $this->l('Other')
-        ];
-
-        $this->context->smarty->assign([
-            'pending_commissions' => $pendingCommissions,
-            'payment_methods' => $paymentMethods,
-            'current_url' => self::$currentIndex . '&token=' . $this->token,
-            'currency' => $this->context->currency
-        ]);
-
-        $this->content = $this->context->smarty->fetch(_PS_MODULE_DIR_ . 'multivendor/views/templates/admin/pending_commissions.tpl');
-        $this->context->smarty->assign('content', $this->content);
-    }
-
-    /**
-     * Count pending transactions for a vendor - FIXED FOR NEW STRUCTURE
-     * 
-     * @param int $id_vendor Vendor ID
-     * @return int Number of pending transactions
-     */
-    protected function countPendingTransactions($id_vendor)
-    {
-        $query = new DbQuery();
-        $query->select('COUNT(DISTINCT vt.order_detail_id) as count');
-        $query->from('mv_vendor_transaction', 'vt');
-        $query->leftJoin('mv_vendor_order_detail', 'vod', 'vod.id_order_detail = vt.order_detail_id');
-        $query->where('vod.id_vendor = ' . (int)$id_vendor);
-        $query->where('vt.transaction_type = "commission"');
-        $query->where('vt.status = "pending"');
-        
-        $count = Db::getInstance()->getValue($query);
-        return (int)$count;
-    }
-
-    /**
-     * AJAX process pay commission - FIXED FOR NEW STRUCTURE
-     */
-    public function ajaxProcessPayCommission()
-    {
-        $id_vendor = (int)Tools::getValue('id_vendor');
-        $payment_method = Tools::getValue('payment_method');
-        $reference = Tools::getValue('reference');
-
-        if (!$id_vendor || !$payment_method || !$reference) {
-            die(json_encode([
-                'success' => false,
-                'message' => $this->l('Missing required parameters')
-            ]));
-        }
-
-        // Use the updated TransactionHelper method
-        $result = TransactionHelper::payVendorCommissions(
-            $id_vendor,
-            $payment_method,
-            $reference
-        );
-
-        if ($result['success']) {
-            die(json_encode([
-                'success' => true,
-                'message' => $this->l('Successfully paid commissions'),
-                'amount_paid' => $result['amount_paid'],
-                'transactions_count' => $result['transactions_count']
-            ]));
-        } else {
-            die(json_encode([
-                'success' => false,
-                'message' => $result['message']
-            ]));
-        }
-    }
-
-    /**
-     * Get vendor transaction details for view - NEW METHOD
-     * 
-     * @param int $id_vendor_payment Payment ID
-     * @return array Transaction details
-     */
-    protected function getPaymentTransactionDetails($id_vendor_payment)
-    {
-        $query = new DbQuery();
-        $query->select('
-            vt.*, 
-            vod.product_name, 
-            vod.product_reference, 
-            vod.product_quantity,
-            vod.id_vendor,
-            od.id_order,
-            o.reference as order_reference, 
-            o.date_add as order_date
-        ');
-        $query->from('mv_vendor_transaction', 'vt');
-        $query->leftJoin('mv_vendor_order_detail', 'vod', 'vod.id_order_detail = vt.order_detail_id');
-        $query->leftJoin('order_detail', 'od', 'od.id_order_detail = vt.order_detail_id');
-        $query->leftJoin('orders', 'o', 'o.id_order = od.id_order');
-        $query->where('vt.id_vendor_payment = ' . (int)$id_vendor_payment);
-        $query->where('vt.transaction_type = "commission"');
-        $query->orderBy('o.date_add DESC');
-
-        return Db::getInstance()->executeS($query);
-    }
-
-    /**
-     * Render view for payment details - ENHANCED
-     */
     public function renderView()
     {
         $payment = new VendorPayment($this->id_object);
@@ -428,10 +506,7 @@ class AdminVendorPaymentsController extends ModuleAdminController
             return false;
         }
 
-        // Get vendor information
         $vendor = new Vendor($payment->id_vendor);
-        
-        // Get transaction details using the new method
         $transactionDetails = $this->getPaymentTransactionDetails($payment->id);
 
         $this->context->smarty->assign([
@@ -448,9 +523,6 @@ class AdminVendorPaymentsController extends ModuleAdminController
         return $this->content;
     }
 
-    /**
-     * Process controller actions - FIXED
-     */
     public function postProcess()
     {
         if (Tools::isSubmit('pending_commissions')) {
@@ -458,35 +530,6 @@ class AdminVendorPaymentsController extends ModuleAdminController
             return;
         }
 
-        parent::postProcess();
-    }
-
-    /**
-     * Get vendor summary for dashboard - NEW METHOD
-     * 
-     * @param int $id_vendor Vendor ID
-     * @return array Vendor summary data
-     */
-    public function getVendorSummary($id_vendor)
-    {
-        // Get total earnings
-        $totalEarnings = TransactionHelper::getVendorTotalEarnings($id_vendor);
-        
-        // Get pending commissions
-        $pendingCommissions = TransactionHelper::getVendorPendingCommission($id_vendor);
-        
-        // Get total paid
-        $totalPaid = VendorPayment::getVendorTotalPaid($id_vendor);
-        
-        // Get transaction count
-        $transactionCount = $this->countPendingTransactions($id_vendor);
-
-        return [
-            'total_earnings' => $totalEarnings,
-            'pending_commissions' => $pendingCommissions,
-            'total_paid' => $totalPaid,
-            'pending_transaction_count' => $transactionCount,
-            'payment_percentage' => $totalEarnings > 0 ? ($totalPaid / $totalEarnings) * 100 : 0
-        ];
+        return parent::postProcess();
     }
 }

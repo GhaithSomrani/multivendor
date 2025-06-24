@@ -53,8 +53,12 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
         $offset = ($page - 1) * $per_page;
 
         // Get order lines specific to this vendor's supplier ID
-        $orderLines = $this->getVendorOrderLines($id_vendor, $id_supplier, $per_page, $offset, $filter_status);
-        $total_lines = $this->countVendorOrderLines($id_vendor, $id_supplier, $filter_status);
+        $orderLines = $this->getVendorOrderLines($id_vendor, $per_page, $offset, [
+            'status' => $filter_status
+        ]);
+        $total_lines = $this->countVendorOrderLines($id_vendor, [
+            'status' => $filter_status
+        ]);
         $total_pages = ceil($total_lines / $per_page);
 
         // Get available line statuses (only ones that vendor can use)
@@ -90,6 +94,7 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
 
         // Assign data to template
         $this->context->smarty->assign([
+            'filter_status' => $filter_status,
             'order_lines' => $orderLines,
             'order_summary' => $orderSummary,
             'vendor_statuses' => $vendorStatuses,
@@ -119,43 +124,32 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
      * @param int $offset Offset
      * @return array List of order line items
      */
-    protected function getVendorOrderLines($id_vendor, $id_supplier, $limit = 20, $offset = 0, $status = 'all')
+    protected function getVendorOrderLines($id_vendor, $limit = 20, $offset = 0, $filters = [])
     {
         $defaultStatusTypeId = OrderLineStatus::getDefaultStatusTypeId();
 
         $query = new DbQuery();
         $query->select('vod.id_order_detail, vod.product_name, vod.product_reference, vod.product_quantity, vod.vendor_amount,
-              o.reference as order_reference, o.date_add as order_date, vod.product_mpn,
-              vod.id_vendor, vod.commission_amount, vod.vendor_amount, vod.id_order, 
-              COALESCE(ols.id_order_line_status_type, ' . (int)$defaultStatusTypeId . ') as status_type_id,
-              COALESCE(olst.name, "Pending") as line_status');
+          o.reference as order_reference, o.date_add as order_date, vod.product_mpn,
+          vod.id_vendor, vod.commission_amount, vod.vendor_amount, vod.id_order, 
+          COALESCE(ols.id_order_line_status_type, ' . (int)$defaultStatusTypeId . ') as status_type_id,
+          COALESCE(olst.name, "Pending") as line_status');
         $query->from('mv_vendor_order_detail', 'vod');
         $query->innerJoin('orders', 'o', 'o.id_order = vod.id_order');
         $query->leftJoin('mv_order_line_status', 'ols', 'ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = ' . (int)$id_vendor);
         $query->leftJoin('mv_order_line_status_type', 'olst', 'olst.id_order_line_status_type = ols.id_order_line_status_type');
         $query->where('vod.id_vendor = ' . (int)$id_vendor);
 
-        // Add status filter if not "all"
-        if ($status !== 'all' && $status) {
-            $query->where('LOWER(COALESCE(olst.name, "Pending")) = "' . pSQL(strtolower($status)) . '"');
+        // Apply status filter only
+        if (!empty($filters['status']) && $filters['status'] !== 'all') {
+            $status_id = (int)$filters['status'];
+            $query->where('(COALESCE(ols.id_order_line_status_type, ' . (int)$defaultStatusTypeId . ') = ' . $status_id . ')');
         }
 
         $query->orderBy('vod.id_order_detail DESC');
         $query->limit($limit, $offset);
 
-        $results = Db::getInstance()->executeS($query);
-
-        // Ensure status is set for each line
-        foreach ($results as &$result) {
-            if (empty($result['line_status'])) {
-                $result['line_status'] = 'Pending';
-            }
-            if (empty($result['status_type_id'])) {
-                $result['status_type_id'] = $defaultStatusTypeId;
-            }
-        }
-
-        return $results;
+        return Db::getInstance()->executeS($query);
     }
     /**
      * Count vendor order lines based on supplier ID
@@ -164,22 +158,25 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
      * @param int $id_supplier Supplier ID
      * @return int Number of order lines
      */
-    protected function countVendorOrderLines($id_vendor, $status = 'all')
+    protected function countVendorOrderLines($id_vendor, $filters = [])
     {
+        $defaultStatusTypeId = OrderLineStatus::getDefaultStatusTypeId();
+
         $query = new DbQuery();
         $query->select('COUNT(vod.id_order_detail)');
         $query->from('mv_vendor_order_detail', 'vod');
         $query->leftJoin('mv_order_line_status', 'ols', 'ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = ' . (int)$id_vendor);
+        $query->leftJoin('mv_order_line_status_type', 'olst', 'olst.id_order_line_status_type = ols.id_order_line_status_type');
         $query->where('vod.id_vendor = ' . (int)$id_vendor);
 
-        // Add status filter if not "all"
-        if ($status !== 'all' && $status) {
-            $query->where('LOWER(COALESCE(ols.status, "Pending")) = "' . pSQL(strtolower($status)) . '"');
+        // Apply status filter only
+        if (!empty($filters['status']) && $filters['status'] !== 'all') {
+            $status_id = (int)$filters['status'];
+            $query->where('(COALESCE(ols.id_order_line_status_type, ' . (int)$defaultStatusTypeId . ') = ' . $status_id . ')');
         }
 
         return (int)Db::getInstance()->getValue($query);
     }
-
 
 
 

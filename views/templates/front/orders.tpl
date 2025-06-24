@@ -63,23 +63,24 @@
                 {if $order_summary.status_breakdown}
                     <div class="mv-card">
                         <div class="mv-card-header">
-                            <h3 class="mv-card-title">{l s='Aperçu des statuts de commande' mod='multivendor'}</h3>
+                            <h3 class="mv-card-title">{l s='Filtrer par statut' mod='multivendor'}</h3>
                         </div>
                         <div class="mv-card-body">
                             <div class="mv-status-breakdown">
-                                {* Add an "All" filter option *}
                                 <div class="mv-status-item">
-                                    <span class="mv-status-badge mv-filter-status active" data-status="all"
+                                    <a href="{$link->getModuleLink('multivendor', 'orders')}"
+                                        class="mv-status-badge mv-filter-status {if $filter_status == 'all'}active{/if}"
                                         style="background-color: #6c757d;">
                                         {l s='Tout' mod='multivendor'} : {$order_summary.total_lines}
-                                    </span>
+                                    </a>
                                 </div>
                                 {foreach from=$order_summary.status_breakdown item=statusData}
                                     <div class="mv-status-item">
-                                        <span class="mv-status-badge mv-filter-status" data-status="{$statusData.status|lower}"
+                                        <a href="{$link->getModuleLink('multivendor', 'orders', ['status' => $statusData.id_order_line_status_type])}"
+                                            class="mv-status-badge mv-filter-status {if $filter_status == $statusData.id_order_line_status_type}active{/if}"
                                             style="background-color: {$status_colors[$statusData.status]|default:'#777'};">
                                             {$statusData.status|capitalize} : {$statusData.count}
-                                        </span>
+                                        </a>
                                     </div>
                                 {/foreach}
                             </div>
@@ -193,7 +194,7 @@
                                                             data-original-status-type-id="{$line.status_type_id}">
                                                             {foreach from=$vendor_statuses key=status_type_id item=status_label}
                                                                 {assign var="is_changeable" value=OrderHelper::isChangableStatusType($line.id_order_detail, $status_type_id)}
-                                    
+
                                                                 {if $is_changeable ||  $line.status_type_id == $status_type_id}
                                                                     <option value="{$status_type_id}"
                                                                         {if $line.status_type_id == $status_type_id}selected{/if}
@@ -224,17 +225,17 @@
                             {if $pages_nb > 1}
                                 <nav class="mv-pagination">
                                     <ul class="mv-pagination-list">
-                                        {if $current_page > 1}
+                                        {if $current_page < $pages_nb}
                                             <li class="mv-pagination-item">
                                                 <a class="mv-pagination-link"
-                                                    href="{$link->getModuleLink('multivendor', 'orders', ['page' => 1])}">
-                                                    <span>«</span>
+                                                    href="{$link->getModuleLink('multivendor', 'orders', ['page' => $current_page+1, 'status' => $filter_status])}">
+                                                    <span>›</span>
                                                 </a>
                                             </li>
                                             <li class="mv-pagination-item">
                                                 <a class="mv-pagination-link"
-                                                    href="{$link->getModuleLink('multivendor', 'orders', ['page' => $current_page-1])}">
-                                                    <span>‹</span>
+                                                    href="{$link->getModuleLink('multivendor', 'orders', ['page' => $pages_nb, 'status' => $filter_status])}">
+                                                    <span>»</span>
                                                 </a>
                                             </li>
                                         {/if}
@@ -242,10 +243,10 @@
                                         {assign var=p_start value=max(1, $current_page-2)}
                                         {assign var=p_end value=min($pages_nb, $current_page+2)}
 
-                                        {for $p=$p_start to $p_end}
-                                            <li class="mv-pagination-item {if $p == $current_page}mv-pagination-active{/if}">
+                                        {for $page_num=$p_start to $p_end}
+                                            <li class="mv-pagination-item {if $page_num == $current_page}mv-pagination-active{/if}">
                                                 <a class="mv-pagination-link"
-                                                    href="{$link->getModuleLink('multivendor', 'orders', ['page' => $p])}">{$p}</a>
+                                                    href="{$link->getModuleLink('multivendor', 'orders', ['page' => $page_num, 'status' => $filter_status])}">{$page_num}</a>
                                             </li>
                                         {/for}
 

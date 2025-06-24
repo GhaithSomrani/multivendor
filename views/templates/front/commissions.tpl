@@ -38,7 +38,7 @@
                     <div class="mv-commission-summary">
                       
                         <div class="mv-summary-card mv-summary-card-add">
-                            <h6 class="mv-stat-label">{l s='Commissions gagnées' mod='multivendor'}</h6>
+                            <h6 class="mv-stat-label">{l s='Chiffre d\'affaires total' mod='multivendor'}</h6>
                             <h3 class="mv-stat-value">{Tools::displayPrice($commission_summary.total_commission_added)}</h3>
                             <p class="mv-stat-description">{l s='Total des commissions ajoutées' mod='multivendor'}</p>
                         </div>
@@ -53,7 +53,7 @@
                             <p class="mv-stat-description">{l s='Gagné - Payé' mod='multivendor'}</p>
                         </div>
                             <div class="mv-summary-card mv-summary-card-refund">
-                            <h6 class="mv-stat-label">{l s='Commissions remboursées' mod='multivendor'}</h6>
+                            <h6 class="mv-stat-label">{l s='Montant de remboursées' mod='multivendor'}</h6>
                             <h3 class="mv-stat-value">-{Tools::displayPrice($commission_summary.total_commission_refunded)}</h3>
                             <p class="mv-stat-description">{l s='Total des remboursements' mod='multivendor'}</p>
                         </div>

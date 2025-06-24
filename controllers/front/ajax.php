@@ -53,13 +53,17 @@ class MultivendorAjaxModuleFrontController extends ModuleFrontController
                 $this->processGetAddCommissionStatus();
                 break;
 
+            case 'getAllManifestItems':
+                $this->processGetAllManifestItems();
+                break;
+
             default:
                 error_log('MultivendorAjax: Unknown action: ' . $action);
                 die(json_encode(['success' => false, 'message' => 'Unknown action: ' . $action]));
         }
     }
 
-    
+
 
     /**
      * Process vendor status update - FIXED VERSION
@@ -70,7 +74,7 @@ class MultivendorAjaxModuleFrontController extends ModuleFrontController
             error_log('MultivendorAjax: processUpdateVendorStatus called');
 
             $id_order_detail = (int)Tools::getValue('id_order_detail');
-            $id_status_type = (int)Tools::getValue('id_status_type'); 
+            $id_status_type = (int)Tools::getValue('id_status_type');
             $comment = Tools::getValue('comment', '');
             $id_customer = $this->context->customer->id;
 
@@ -126,7 +130,7 @@ class MultivendorAjaxModuleFrontController extends ModuleFrontController
     {
         try {
             $order_detail_ids = Tools::getValue('order_detail_ids', []);
-            $id_status_type = (int)Tools::getValue('id_status_type'); 
+            $id_status_type = (int)Tools::getValue('id_status_type');
             $comment = Tools::getValue('comment', 'Bulk status update');
             $id_customer = $this->context->customer->id;
 
@@ -191,19 +195,9 @@ class MultivendorAjaxModuleFrontController extends ModuleFrontController
         }
     }
 
-    /**
-     * Generate manifest URL
-     */
-    private function processGetManifestUrl()
+    public function processGetAllManifestItems()
     {
         try {
-            $order_detail_ids = Tools::getValue('order_detail_ids', []);
-
-            if (empty($order_detail_ids) || !is_array($order_detail_ids)) {
-                die(json_encode(['success' => false, 'message' => 'No order details provided']));
-            }
-
-            // Verify that all order details belong to this vendor
             $id_customer = $this->context->customer->id;
             $vendor = VendorHelper::getVendorByCustomer($id_customer);
 
@@ -211,27 +205,28 @@ class MultivendorAjaxModuleFrontController extends ModuleFrontController
                 die(json_encode(['success' => false, 'message' => 'Not authorized']));
             }
 
-            // Verify ownership of all order details
-            foreach ($order_detail_ids as $id_order_detail) {
-                if (!VendorHelper::verifyOrderDetailOwnership($id_order_detail, $id_customer)) {
-                    die(json_encode(['success' => false, 'message' => 'Not authorized for order detail: ' . $id_order_detail]));
-                }
+            // Get add commission status
+            $addCommissionStatus = VendorHelper::getAddCommissionStatus();
+            if (!$addCommissionStatus['success']) {
+                die(json_encode(['success' => false, 'message' => 'No commission status found']));
             }
 
-            // Generate the correct URL
-            $url = $this->context->link->getModuleLink(
-                'multivendor',
-                'manifest',
-                ['details' => implode(',', $order_detail_ids)]
-            );
+            $statusTypeId = $addCommissionStatus['status']['id_order_line_status_type'];
 
-            die(json_encode([
-                'success' => true,
-                'url' => $url
-            ]));
+            // Get ALL order lines with this status (no pagination)
+            $query = new DbQuery();
+            $query->select('vod.id_order_detail, vod.product_name, vod.product_mpn, vod.product_quantity, o.reference as order_reference');
+            $query->from('mv_vendor_order_detail', 'vod');
+            $query->leftJoin('orders', 'o', 'o.id_order = vod.id_order');
+            $query->leftJoin('mv_order_line_status', 'ols', 'ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor');
+            $query->where('vod.id_vendor = ' . (int)$vendor['id_vendor']);
+            $query->where('ols.id_order_line_status_type = ' . (int)$statusTypeId);
+
+            $items = Db::getInstance()->executeS($query);
+
+            die(json_encode(['success' => true, 'items' => $items]));
         } catch (Exception $e) {
-            error_log('MultivendorAjax: Error in processGetManifestUrl: ' . $e->getMessage());
-            die(json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]));
+            die(json_encode(['success' => false, 'message' => $e->getMessage()]));
         }
     }
 }

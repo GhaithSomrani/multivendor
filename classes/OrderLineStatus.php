@@ -56,7 +56,7 @@ class OrderLineStatus extends ObjectModel
             'id_order_detail' => ['xlink_resource' => 'order_line_statuses', 'setter' => 'setorderlinedetails'],
             'id_vendor' => ['required' => false],
             'id_order_line_status_type' => [],
-            // 'comment' => [],
+            'comment' => [],
             'date_add' => [],
             'date_upd' => []
         ],

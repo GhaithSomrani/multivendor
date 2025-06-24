@@ -518,21 +518,31 @@ function updateStatusInUI(orderDetailId, newStatus, statusColor) {
  * Add verified order line to manifest
  * @param {number} orderDetailId - The order detail ID to add
  */
-function addToManifest(orderDetailId) {
+function addToManifest(orderDetailId, itemData = null) {
     orderDetailId = parseInt(orderDetailId);
 
     if (verifiedOrderDetails.has(orderDetailId)) {
         return;
     }
 
-    const $row = $('tr[data-id="' + orderDetailId + '"]');
+    let orderRef, productName, productMpn, quantity;
 
-    const orderRef = $row.find('td:nth-child(2) a').text();
-    const productName = $row.find('td:nth-child(3)').text();
-    const productMpn = $row.data('product-mpn');
-    const quantity = $row.find('td:nth-child(4)').text();
+    if (itemData) {
+        // Data from AJAX
+        orderRef = itemData.order_reference + '#' + itemData.id_order_detail;
+        productName = itemData.product_name;
+        productMpn = itemData.product_mpn;
+        quantity = itemData.product_quantity;
+    } else {
+        // Data from current page table row
+        const $row = $('tr[data-id="' + orderDetailId + '"]');
+        orderRef = $row.find('td:nth-child(2) a').text();
+        productName = $row.find('td:nth-child(3)').text();
+        productMpn = $row.data('product-mpn');
+        quantity = $row.find('td:nth-child(4)').text();
+    }
+
     const timestamp = new Date().toLocaleTimeString();
-
     verifiedOrderDetails.add(orderDetailId);
 
     $('#manifest-items').append(`
@@ -548,7 +558,6 @@ function addToManifest(orderDetailId) {
     $('#manifest-count').text(verifiedOrderDetails.size);
     $('#pickup-manifest-block').show();
 }
-
 /**
  * Check and add to manifest if needed based on status
  */
@@ -613,30 +622,19 @@ function removeFromManifest(orderDetailId) {
  * and add those with the appropriate status to the manifest
  */
 function checkExistingOrderLinesForManifest() {
+    // Get ALL order details with "add commission" status via AJAX
     $.ajax({
         url: ordersAjaxUrl,
         type: 'POST',
         data: {
-            action: 'getAddCommissionStatus',
+            action: 'getAllManifestItems',
             token: ordersAjaxToken
         },
         dataType: 'json',
         success: function (response) {
-            if (response.success && response.status) {
-                const addCommissionStatus = response.status.id_order_line_status_type;
-
-                $('.order-line-status-select').each(function () {
-                    const $select = $(this);
-                    const currentStatus = $select.val();
-
-                    const orderDetailId = $select.data('order-detail-id');
-
-                    console.log('addCommissionStatus ', addCommissionStatus);
-                    console.log('orderDetailId', currentStatus);
-
-                    if (currentStatus === addCommissionStatus) {
-                        addToManifest(orderDetailId);
-                    }
+            if (response.success && response.items) {
+                response.items.forEach(function (item) {
+                    addToManifest(item.id_order_detail, item);
                 });
             }
         }

@@ -36,3 +36,319 @@
     font-weight: bold;
     padding: 3px;
 }
+
+/* Enhanced Admin List Styles for Vendor Order Details */
+
+/* Status filter enhancements */
+.status-filter-enhanced {
+    border-left: 4px solid #777777 !important;
+    transition: border-color 0.3s ease;
+}
+
+.status-filter-enhanced:focus {
+    border-left-color: #007cba !important;
+}
+
+/* Range filter styles */
+.input-group .form-control {
+    border-radius: 0;
+}
+
+.input-group .form-control:first-child {
+    border-top-left-radius: 4px;
+    border-bottom-left-radius: 4px;
+}
+
+.input-group .form-control:last-child {
+    border-top-right-radius: 4px;
+    border-bottom-right-radius: 4px;
+}
+
+.input-group .input-group-addon {
+    background-color: #f5f5f5;
+    border: 1px solid #ccc;
+    font-size: 11px;
+    padding: 3px;
+}
+
+/* Table enhancements */
+.table-row-hover {
+    background-color: #f5f5f5 !important;
+    cursor: pointer;
+}
+
+.table tbody td.clickable-filter {
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.table tbody td.clickable-filter:hover {
+    background-color: #e6f3ff;
+}
+
+/* Status badge improvements */
+.badge {
+    font-size: 11px;
+    padding: 4px 8px;
+    border-radius: 3px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.badge:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Quick filters dropdown */
+.page-header-toolbar .btn-group .dropdown-menu {
+    min-width: 200px;
+}
+
+.page-header-toolbar .btn-group .dropdown-menu li a {
+    padding: 8px 16px;
+    font-size: 12px;
+}
+
+.page-header-toolbar .btn-group .dropdown-menu li a:hover {
+    background-color: #f5f5f5;
+}
+
+/* Export button enhancement */
+.process-icon-export {
+    position: relative;
+}
+
+.loading-spinner {
+    position: absolute;
+    right: -20px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 12px;
+}
+
+/* Filter section styling */
+.table-responsive-row.clearfix {
+    background-color: #f9f9f9;
+    border: 1px solid #ddd;
+    border-bottom: none;
+    padding: 10px;
+}
+
+.table-responsive-row.clearfix input,
+.table-responsive-row.clearfix select {
+    font-size: 12px;
+    height: 30px;
+    padding: 4px 8px;
+}
+
+/* Column specific styles */
+.fixed-width-xs {
+    width: 60px !important;
+    text-align: center;
+}
+
+.fixed-width-sm {
+    width: 100px !important;
+    text-align: center;
+}
+
+/* Commission and vendor amount cells */
+.price-cell {
+    text-align: right;
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+}
+
+.commission-amount {
+    color: #d9534f;
+}
+
+.vendor-amount {
+    color: #5cb85c;
+}
+
+/* Percentage display */
+.percentage-cell {
+    text-align: center;
+    font-weight: bold;
+}
+
+/* Order reference links */
+.order-reference-link {
+    color: #007cba;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+.order-reference-link:hover {
+    text-decoration: underline;
+}
+
+/* Product name truncation */
+.product-name-cell {
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.product-name-cell:hover {
+    overflow: visible;
+    white-space: normal;
+    position: relative;
+    z-index: 999;
+    background-color: white;
+    border: 1px solid #ddd;
+    padding: 5px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+/* Vendor name styling */
+.vendor-name-cell {
+    font-weight: 500;
+    color: #333;
+}
+
+/* Date formatting */
+.date-cell {
+    font-size: 11px;
+    color: #666;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+    .product-name-cell {
+        max-width: 150px;
+    }
+}
+
+@media (max-width: 992px) {
+    .input-group .form-control {
+        font-size: 11px;
+    }
+
+    .table {
+        font-size: 11px;
+    }
+
+    .badge {
+        font-size: 10px;
+        padding: 2px 6px;
+    }
+}
+
+/* Print styles */
+@media print {
+
+    .page-header-toolbar,
+    .table-responsive-row.clearfix {
+        display: none !important;
+    }
+
+    .table {
+        font-size: 10px;
+    }
+
+    .badge {
+        border: 1px solid #000 !important;
+        background-color: transparent !important;
+        color: #000 !important;
+    }
+}
+
+/* Accessibility improvements */
+.badge:focus,
+.clickable-filter:focus {
+    outline: 2px solid #007cba;
+    outline-offset: 2px;
+}
+
+/* Loading states */
+.table.loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.table.loading::after {
+    content: 'Loading...';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: rgba(255, 255, 255, 0.9);
+    padding: 10px 20px;
+    border-radius: 4px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+/* Highlight filtered columns */
+.table th.filtered {
+    background-color: #e6f3ff !important;
+}
+
+.table td.filtered-column {
+    background-color: #f0f8ff !important;
+}
+
+/* Keyboard navigation hints */
+.keyboard-hint {
+    position: fixed;
+    bottom: 10px;
+    right: 10px;
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 11px;
+    z-index: 1000;
+    display: none;
+}
+
+.keyboard-hint.show {
+    display: block;
+}
+
+/* Success/Error message styling */
+.alert-custom {
+    position: fixed;
+    top: 80px;
+    right: 20px;
+    z-index: 1050;
+    min-width: 300px;
+    border-radius: 4px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.alert-custom.fade-in {
+    animation: fadeIn 0.3s ease-in;
+}
+
+.alert-custom.fade-out {
+    animation: fadeOut 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes fadeOut {
+    from {
+        opacity: 1;
+        transform: translateX(0);
+    }
+
+    to {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+}

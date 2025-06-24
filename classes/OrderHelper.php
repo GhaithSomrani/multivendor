@@ -106,7 +106,8 @@ class OrderHelper
         try {
             // Get the product to check if it belongs to a vendor
             $product = new Product($orderDetail->product_id);
-
+            //get the current status of the order detail
+            $currentStatus = self::getCurrentOrderDetailStatus($orderDetail->id_order_detail) ? self::getCurrentOrderDetailStatus($orderDetail->id_order_detail) : 0;
             if (!Validate::isLoadedObject($product) || !$product->id_supplier) {
                 return false;
             }
@@ -123,6 +124,7 @@ class OrderHelper
                 $orderDetail->id_order_detail,
                 $vendor['id_vendor']
             );
+
 
             if ($vendorOrderDetail) {
                 // Recalculate commission based on updated order detail
@@ -149,7 +151,7 @@ class OrderHelper
                     $vendor['id_vendor'],
                     'updated',
                     'updated',
-                    0,
+                    $currentStatus,
                     'commande modifiée de l\'administration - mise à jour de la ligne de commande pour le vendeur'
                 );
 
@@ -431,7 +433,7 @@ class OrderHelper
 
     public static function isChangableStatusType($id_order_detail, $next_status_id)
     {
-        $current_status_id  = self::getCurrentOrderDetailStatus($id_order_detail) ;
+        $current_status_id  = self::getCurrentOrderDetailStatus($id_order_detail);
         if (!$current_status_id) {
             PrestaShopLogger::addLog(
                 'Multivendor OrderHelper: No current status found for order detail ID ' . $id_order_detail,
@@ -440,7 +442,7 @@ class OrderHelper
                 'OrderDetail',
                 $id_order_detail
             );
-            return false; // No current status, cannot change
+            return false;
         }
         return  OrderLineStatusType::isAvailableStatus($current_status_id, $next_status_id);
     }

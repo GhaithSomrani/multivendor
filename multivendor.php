@@ -149,6 +149,10 @@ class multivendor extends Module
                 'class_name' => 'AdminOrderLineStatus',
                 'name' => 'Order Line Statuses'
             ],
+            [
+                'class_name' => 'AdminVendorOrderDetails',
+                'name' => 'Order Details'
+            ],
         ];
 
         foreach ($tabs as $t) {
@@ -180,7 +184,8 @@ class multivendor extends Module
             'AdminVendorPayments',
             'AdminVendorSettings',
             'AdminVendor',
-            'AdminOrderLineStatus'
+            'AdminOrderLineStatus',
+            'AdminVendorOrderDetails'
         ];
 
         foreach ($tabs as $className) {
@@ -473,7 +478,7 @@ class multivendor extends Module
         if ($vendor) {
             $this->context->smarty->assign([
                 'is_vendor' => true,
-                'vendor_dashboard_url' => $this->context->link->getModuleLink('multivendor', 'dashboard', []),
+                'vendor_dashboard_url' => $this->context->link->getModuleLink('multivendor', 'dashboard', array('date'=> date('Y-m-d'))),
                 'vendor_orders_url' => $this->context->link->getModuleLink('multivendor', 'orders', []),
                 'vendor_commissions_url' => $this->context->link->getModuleLink('multivendor', 'commissions', []),
                 'vendor_profile_url' => $this->context->link->getModuleLink('multivendor', 'profile', []),
@@ -547,10 +552,10 @@ class multivendor extends Module
 
             ],
             'order_line_statuses' => [
-                'description' => 'Multi-vendor order line status history',
+                'description' => 'Multi-vendor order line status',
                 'class' => 'OrderLineStatus',
                 'specific_management' => false,
-                'forbidden_method' => ['DELETE']
+                'forbidden_method' => ['POST','DELETE']
 
             ],
 
@@ -569,7 +574,8 @@ class multivendor extends Module
             'AdminVendors',
             'AdminVendorCommissions',
             'AdminVendorPayments',
-            'AdminOrderLineStatus'
+            'AdminOrderLineStatus',
+            'AdminVendorOrderDetails',
         ];
 
         if (in_array($controller, $allowedControllers)) {

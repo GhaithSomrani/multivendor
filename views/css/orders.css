@@ -687,3 +687,50 @@ tr.mv-mpn-found {
         font-size: 14px;
     }
 }
+
+/* Filter Status Links */
+.mv-filter-status {
+    text-decoration: none;
+    transition: all 0.2s ease;
+    opacity: 0.8;
+    display: inline-block;
+}
+
+.mv-filter-status:hover {
+    opacity: 1;
+    transform: translateY(-2px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    text-decoration: none;
+    color: inherit;
+}
+
+.mv-filter-status.active {
+    opacity: 1;
+    transform: translateY(-2px);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+    font-weight: bold;
+}
+
+/* Status breakdown layout */
+.mv-status-breakdown {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: flex-start;
+}
+
+.mv-status-item {
+    margin: 0;
+}
+
+/* Ensure status badges work as clickable links */
+.mv-status-badge {
+    color: white;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: capitalize;
+    border: none;
+    cursor: pointer;
+}

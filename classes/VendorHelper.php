@@ -256,27 +256,28 @@ class VendorHelper
         $defaultStatusTypeId = OrderLineStatus::getDefaultStatusTypeId();
 
         $query = '
-        SELECT 
-            lstype.name as status,
-            lstype.color,
-            lstype.position,
-            lstype.is_vendor_allowed,
-            (
-                SELECT COUNT(*)
-                FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod
-                LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status ols 
-                    ON ols.id_order_detail = vod.id_order_detail 
-                    AND ols.id_vendor = vod.id_vendor
-                WHERE vod.id_vendor = ' . (int)$id_vendor . '
-                AND (
-                    ols.id_order_line_status_type = lstype.id_order_line_status_type 
-                    OR 
-                    (ols.id_order_line_status_type IS NULL AND lstype.id_order_line_status_type = ' . (int)$defaultStatusTypeId . ')
-                )
-            ) as count
-        FROM ' . _DB_PREFIX_ . 'mv_order_line_status_type lstype
-        WHERE lstype.active = 1
-        ORDER BY lstype.position ASC';
+            SELECT 
+                lstype.id_order_line_status_type,
+                lstype.name as status,
+                lstype.color,
+                lstype.position,
+                lstype.is_vendor_allowed,
+                (
+                    SELECT COUNT(*)
+                    FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod
+                    LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status ols 
+                        ON ols.id_order_detail = vod.id_order_detail 
+                        AND ols.id_vendor = vod.id_vendor
+                    WHERE vod.id_vendor = ' . (int)$id_vendor . '
+                    AND (
+                        ols.id_order_line_status_type = lstype.id_order_line_status_type 
+                        OR 
+                        (ols.id_order_line_status_type IS NULL AND lstype.id_order_line_status_type = ' . (int)$defaultStatusTypeId . ')
+                    )
+                ) as count
+            FROM ' . _DB_PREFIX_ . 'mv_order_line_status_type lstype
+            WHERE lstype.active = 1
+            ORDER BY lstype.position ASC';
 
         $results = Db::getInstance()->executeS($query);
 
