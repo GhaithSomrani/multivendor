@@ -4,6 +4,8 @@
  * OrderHelper - Helper class for managing vendor order details
  */
 
+use Symfony\Component\Form\Extension\Core\Type\HiddenType;
+
 if (!defined('_PS_VERSION_')) {
     exit;
 }
@@ -419,6 +421,37 @@ class OrderHelper
         return (int)Db::getInstance()->getValue('SELECT COUNT(*) FROM `' . _DB_PREFIX_ . 'mv_order_line_status_type`');
     }
 
+
+    public static function isHideFromVendor($id_order_detail)
+    {
+        $HiddenStatusTypes = Configuration::get('MV_HIDE_FROM_VENDOR');
+
+        $HiddenStatusTypesArray = explode(',', $HiddenStatusTypes);
+
+        $currentStatus = self::getCurrentOrderDetailStatus($id_order_detail);
+        return in_array($currentStatus, $HiddenStatusTypesArray);
+    }
+
+
+    /**
+     * Helper method to check if a status type is hidden from vendors
+     * Add this method to your multivendor class
+     * 
+     * @param int $id_order_line_status_type
+     * @return bool
+     */
+    public static function isStatusTypeHiddenFromVendor($id_order_line_status_type)
+    {
+        $hiddenStatusTypes = Configuration::get('MV_HIDE_FROM_VENDOR');
+        if (empty($hiddenStatusTypes)) {
+            return false;
+        }
+
+        $hiddenArray = array_map('intval', explode(',', $hiddenStatusTypes));
+        return in_array((int)$id_order_line_status_type, $hiddenArray);
+    }
+
+
     public function getCurrentOrderDetailStatus($id_order_detail)
     {
 
@@ -427,7 +460,6 @@ class OrderHelper
         $query->from('mv_order_line_status');
         $query->where('id_order_detail = ' . (int)$id_order_detail);
         $id_order_line_status_type = Db::getInstance()->getValue($query);
-
         return $id_order_line_status_type;
     }
 
@@ -445,5 +477,15 @@ class OrderHelper
             return false;
         }
         return  OrderLineStatusType::isAvailableStatus($current_status_id, $next_status_id);
+    }
+
+    public static function getHiddenStatusTypeString()
+    {
+        $hiddenConfig = Configuration::get('MV_HIDE_FROM_VENDOR');
+        if (!empty($hiddenConfig)) {
+            $hiddenIds = array_map('intval', explode(',', $hiddenConfig));
+            $hiddenIdsString = implode(',', $hiddenIds);
+        }
+        return $hiddenIdsString;
     }
 }

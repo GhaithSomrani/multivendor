@@ -85,7 +85,6 @@ class multivendor extends Module
             return false;
         }
 
-
         return true;
     }
 
@@ -200,12 +199,6 @@ class multivendor extends Module
     }
 
     /**
-     * Create custom order statuses for vendors
-     * 
-     * @return bool
-     */
-
-    /**
      * Module configuration page
      */
     public function getContent()
@@ -242,12 +235,27 @@ class multivendor extends Module
         }
 
         if (Tools::isSubmit('submit' . $this->name)) {
-            // Process configuration form
+            // Process existing configuration
             $defaultCommission = (float)Tools::getValue('MV_DEFAULT_COMMISSION');
             Configuration::updateValue('MV_DEFAULT_COMMISSION', $defaultCommission);
 
             $autoApproveVendors = (int)Tools::getValue('MV_AUTO_APPROVE_VENDORS');
             Configuration::updateValue('MV_AUTO_APPROVE_VENDORS', $autoApproveVendors);
+
+            // NEW: Process MV_HIDE_FROM_VENDOR checkboxes
+            $hiddenStatusTypes = [];
+            $statusTypes = $this->getOrderLineStatusTypes();
+
+            foreach ($statusTypes as $status) {
+                $checkboxName = 'MV_HIDE_FROM_VENDOR_' . $status['id_order_line_status_type'];
+                if (Tools::getValue($checkboxName)) {
+                    $hiddenStatusTypes[] = $status['id_order_line_status_type'];
+                }
+            }
+
+            // Save as comma-separated string
+            $hiddenStatusTypesString = implode(',', $hiddenStatusTypes);
+            Configuration::updateValue('MV_HIDE_FROM_VENDOR', $hiddenStatusTypesString);
 
             $output .= $this->displayConfirmation($this->l('Settings updated'));
         }
@@ -332,8 +340,21 @@ class multivendor extends Module
      */
     protected function renderConfigForm()
     {
+        $statusTypes = $this->getOrderLineStatusTypes();
+
         $stats = OrderHelper::getVendorOrderDetailsStats();
         $statusCount = OrderHelper::getStatusTotalCount();
+        $statusOptions = [];
+
+        foreach ($statusTypes as $status) {
+            if ($status['commission_action'] === 'none') {
+                $statusOptions[] = [
+                    'id' => 'status_' . $status['id_order_line_status_type'],
+                    'value' => $status['id_order_line_status_type'],
+                    'label' => $status['name']
+                ];
+            }
+        }
 
         $fields_form = [
             'form' => [
@@ -366,6 +387,23 @@ class multivendor extends Module
                                 'value' => 0,
                                 'label' => $this->l('No')
                             ]
+                        ]
+                    ],
+                    [
+                        'type' => 'checkbox',
+                        'label' => $this->l('Hide Order Line Status Types from Vendors'),
+                        'name' => 'MV_HIDE_FROM_VENDOR',
+                        'desc' => $this->l('Select order line status types that should be hidden from vendors and only accessible by admin'),
+                        'values' => [
+                            'query' => $statusOptions,
+                            'id' => 'value',
+                            'name' => 'label'
+                        ],
+                        'expand' => [
+                            'print_total' => count($statusOptions),
+                            'default' => 'show',
+                            'show' => ['text' => $this->l('Show all'), 'icon' => 'plus-sign-alt'],
+                            'hide' => ['text' => $this->l('Hide all'), 'icon' => 'minus-sign-alt']
                         ]
                     ],
                     [
@@ -438,11 +476,17 @@ class multivendor extends Module
         $helper->currentIndex = $this->context->link->getAdminLink('AdminModules', false) . '&configure=' . $this->name;
         $helper->token = Tools::getAdminTokenLite('AdminModules');
 
+        $hiddenStatusTypes = $this->getHiddenStatusTypesArray();
+        $fieldsValue = [
+            'MV_DEFAULT_COMMISSION' => Configuration::get('MV_DEFAULT_COMMISSION', 10),
+            'MV_AUTO_APPROVE_VENDORS' => Configuration::get('MV_AUTO_APPROVE_VENDORS', 0)
+        ];
+        foreach ($statusOptions as $option) {
+            $fieldsValue['MV_HIDE_FROM_VENDOR_' . $option['value']] = in_array($option['value'], $hiddenStatusTypes);
+        }
+
         $helper->tpl_vars = [
-            'fields_value' => [
-                'MV_DEFAULT_COMMISSION' => Configuration::get('MV_DEFAULT_COMMISSION', 10),
-                'MV_AUTO_APPROVE_VENDORS' => Configuration::get('MV_AUTO_APPROVE_VENDORS', 0)
-            ],
+            'fields_value' => $fieldsValue,
             'languages' => $this->context->controller->getLanguages(),
             'id_language' => $this->context->language->id
         ];
@@ -450,7 +494,104 @@ class multivendor extends Module
         return $helper->generateForm([$fields_form]);
     }
 
+    /**
+     * Get all order line status types for configuration checkboxes
+     * 
+     * @return array
+     */
+    private function getOrderLineStatusTypes()
+    {
+        $sql = 'SELECT id_order_line_status_type, name , commission_action
+            FROM ' . _DB_PREFIX_ . 'mv_order_line_status_type 
+            WHERE active = 1 
+            ORDER BY id_order_line_status_type ASC';
 
+        return Db::getInstance()->executeS($sql);
+    }
+
+    /**
+     * Get hidden status types as array
+     * 
+     * @return array
+     */
+    private function getHiddenStatusTypesArray()
+    {
+        $hiddenConfig = Configuration::get('MV_HIDE_FROM_VENDOR');
+        if (empty($hiddenConfig)) {
+            return [];
+        }
+
+        // Configuration stores comma-separated IDs
+        return array_map('intval', explode(',', $hiddenConfig));
+    }
+
+    /**
+     * Helper method to check if a status type is hidden from vendors
+     * 
+     * @param int $id_order_line_status_type
+     * @return bool
+     */
+    public static function isStatusTypeHiddenFromVendor($id_order_line_status_type)
+    {
+        $hiddenStatusTypes = Configuration::get('MV_HIDE_FROM_VENDOR');
+        if (empty($hiddenStatusTypes)) {
+            return false;
+        }
+
+        $hiddenArray = array_map('intval', explode(',', $hiddenStatusTypes));
+        return in_array((int)$id_order_line_status_type, $hiddenArray);
+    }
+
+    /**
+     * Get status types available for vendors (not hidden)
+     * 
+     * @return array
+     */
+    public static function getVendorAvailableStatusTypes()
+    {
+        $sql = 'SELECT ost.id_order_line_status_type, ost.name, ost.color 
+                FROM ' . _DB_PREFIX_ . 'mv_order_line_status_type ost 
+                WHERE ost.active = 1 
+                ORDER BY ost.name ASC';
+
+        $allStatuses = Db::getInstance()->executeS($sql);
+        $hiddenStatusTypes = Configuration::get('MV_HIDE_FROM_VENDOR');
+
+        if (empty($hiddenStatusTypes)) {
+            return $allStatuses;
+        }
+
+        $hiddenArray = array_map('intval', explode(',', $hiddenStatusTypes));
+
+        // Filter out hidden status types
+        return array_filter($allStatuses, function ($status) use ($hiddenArray) {
+            return !in_array((int)$status['id_order_line_status_type'], $hiddenArray);
+        });
+    }
+
+    /**
+     * Get status types available for admin only
+     * 
+     * @return array
+     */
+    public static function getAdminOnlyStatusTypes()
+    {
+        $hiddenStatusTypes = Configuration::get('MV_HIDE_FROM_VENDOR');
+        if (empty($hiddenStatusTypes)) {
+            return [];
+        }
+
+        $hiddenArray = array_map('intval', explode(',', $hiddenStatusTypes));
+        $placeholders = str_repeat('?,', count($hiddenArray) - 1) . '?';
+
+        $sql = 'SELECT ost.id_order_line_status_type, ost.name, ost.color 
+                FROM ' . _DB_PREFIX_ . 'mv_order_line_status_type ost 
+                WHERE ost.active = 1 
+                AND ost.id_order_line_status_type IN (' . $placeholders . ')
+                ORDER BY ost.name ASC';
+
+        return Db::getInstance()->executeS($sql, $hiddenArray);
+    }
 
     /**
      * Hook: When a new order is validated
@@ -478,7 +619,7 @@ class multivendor extends Module
         if ($vendor) {
             $this->context->smarty->assign([
                 'is_vendor' => true,
-                'vendor_dashboard_url' => $this->context->link->getModuleLink('multivendor', 'dashboard', array('date'=> date('Y-m-d'))),
+                'vendor_dashboard_url' => $this->context->link->getModuleLink('multivendor', 'dashboard', []),
                 'vendor_orders_url' => $this->context->link->getModuleLink('multivendor', 'orders', []),
                 'vendor_commissions_url' => $this->context->link->getModuleLink('multivendor', 'commissions', []),
                 'vendor_profile_url' => $this->context->link->getModuleLink('multivendor', 'profile', []),
@@ -512,7 +653,6 @@ class multivendor extends Module
         }
     }
 
-
     /**
      * Hook: When an order detail is updated (alternative hook)
      */
@@ -522,7 +662,6 @@ class multivendor extends Module
             OrderHelper::updateOrderDetailForVendor($params['object']);
         }
     }
-
 
     /**
      * Hook: When an order detail is deleted (alternative hook)
@@ -555,7 +694,7 @@ class multivendor extends Module
                 'description' => 'Multi-vendor order line status',
                 'class' => 'OrderLineStatus',
                 'specific_management' => false,
-                'forbidden_method' => ['POST','DELETE']
+                'forbidden_method' => ['POST', 'DELETE']
 
             ],
 
