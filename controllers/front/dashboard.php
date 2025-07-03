@@ -29,6 +29,7 @@ class multivendorDashboardModuleFrontController extends ModuleFrontController
             return;
         }
 
+
         if (!$vendor) {
             Tools::redirect('index.php?controller=my-account');
         }
@@ -64,11 +65,46 @@ class multivendorDashboardModuleFrontController extends ModuleFrontController
                     $filter_label = $this->l('Tout le temps');
                     break;
 
+                case 'today':
+                    $start_date = date('Y-m-d');
+                    $end_date = date('Y-m-d');
+                    $date_filter_active = true;
+                    $filter_label = $this->l('Aujourd\'hui');
+                    break;
+
+                case 'yesterday':
+                    $start_date = date('Y-m-d', strtotime('-1 day'));
+                    $end_date = date('Y-m-d', strtotime('-1 day'));
+                    $date_filter_active = true;
+                    $filter_label = $this->l('Hier');
+                    break;
+
+                case 'this_week':
+                    $start_date = date('Y-m-d', strtotime('monday this week'));
+                    $end_date = date('Y-m-d');
+                    $date_filter_active = true;
+                    $filter_label = $this->l('Cette semaine');
+                    break;
+
+                case 'last_week':
+                    $start_date = date('Y-m-d', strtotime('monday last week'));
+                    $end_date = date('Y-m-d', strtotime('sunday last week'));
+                    $date_filter_active = true;
+                    $filter_label = $this->l('La semaine dernière');
+                    break;
+
                 case 'this_month':
                     $start_date = date('Y-m-01');
                     $end_date = date('Y-m-d');
                     $date_filter_active = true;
                     $filter_label = $this->l('Ce mois-ci');
+                    break;
+
+                case 'last_month':
+                    $start_date = date('Y-m-01', strtotime('first day of last month'));
+                    $end_date = date('Y-m-t', strtotime('last day of last month'));
+                    $date_filter_active = true;
+                    $filter_label = $this->l('Mois dernier');
                     break;
 
                 case 'custom':
@@ -84,6 +120,7 @@ class multivendorDashboardModuleFrontController extends ModuleFrontController
                     break;
             }
         } else {
+            // Default to "This Month" when no filter is selected
             $start_date = date('Y-m-01');
             $end_date = date('Y-m-d');
             $date_filter_active = true;
@@ -138,7 +175,7 @@ class multivendorDashboardModuleFrontController extends ModuleFrontController
     }
 
     /**
-     * Get top selling products with date filter and vendor visibility filtering
+     * Get top selling products with date filter
      * 
      * @param int $id_vendor Vendor ID
      * @param string|null $start_date Start date (Y-m-d)
@@ -151,19 +188,13 @@ class multivendorDashboardModuleFrontController extends ModuleFrontController
      */
     protected function getTopSellingProducts($id_vendor, $start_date = null, $end_date = null, $date_filter_active = false, $limit = 5)
     {
-    
-        $hiddenIdsString = OrderHelper::getHiddenStatusTypeString();
-        $hiddenStatusFilter = ' AND (ols.id_order_line_status_type IS NULL OR ols.id_order_line_status_type NOT IN (' . $hiddenIdsString . '))';
-
         $query = '
             SELECT od.product_id, od.product_name, SUM(od.product_quantity) as quantity_sold,
                    SUM(vod.vendor_amount) as total_sales
             FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod
             LEFT JOIN ' . _DB_PREFIX_ . 'order_detail od ON od.id_order_detail = vod.id_order_detail
             LEFT JOIN ' . _DB_PREFIX_ . 'orders o ON o.id_order = vod.id_order
-            LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status ols ON ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor
-            WHERE vod.id_vendor = ' . (int)$id_vendor .
-            $hiddenStatusFilter;
+            WHERE vod.id_vendor = ' . (int)$id_vendor;
 
         // Apply date filters if active
         if ($date_filter_active && $start_date && $end_date) {
@@ -203,22 +234,5 @@ class multivendorDashboardModuleFrontController extends ModuleFrontController
         ]);
 
         $this->setTemplate('module:multivendor/views/templates/front/vendor_verification.tpl');
-    }
-
-    /**
-     * Helper method to check if a status type is hidden from vendors
-     * 
-     * @param int $id_order_line_status_type
-     * @return bool
-     */
-    protected function isStatusTypeHiddenFromVendor($id_order_line_status_type)
-    {
-        $hiddenStatusTypes = Configuration::get('MV_HIDE_FROM_VENDOR');
-        if (empty($hiddenStatusTypes)) {
-            return false;
-        }
-
-        $hiddenArray = array_map('intval', explode(',', $hiddenStatusTypes));
-        return in_array((int)$id_order_line_status_type, $hiddenArray);
     }
 }

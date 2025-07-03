@@ -28,6 +28,7 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
 
         parent::__construct();
 
+        // Define the fields for the list
         $this->fields_list = [
             'id_vendor_order_detail' => [
                 'title' => $this->l('ID'),
@@ -35,60 +36,60 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
                 'class' => 'fixed-width-xs'
             ],
             'order_reference' => [
-                'title' => $this->l('Référence de commande'),
+                'title' => $this->l('Order Reference'),
                 'filter_key' => 'o!reference',
                 'havingFilter' => true,
                 'callback' => 'displayOrderReference',
             ],
             'id_order_detail' => [
-                'title' => $this->l('ID Détail de commande'),
+                'title' => $this->l('Order Detail ID'),
                 'align' => 'center',
                 'class' => 'fixed-width-sm',
                 'filter_key' => 'a!id_order_detail'
             ],
             'vendor_name' => [
-                'title' => $this->l('Vendeur'),
+                'title' => $this->l('Vendor'),
                 'filter_key' => 'v!shop_name',
                 'havingFilter' => true
             ],
             'product_name' => [
-                'title' => $this->l('Nom du produit'),
+                'title' => $this->l('Product Name'),
                 'filter_key' => 'a!product_name',
                 'maxlength' => 60
             ],
             'product_reference' => [
-                'title' => $this->l('Référence produit'),
+                'title' => $this->l('Product SKU'),
                 'filter_key' => 'a!product_reference',
                 'align' => 'center'
             ],
             'product_quantity' => [
-                'title' => $this->l('Quantité'),
+                'title' => $this->l('Quantity'),
                 'align' => 'center',
                 'class' => 'fixed-width-xs',
                 'filter_key' => 'a!product_quantity'
             ],
             'commission_rate' => [
-                'title' => $this->l('Taux de commission (%)'),
+                'title' => $this->l('Commission Rate (%)'),
                 'type' => 'percentage',
                 'align' => 'center',
                 'filter_key' => 'a!commission_rate',
                 'havingFilter' => true
             ],
             'commission_amount' => [
-                'title' => $this->l('Montant de commission'),
+                'title' => $this->l('Commission Amount'),
                 'type' => 'price',
                 'currency' => true,
                 'filter_key' => 'a!commission_amount',
                 'havingFilter' => true,
             ],
             'vendor_amount' => [
-                'title' => $this->l('Montant vendeur'),
+                'title' => $this->l('Vendor Amount'),
                 'type' => 'price',
                 'currency' => true,
                 'callback' => 'displayVendorAmount'
             ],
             'name' => [
-                'title' => $this->l('Statut ligne de commande'),
+                'title' => $this->l('Order Line Status'),
                 'type' => 'select',
                 'list' => [],
                 'filter_key' => 'olst!name',
@@ -96,7 +97,7 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
                 'callback' => 'displayOrderLineStatus'
             ],
             'order_date' => [
-                'title' => $this->l('Date de commande'),
+                'title' => $this->l('Order Date'),
                 'type' => 'datetime',
                 'filter_key' => 'o!date_add',
                 'havingFilter' => true
@@ -130,15 +131,15 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
         // Handle vendor amount range filter
         $vendor_amount_min = Tools::getValue('vendor_amount_min');
         $vendor_amount_max = Tools::getValue('vendor_amount_max');
-
+        
         if ($vendor_amount_min !== false && $vendor_amount_min !== '') {
             $this->_where .= ' AND a.vendor_amount >= ' . (float)$vendor_amount_min;
         }
-
+        
         if ($vendor_amount_max !== false && $vendor_amount_max !== '') {
             $this->_where .= ' AND a.vendor_amount <= ' . (float)$vendor_amount_max;
         }
-
+        
         parent::getList($id_lang, $order_by, $order_way, $start, $limit, $id_lang_shop);
     }
 
@@ -148,36 +149,39 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
     public function renderList()
     {
         $content = parent::renderList();
-
+        
         // Add custom range filter form
         $vendor_amount_min = Tools::getValue('vendor_amount_min');
         $vendor_amount_max = Tools::getValue('vendor_amount_max');
-
+        
         $filter_form = '
-        <div class="panel">             
-            <div class="panel-heading">                 
-                <i class="icon-filter"></i> ' . $this->l('Filtre montant vendeur') . '             
-            </div>             
-            <div class="panel-body">                 
-                <form method="get" class="form-inline" id="vendor-amount-filter">                     
-                    <input type="hidden" name="controller" value="' . Tools::getValue('controller') . '" />                     
-                    <input type="hidden" name="token" value="' . Tools::getValue('token') . '" />                                          
-                    <div class="form-group" style="margin-right: 15px;">                         
-                        <label for="vendor_amount_min" style="margin-right: 5px;">' . $this->l('Montant min :') . '</label>                         
-                        <input type="number" step="0.01" name="vendor_amount_min" id="vendor_amount_min"                                
-                            value="' . htmlspecialchars($vendor_amount_min) . '" class="form-control" style="width: 120px;" />                     
-                    </div>                                          
-                    <div class="form-group" style="margin-right: 15px;">                         
-                        <label for="vendor_amount_max" style="margin-right: 5px;">' . $this->l('Montant max :') . '</label>                         
-                        <input type="number" step="0.01" name="vendor_amount_max" id="vendor_amount_max"                                
-                            value="' . htmlspecialchars($vendor_amount_max) . '" class="form-control" style="width: 120px;" />                     
-                    </div>                                          
-                    <button type="submit" class="btn btn-primary">' . $this->l('Filtrer') . '</button>                     
-                    <a href="' . self::$currentIndex . '&token=' . $this->token . '" class="btn btn-default">' . $this->l('Réinitialiser') . '</a>                 
-                </form>             
-            </div>         
+        <div class="panel">
+            <div class="panel-heading">
+                <i class="icon-filter"></i> ' . $this->l('Vendor Amount Filter') . '
+            </div>
+            <div class="panel-body">
+                <form method="get" class="form-inline" id="vendor-amount-filter">
+                    <input type="hidden" name="controller" value="' . Tools::getValue('controller') . '" />
+                    <input type="hidden" name="token" value="' . Tools::getValue('token') . '" />
+                    
+                    <div class="form-group" style="margin-right: 15px;">
+                        <label for="vendor_amount_min" style="margin-right: 5px;">' . $this->l('Min Amount:') . '</label>
+                        <input type="number" step="0.01" name="vendor_amount_min" id="vendor_amount_min"
+                               value="' . htmlspecialchars($vendor_amount_min) . '" class="form-control" style="width: 120px;" />
+                    </div>
+                    
+                    <div class="form-group" style="margin-right: 15px;">
+                        <label for="vendor_amount_max" style="margin-right: 5px;">' . $this->l('Max Amount:') . '</label>
+                        <input type="number" step="0.01" name="vendor_amount_max" id="vendor_amount_max"
+                               value="' . htmlspecialchars($vendor_amount_max) . '" class="form-control" style="width: 120px;" />
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary">' . $this->l('Filter') . '</button>
+                    <a href="' . self::$currentIndex . '&token=' . $this->token . '" class="btn btn-default">' . $this->l('Reset') . '</a>
+                </form>
+            </div>
         </div>';
-
+        
         return $filter_form . $content;
     }
 
@@ -303,4 +307,6 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
         $this->errors[] = $this->l('Bulk delete action is not allowed for this list.');
         return false;
     }
+
+
 }

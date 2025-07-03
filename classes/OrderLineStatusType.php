@@ -138,6 +138,5 @@ class OrderLineStatusType extends ObjectModel
         } else {
             return false;
         }
-    } 
-    
+    }
 }

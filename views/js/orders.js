@@ -3,6 +3,10 @@
  */
 
 const verifiedOrderDetails = new Set();
+let currentOrderDetailId = null;
+let currentProductName = null;
+let currentStatusName = null;
+let currentStatusColor = null;
 
 $(document).ready(function () {
     // Set initial colors for status dropdowns
@@ -810,3 +814,358 @@ function showNotification(type, message) {
         $notification.fadeOut(() => $notification.remove());
     }, removeDelay);
 }
+
+/**
+ * Open status comment modal
+ */
+function openStatusCommentModal(orderDetailId, productName, currentStatus, statusColor, statusTypeId) {
+    console.log('Opening modal for order detail:', orderDetailId);
+
+    // Check if this order detail is changeable
+    if (!window.mvChangeableInfo || !window.mvChangeableInfo[orderDetailId]) {
+        console.log('Order detail not changeable:', orderDetailId);
+        return;
+    }
+
+    // Get allowed status transitions for this specific order detail
+    const allowedTransitions = window.mvAllowedTransitions[orderDetailId] || {};
+    console.log('Allowed transitions for order detail', orderDetailId, ':', allowedTransitions);
+
+    if (Object.keys(allowedTransitions).length === 0) {
+        showNotification('warning', changeableTranslations.noStatusAvailable);
+        console.log('No transitions available for order detail:', orderDetailId);
+        return;
+    }
+
+    // Store current order detail info
+    currentOrderDetailId = orderDetailId;
+    currentProductName = productName;
+    currentStatusName = currentStatus;
+    currentStatusColor = statusColor || '#777';
+    currentStatusTypeId = statusTypeId;
+
+    // Update modal content
+    document.getElementById('productInfo').textContent = productName;
+
+    const statusBadge = document.getElementById('currentStatusBadge');
+    statusBadge.textContent = currentStatus.charAt(0).toUpperCase() + currentStatus.slice(1);
+    statusBadge.style.backgroundColor = currentStatusColor;
+
+    // Populate status dropdown with ONLY allowed transitions
+    populateAvailableStatuses(allowedTransitions);
+
+    // Reset comment
+    document.getElementById('statusComment').value = '';
+
+    // Show modal
+    document.getElementById('statusCommentModal').classList.add('mv-modal-open');
+}
+
+function populateAvailableStatuses(allowedTransitions) {
+    const select = document.getElementById('newStatusSelect');
+    const noStatusDiv = document.getElementById('noStatusAvailable');
+    const statusInfoDiv = document.getElementById('statusInfo');
+    const statusInfoText = document.getElementById('statusInfoText');
+    const submitBtn = document.getElementById('submitStatusComment');
+
+    // Clear existing options
+    select.innerHTML = '<option value="">' + (changeableTranslations.selectNewStatus || 'Sélectionnez un nouveau statut...') + '</option>';
+
+    console.log('Populating available statuses:', allowedTransitions);
+
+    if (Object.keys(allowedTransitions).length === 0) {
+        // No transitions available
+        select.disabled = true;
+        noStatusDiv.style.display = 'block';
+        statusInfoDiv.style.display = 'none';
+        submitBtn.disabled = true;
+        console.log('No transitions available - disabling form');
+        return;
+    }
+
+    // Hide warnings and enable controls
+    select.disabled = false;
+    noStatusDiv.style.display = 'none';
+    submitBtn.disabled = false;
+
+    // Show info about available transitions
+    statusInfoDiv.style.display = 'block';
+    const transitionCount = Object.keys(allowedTransitions).length;
+    statusInfoText.textContent = `${transitionCount} transition(s) disponible(s) depuis le statut actuel`;
+
+    // Add only the allowed status options
+    Object.entries(allowedTransitions).forEach(([statusId, statusName]) => {
+        const option = document.createElement('option');
+        option.value = statusId;
+        option.textContent = statusName;
+
+        // Add color styling if available
+        const statusColor = getStatusColor(statusName);
+        if (statusColor) {
+            option.style.backgroundColor = statusColor;
+            option.style.color = 'white';
+        }
+
+        select.appendChild(option);
+        console.log('Added status option:', statusId, statusName, statusColor);
+    });
+
+    console.log('Populated', Object.keys(allowedTransitions).length, 'status options');
+}
+
+
+
+function getStatusColor(statusName) {
+    if (window.mvStatusColors && window.mvStatusColors[statusName]) {
+        return window.mvStatusColors[statusName];
+    }
+    return '#777';
+}
+
+/**
+ * Close status comment modal
+ */
+function closeStatusCommentModal() {
+    document.getElementById('statusCommentModal').classList.remove('mv-modal-open');
+
+    // Reset variables
+    currentOrderDetailId = null;
+    currentProductName = null;
+    currentStatusName = null;
+    currentStatusColor = null;
+    currentStatusTypeId = null;
+
+    // Reset form elements
+    const select = document.getElementById('newStatusSelect');
+    select.innerHTML = '<option value="">Sélectionnez un nouveau statut...</option>';
+    select.disabled = false;
+
+    document.getElementById('noStatusAvailable').style.display = 'none';
+    document.getElementById('statusInfo').style.display = 'none';
+    document.getElementById('statusComment').value = '';
+    document.getElementById('submitStatusComment').disabled = false;
+    document.getElementById('submitStatusComment').innerHTML = 'Mettre à jour le statut';
+}
+
+/**
+ * Submit status update with comment
+ */
+function submitStatusWithComment() {
+    const newStatusId = document.getElementById('newStatusSelect').value;
+    const comment = document.getElementById('statusComment').value.trim();
+
+    console.log('Submitting status change:', {
+        orderDetailId: currentOrderDetailId,
+        newStatusId: newStatusId,
+        comment: comment
+    });
+
+    if (!newStatusId) {
+        alert(changeableTranslations.selectNewStatus || 'Veuillez sélectionner un nouveau statut');
+        return;
+    }
+
+    if (!currentOrderDetailId) {
+        alert('Erreur: Aucun détail de commande sélectionné');
+        return;
+    }
+
+    // Double-check that this transition is still allowed
+    const allowedTransitions = window.mvAllowedTransitions[currentOrderDetailId] || {};
+    if (!allowedTransitions[newStatusId]) {
+        alert('Erreur: Cette transition de statut n\'est plus autorisée');
+        console.error('Invalid transition attempted:', newStatusId, 'Allowed:', allowedTransitions);
+        closeStatusCommentModal();
+        return;
+    }
+
+    // Disable submit button and show loading
+    const submitBtn = document.getElementById('submitStatusComment');
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="mv-spinner"></span> Mise à jour...';
+
+    // Make AJAX request
+    $.ajax({
+        url: ordersAjaxUrl,
+        type: 'POST',
+        dataType: 'json',
+        data: {
+            action: 'updateVendorStatus',
+            id_order_detail: currentOrderDetailId,
+            id_status_type: newStatusId,
+            comment: comment || 'Statut mis à jour via modal commentaire',
+            token: ordersAjaxToken
+        },
+        success: function (data) {
+            console.log('Status update response:', data);
+
+            if (data.success) {
+                // Update the status select in the table
+                const statusSelect = document.getElementById(`status-select-${currentOrderDetailId}`);
+                if (statusSelect) {
+                    statusSelect.value = newStatusId;
+
+                    // Update the visual styling
+                    const selectedOption = statusSelect.querySelector(`option[value="${newStatusId}"]`);
+                    if (selectedOption) {
+                        const color = selectedOption.style.backgroundColor;
+                        statusSelect.style.backgroundColor = color;
+                    }
+                }
+
+                // Update the row status attribute for filtering
+                const row = document.querySelector(`tr[data-id="${currentOrderDetailId}"]`);
+                if (row) {
+                    // Find the new status name
+                    const newStatusName = Object.entries(window.mvVendorStatuses || {})
+                        .find(([id, name]) => id == newStatusId)?.[1] || 'Unknown';
+                    row.setAttribute('data-status', newStatusName.toLowerCase());
+                }
+
+                // Show success message
+                showNotification('success', 'Statut mis à jour avec succès');
+
+                // Close modal
+                closeStatusCommentModal();
+
+                // Optional: Refresh allowed transitions for this order detail
+                // You might want to update the allowed transitions after a status change
+                updateAllowedTransitionsForOrderDetail(currentOrderDetailId);
+
+            } else {
+                // Show error message
+                showNotification('error', 'Erreur lors de la mise à jour du statut: ' + (data.message || 'Erreur inconnue'));
+
+                // Re-enable submit button
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = 'Mettre à jour le statut';
+            }
+        },
+        error: function (xhr, status, error) {
+            console.error('Error updating status:', error);
+            showNotification('error', 'Erreur réseau survenue');
+
+            // Re-enable submit button
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = 'Mettre à jour le statut';
+        }
+    });
+}
+
+function updateAllowedTransitionsForOrderDetail(orderDetailId) {
+    // This function refreshes the allowed transitions for a specific order detail
+    // after a status change, in case the available transitions have changed
+
+    $.ajax({
+        url: ordersAjaxUrl,
+        type: 'POST',
+        dataType: 'json',
+        data: {
+            action: 'getChangeableInfo',
+            order_detail_id: orderDetailId, // Get info for specific order detail
+            token: ordersAjaxToken
+        },
+        success: function (data) {
+            if (data.success && data.allowed_transitions) {
+                // Update the allowed transitions for this order detail
+                if (window.mvAllowedTransitions) {
+                    window.mvAllowedTransitions[orderDetailId] = data.allowed_transitions[orderDetailId] || {};
+                }
+
+                // Update changeable status if provided
+                if (data.changeable_info) {
+                    if (window.mvChangeableInfo) {
+                        window.mvChangeableInfo[orderDetailId] = data.changeable_info[orderDetailId] || false;
+                    }
+                }
+
+                console.log('Updated transitions for order detail', orderDetailId, ':', window.mvAllowedTransitions[orderDetailId]);
+
+                // Update the action button for this order detail if needed
+                updateActionButtonForOrderDetail(orderDetailId);
+            }
+        },
+        error: function (xhr, status, error) {
+            console.warn('Could not update allowed transitions:', error);
+        }
+    });
+}
+
+function updateActionButtonForOrderDetail(orderDetailId) {
+    const isChangeable = window.mvChangeableInfo && window.mvChangeableInfo[orderDetailId];
+    const allowedTransitions = window.mvAllowedTransitions && window.mvAllowedTransitions[orderDetailId] || {};
+    const hasTransitions = Object.keys(allowedTransitions).length > 0;
+
+    // Find the action button for this order detail
+    const actionCell = document.querySelector(`tr[data-id="${orderDetailId}"] .mv-status-actions`);
+    if (!actionCell) return;
+
+    const button = actionCell.querySelector('button, span');
+    if (!button) return;
+
+    if (isChangeable && hasTransitions) {
+        // Make button active
+        button.className = 'mv-btn-comment';
+        button.disabled = false;
+        button.onclick = function () {
+            // You'll need to get the current product info for this
+            const row = document.querySelector(`tr[data-id="${orderDetailId}"]`);
+            const productName = row ? row.querySelector('.mv-product-name')?.textContent?.trim() : 'Unknown Product';
+            const statusElement = row ? row.querySelector('.mv-status-select') : null;
+            const currentStatus = statusElement ? statusElement.options[statusElement.selectedIndex]?.text : 'Unknown';
+            const statusColor = statusElement ? statusElement.style.backgroundColor : '#777';
+            const statusTypeId = statusElement ? statusElement.value : 0;
+
+            openStatusCommentModal(orderDetailId, productName, currentStatus, statusColor, statusTypeId);
+        };
+    } else {
+        // Make button disabled
+        button.className = 'mv-btn-comment-disabled';
+        button.disabled = true;
+        button.onclick = null;
+    }
+}
+
+/**
+ * Utility function to check if order detail has available transitions
+ */
+function hasAvailableTransitions(orderDetailId) {
+    const allowedTransitions = window.mvAllowedTransitions && window.mvAllowedTransitions[orderDetailId] || {};
+    return Object.keys(allowedTransitions).length > 0;
+}
+
+/**
+ * Utility function to get available transition count
+ */
+function getAvailableTransitionCount(orderDetailId) {
+    const allowedTransitions = window.mvAllowedTransitions && window.mvAllowedTransitions[orderDetailId] || {};
+    return Object.keys(allowedTransitions).length;
+}
+
+$(document).ready(function () {
+    // Close modal when clicking backdrop
+    $(document).on('click', '#statusCommentModal', function (e) {
+        if (e.target === this) {
+            closeStatusCommentModal();
+        }
+    });
+
+    // Close modal with Escape key
+    $(document).on('keydown', function (e) {
+        if (e.key === 'Escape' && $('#statusCommentModal').hasClass('mv-modal-open')) {
+            closeStatusCommentModal();
+        }
+    });
+
+    // Debug: Verify data is loaded
+    console.log('Orders JS initialized with data:');
+    console.log('- Changeable info loaded:', !!window.mvChangeableInfo);
+    console.log('- Allowed transitions loaded:', !!window.mvAllowedTransitions);
+    console.log('- Status colors loaded:', !!window.mvStatusColors);
+
+    if (window.mvAllowedTransitions) {
+        const totalOrderDetails = Object.keys(window.mvAllowedTransitions).length;
+        const changeableOrderDetails = Object.values(window.mvChangeableInfo || {}).filter(Boolean).length;
+        console.log(`- ${totalOrderDetails} order details total, ${changeableOrderDetails} changeable`);
+    }
+});

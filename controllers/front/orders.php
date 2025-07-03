@@ -60,7 +60,8 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
             'status' => $filter_status
         ]);
         $total_pages = ceil($total_lines / $per_page);
-
+        $changeableStatusInfo = $this->getChangeableStatusInfo($orderLines, $id_vendor);
+      
         // Get available line statuses (only ones that vendor can use)
         $vendorStatuses = [];
         $allStatuses = [];
@@ -107,7 +108,8 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
             'vendor_profile_url' => $this->context->link->getModuleLink('multivendor', 'profile'),
             'vendor_orders_url' => $this->context->link->getModuleLink('multivendor', 'orders'),
             'vendor_manage_orders_url' => $this->context->link->getModuleLink('multivendor', 'manageorders', []),
-
+            'changeable_info' => $changeableStatusInfo['changeable_info'],
+            'allowed_status_transitions' => $changeableStatusInfo['allowed_transitions'],
             'currency_sign' => $this->context->currency->sign,
             'currency' => $this->context->currency
         ]);
@@ -148,14 +150,50 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
 
         $query->orderBy('vod.id_order_detail DESC');
         $query->limit($limit, $offset);
-        $rawStatus = Db::getInstance()->executeS($query);
-        $filteredStatus = [];
-        foreach ($rawStatus as $status) {
-            if (!OrderHelper::isHideFromVendor($status['id_order_detail'])) {
-                $filteredStatus[] = $status;
+
+        return Db::getInstance()->executeS($query);
+    }
+
+    protected function getChangeableStatusInfo($orderLines, $id_vendor)
+    {
+        $changeableInfo = array();
+        $allowedStatusTransitions = array();
+
+        foreach ($orderLines as $line) {
+            $id_order_detail = $line['id_order_detail'];
+            $currentStatusId = $line['status_type_id'];
+
+            // Check if this order line is changeable using your existing method
+            $isChangeable = VendorHelper::isChangeable($id_order_detail, $id_vendor);
+            $changeableInfo[$id_order_detail] = $isChangeable;
+
+            // Get allowed status transitions for this order line
+            $allowedStatuses = array();
+            if ($isChangeable) {
+                $allVendorStatuses = OrderLineStatusType::getAllActiveStatusTypes(true, false);
+            
+                foreach ($allVendorStatuses as $statusType) {
+                    $statusId = $statusType['id_order_line_status_type'];
+                    $statusName = $statusType['name'];
+
+                    // Skip if it's the same as current status (optional)
+                    if ($statusId == $currentStatusId) {
+                        continue;
+                    }
+
+                    // Check if transition from current status to this status is allowed
+                    if ($this->canChangeStatusTo($currentStatusId, $statusId)) {
+                        $allowedStatuses[$statusId] = $statusName;
+                    }
+                }
             }
+            $allowedStatusTransitions[$id_order_detail] = $allowedStatuses;
         }
-        return   $filteredStatus;
+
+        return array(
+            'changeable_info' => $changeableInfo,
+            'allowed_transitions' => $allowedStatusTransitions
+        );
     }
     /**
      * Count vendor order lines based on supplier ID
@@ -167,14 +205,15 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
     protected function countVendorOrderLines($id_vendor, $filters = [])
     {
         $defaultStatusTypeId = OrderLineStatus::getDefaultStatusTypeId();
-        $hiddenIdsString = OrderHelper::getHiddenStatusTypeString();
+
         $query = new DbQuery();
         $query->select('COUNT(vod.id_order_detail)');
         $query->from('mv_vendor_order_detail', 'vod');
         $query->leftJoin('mv_order_line_status', 'ols', 'ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = ' . (int)$id_vendor);
         $query->leftJoin('mv_order_line_status_type', 'olst', 'olst.id_order_line_status_type = ols.id_order_line_status_type');
         $query->where('vod.id_vendor = ' . (int)$id_vendor);
-        $query->where('ols.id_order_line_status_type NOT IN (' . $hiddenIdsString . ')');
+
+        // Apply status filter only
         if (!empty($filters['status']) && $filters['status'] !== 'all') {
             $status_id = (int)$filters['status'];
             $query->where('(COALESCE(ols.id_order_line_status_type, ' . (int)$defaultStatusTypeId . ') = ' . $status_id . ')');
@@ -292,28 +331,22 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
     /**
      * Get order summary data
      */
-
     protected function getOrderSummary($id_vendor)
     {
         // Get default status type for fallback
         $defaultStatusTypeId = OrderLineStatus::getDefaultStatusTypeId();
         $defaultStatusType = new OrderLineStatusType($defaultStatusTypeId);
 
-        // Get hidden status types for vendor visibility filter
-        $hiddenIdsString = OrderHelper::getHiddenStatusTypeString();
-        $hiddenStatusFilter = ' AND (ols.id_order_line_status_type IS NULL OR ols.id_order_line_status_type NOT IN (' . $hiddenIdsString . '))';
-
+        // Total order lines
         $totalLines = Db::getInstance()->getValue(
             '
         SELECT COUNT(DISTINCT vod.id_order_detail)
         FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod
-        LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status ols ON ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor
-        WHERE vod.id_vendor = ' . (int)$id_vendor .
-                $hiddenStatusFilter
+        WHERE vod.id_vendor = ' . (int)$id_vendor
         );
 
-        $totalRevenue = Db::getInstance()->getValue(
-            '
+
+        $totalRevenue = Db::getInstance()->getValue('
         SELECT SUM(vod.vendor_amount)
         FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod
         LEFT JOIN ' . _DB_PREFIX_ . 'orders o ON o.id_order = vod.id_order
@@ -322,28 +355,22 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
         WHERE vod.id_vendor = ' . (int)$id_vendor . '
         AND DATE(o.date_add) >= DATE_SUB(CURDATE(), INTERVAL 28 DAY)
         AND (
-            (olst.commission_action = "add" AND olst.id_order_line_status_type NOT IN (' .
-                (!empty($hiddenIds) ? $hiddenIdsString : '0') . ')) 
+            (olst.commission_action = "add") 
             OR 
-            (ols.id_order_line_status_type IS NULL AND "' . pSQL($defaultStatusType->commission_action) . '" = "add"' .
-                (!OrderHelper::isStatusTypeHiddenFromVendor($defaultStatusTypeId) ? '' : ' AND 1=0') . ')
-        )' . $hiddenStatusFilter
-        );
+            (ols.id_order_line_status_type IS NULL AND "' . pSQL($defaultStatusType->commission_action) . '" = "add")
+        )
+    ');
 
-        // Get status breakdown (filtered for vendor visibility)
         $statusBreakdown = VendorHelper::getStatusBreakdown($id_vendor);
 
-        // Today's orders (only count orders with visible statuses)
-        $todaysOrders = Db::getInstance()->getValue(
-            '
+        // Today's orders
+        $todaysOrders = Db::getInstance()->getValue('
         SELECT COUNT(DISTINCT vod.id_order_detail)
         FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod
         LEFT JOIN ' . _DB_PREFIX_ . 'orders o ON o.id_order = vod.id_order
-        LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status ols ON ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor
         WHERE vod.id_vendor = ' . (int)$id_vendor . '
-        AND DATE(vod.date_add) = CURDATE()' .
-                $hiddenStatusFilter
-        );
+        AND DATE(vod.date_add) = CURDATE()
+    ');
 
         return [
             'total_lines' => (int)$totalLines,
@@ -352,7 +379,6 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
             'status_breakdown' => $statusBreakdown
         ];
     }
-
 
 
 

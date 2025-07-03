@@ -34,7 +34,6 @@
             </aside>
 
             <main class="mv-main-content">
-                {* Order Summary Cards *}
                 <div class="mv-stats-grid">
                     <div class="mv-stat-card">
                         <div class="mv-stat-content">
@@ -59,7 +58,6 @@
                     </div>
                 </div>
 
-                {* Status Breakdown *}
                 {if $order_summary.status_breakdown}
                     <div class="mv-card">
                         <div class="mv-card-header">
@@ -209,11 +207,18 @@
                                                     {/if}
                                                 </td>
                                                 <td>{$line.order_date|date_format:'%Y-%m-%d'}</td>
-                                                <td>
+                                                <td class="mv-actions">
                                                     <button class="mv-btn-icon view-status-history"
                                                         data-order-detail-id="{$line.id_order_detail}"
                                                         title="{l s='Voir l\'historique' mod='multivendor'}">
                                                         <i class="mv-icon">📜</i>
+
+                                                    </button>
+                                                    <button class="mv-btn-comment mv-btn-icon"
+                                                        onclick='openStatusCommentModal({$line.id_order_detail}, "{$line.product_name}", "{$line.line_status}", "{$status_colors[$line.line_status]|default:'#777'}")'
+                                                        title="{l s='Add status comment' mod='multivendor'}">
+                                                        <i class="mv-icon">🔃</i>
+
                                                     </button>
                                                 </td>
                                             </tr>
@@ -308,7 +313,6 @@
         </div>
     </div>
 
-    {* Status History Modal *}
     <div class="mv-modal" id="statusHistoryModal">
         <div class="mv-modal-backdrop" onclick="$('#statusHistoryModal').removeClass('mv-modal-open')"></div>
         <div class="mv-modal-content">
@@ -317,13 +321,11 @@
                 <button class="mv-modal-close" onclick="$('#statusHistoryModal').removeClass('mv-modal-open')">×</button>
             </div>
             <div class="mv-modal-body" id="statusHistoryContent">
-                <!-- History will be loaded here -->
             </div>
         </div>
     </div>
 
     <script>
-        // Translation strings for JavaScript
         const bulkStatusChangeConfirmText = "{l s='Êtes-vous sûr de vouloir changer le statut des commandes sélectionnées ?' mod='multivendor'}";
         const bulkChangeComment = "{l s='Statut modifié via l\'action groupée' mod='multivendor'}";
         const processingText = "{l s='Traitement...' mod='multivendor'}";
@@ -332,4 +334,91 @@
         const successStatusText = "{l s='commandes mises à jour avec succès.' mod='multivendor'}";
         const errorStatusText = "{l s='commandes n\'ont pas pu être mises à jour.' mod='multivendor'}";
     </script>
+
+   <div class="mv-status-comment-modal" id="statusCommentModal">
+    <div class="mv-status-comment-content">
+        <div class="mv-status-comment-header">
+            <h5 class="mv-status-comment-title">{l s='Mettre à jour le statut avec commentaire' mod='multivendor'}</h5>
+            <button class="mv-status-comment-close" onclick="closeStatusCommentModal()">×</button>
+        </div>
+        <div class="mv-status-comment-body">
+            <!-- Current status display -->
+            <div class="mv-current-status">
+                <div class="mv-current-status-label">{l s='Statut actuel' mod='multivendor'}</div>
+                <span id="currentStatusBadge" class="mv-status-badge">
+                    {l s='En attente' mod='multivendor'}
+                </span>
+            </div>
+
+            <!-- Product info -->
+            <div class="mv-form-group">
+                <label class="mv-form-label">{l s='Produit' mod='multivendor'}</label>
+                <div id="productInfo" style="font-weight: 500; color: #333;">
+                    {l s='Nom du produit' mod='multivendor'}
+                </div>
+            </div>
+
+            <!-- New status selection - ONLY AVAILABLE STATUSES -->
+            <div class="mv-form-group">
+                <label for="newStatusSelect" class="mv-form-label">{l s='Nouveau statut' mod='multivendor'} *</label>
+                <select id="newStatusSelect" class="mv-form-control" required>
+                    <option value="">{l s='Sélectionnez un nouveau statut...' mod='multivendor'}</option>
+                    {* Options will be populated dynamically by JavaScript based on allowed transitions for this specific order detail *}
+                </select>
+                
+                {* Warning when no statuses are available *}
+                <div id="noStatusAvailable" class="mv-status-warning" style="display: none;">
+                    <small class="text-warning">
+                        <i class="material-icons" style="font-size: 16px; vertical-align: middle;">warning</i>
+                        {l s='Aucun changement de statut disponible pour cette ligne de commande.' mod='multivendor'}
+                    </small>
+                </div>
+                
+                {* Info message about available transitions *}
+                <div id="statusInfo" class="mv-status-info" style="display: none;">
+                    <small class="text-muted">
+                        <i class="material-icons" style="font-size: 14px; vertical-align: middle;">info</i>
+                        <span id="statusInfoText"></span>
+                    </small>
+                </div>
+            </div>
+
+            <!-- Comment textarea -->
+            <div class="mv-form-group">
+                <label for="statusComment" class="mv-form-label">{l s='Commentaire' mod='multivendor'}</label>
+                <textarea id="statusComment" 
+                          class="mv-form-control" 
+                          placeholder="{l s='Ajoutez un commentaire sur ce changement de statut...' mod='multivendor'}"
+                          rows="4"></textarea>
+            </div>
+        </div>
+        <div class="mv-status-comment-footer">
+            <button type="button" class="mv-btn mv-btn-secondary" onclick="closeStatusCommentModal()">
+                {l s='Annuler' mod='multivendor'}
+            </button>
+            <button type="button" class="mv-btn mv-btn-primary" id="submitStatusComment" onclick="submitStatusWithComment()">
+                {l s='Mettre à jour le statut' mod='multivendor'}
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+window.mvChangeableInfo = {json_encode($changeable_info)};
+window.mvAllowedTransitions = {json_encode($allowed_status_transitions)};
+window.mvStatusColors = {json_encode($status_colors)};
+window.mvVendorStatuses = {json_encode($vendor_statuses)};
+
+console.log('Changeable Info:', window.mvChangeableInfo);
+console.log('Allowed Transitions:', window.mvAllowedTransitions);
+console.log('Status Colors:', window.mvStatusColors);
+
+const changeableTranslations = {
+    noStatusAvailable: "{l s='Aucun changement de statut disponible' mod='multivendor'}",
+    statusNotChangeable: "{l s='Ce statut ne peut pas être modifié' mod='multivendor'}",
+    selectNewStatus: "{l s='Veuillez sélectionner un nouveau statut' mod='multivendor'}",
+    availableTransitions: "{l s='Transitions disponibles pour cette ligne' mod='multivendor'}",
+    noTransitionsAvailable: "{l s='Aucune transition disponible depuis le statut actuel' mod='multivendor'}"
+};
+</script>
 {/block}
