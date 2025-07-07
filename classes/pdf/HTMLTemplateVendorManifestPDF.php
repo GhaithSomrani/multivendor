@@ -27,6 +27,12 @@ class HTMLTemplateVendorManifestPDF extends HTMLTemplate
         try {
             $manifestData = $this->getPdfData($this->data['orderDetailIds'], $this->data['vendor']);
             $shop_address = $this->getShopAddress();
+
+            // Handle export type for different PDF headers
+            $export_type = isset($this->data['export_type']) ? $this->data['export_type'] : 'pickup';
+            $pdf_title = ($export_type === 'retour') ? 'BON DE RETOUR' : 'BON DE RAMASSAGE';
+            $pdf_subtitle = ($export_type === 'retour') ? 'Document de Retour Multi-Articles' : 'Document de Collecte Multi-Articles';
+
             $this->smarty->assign([
                 'manifests'    => $manifestData['manifests'],
                 'current_date' => date('Y-m-d'),
@@ -36,6 +42,9 @@ class HTMLTemplateVendorManifestPDF extends HTMLTemplate
                 'shop_fax'     => Configuration::get('PS_SHOP_FAX'),
                 'shop_details' => Configuration::get('PS_SHOP_DETAILS'),
                 'free_text'    => Configuration::get('PS_SHOP_FREE_TEXT'),
+                'export_type'  => $export_type,
+                'pdf_title'    => $pdf_title,
+                'pdf_subtitle' => $pdf_subtitle,
             ]);
 
             $template_path = _PS_MODULE_DIR_ . 'multivendor/views/templates/pdf/VendorManifestPDF.tpl';

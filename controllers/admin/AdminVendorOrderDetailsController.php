@@ -273,6 +273,25 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
         // Get status history
         $statusHistory = OrderLineStatusLog::getStatusHistory($vendorOrderDetail->id_order_detail);
 
+        // Add export form data
+        $vendors = Vendor::getAllVendors();
+        $vendor_options = [['id' => 0, 'name' => $this->l('-- Select Vendor --')]];
+        foreach ($vendors as $v) {
+            $vendor_options[] = [
+                'id' => $v['id_vendor'],
+                'name' => $v['shop_name']
+            ];
+        }
+
+        $status_types = OrderLineStatusType::getAllActiveStatusTypes();
+        $status_options = [['id' => 0, 'name' => $this->l('-- Select Status --')]];
+        foreach ($status_types as $status) {
+            $status_options[] = [
+                'id' => $status['id_order_line_status_type'],
+                'name' => $status['status_name']
+            ];
+        }
+
         $this->context->smarty->assign([
             'vendor_order_detail' => $vendorOrderDetail,
             'vendor' => $vendor,
@@ -280,11 +299,111 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
             'order_detail' => $orderDetail,
             'status_info' => $statusInfo,
             'status_history' => $statusHistory,
-            'currency' => $this->context->currency
+            'currency' => $this->context->currency,
+            'vendor_options' => $vendor_options,
+            'status_options' => $status_options,
+            'export_form_action' => $this->context->link->getAdminLink('AdminVendorOrderDetails'),
+            'export_token' => Tools::getAdminTokenLite('AdminVendorOrderDetails')
         ]);
 
         return $this->createTemplate('vendor_order_detail_view.tpl')->fetch();
     }
+
+
+    public function postProcess()
+    {
+        if (Tools::isSubmit('submitExportOrderLines')) {
+            $this->processExportOrderLines();
+        }
+
+        return parent::postProcess();
+    }
+    protected function processExportOrderLines()
+    {
+        $id_vendor = (int)Tools::getValue('id_vendor');
+        $id_status_type = (int)Tools::getValue('id_status_type');
+        $date_from = Tools::getValue('date_from');
+        $date_to = Tools::getValue('date_to');
+        $export_type = Tools::getValue('export_type');
+
+        // Validate inputs
+        if (!$id_vendor || !$id_status_type || !$date_from || !$date_to || !$export_type) {
+            $this->errors[] = $this->l('All fields are required for export.');
+            return;
+        }
+
+        // Get filtered order details using same logic as pickup manifest
+        $orderDetailIds = $this->getFilteredOrderDetails($id_vendor, $id_status_type, $date_from, $date_to, $export_type);
+
+        if (empty($orderDetailIds)) {
+            $this->errors[] = $this->l('No order lines found with the specified criteria.');
+            return;
+        }
+
+        // Generate PDF using same logic as pickup manifest
+        $this->generateFilteredManifest($orderDetailIds, $id_vendor, $export_type);
+    }
+
+    protected function getFilteredOrderDetails($id_vendor, $id_status_type, $date_from, $date_to, $export_type)
+    {
+        $sql = 'SELECT DISTINCT vod.id_order_detail
+            FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod
+            INNER JOIN ' . _DB_PREFIX_ . 'mv_order_line_status ols ON (vod.id_order_detail = ols.id_order_detail AND vod.id_vendor = ols.id_vendor)
+            INNER JOIN ' . _DB_PREFIX_ . 'order_detail od ON vod.id_order_detail = od.id_order_detail
+            INNER JOIN ' . _DB_PREFIX_ . 'orders o ON od.id_order = o.id_order
+            WHERE vod.id_vendor = ' . (int)$id_vendor . '
+            AND ols.id_order_line_status_type = ' . (int)$id_status_type . '
+            AND DATE(o.date_add) >= "' . pSQL($date_from) . '"
+            AND DATE(o.date_add) <= "' . pSQL($date_to) . '"
+            ORDER BY o.date_add DESC';
+
+        $results = Db::getInstance()->executeS($sql);
+
+        if (!$results) {
+            return [];
+        }
+
+        $orderDetailIds = [];
+        foreach ($results as $row) {
+            $orderDetailIds[] = (int)$row['id_order_detail'];
+        }
+
+        return $orderDetailIds;
+    }
+
+
+    protected function generateFilteredManifest($orderDetailIds, $id_vendor, $export_type)
+    {
+        try {
+            // Get vendor info (same as pickup manifest)
+            $vendor = Vendor::getVendorById($id_vendor);
+
+            if (!$vendor) {
+                $this->errors[] = $this->l('Vendor not found.');
+                return;
+            }
+
+            // Prepare PDF data (same structure as pickup manifest)
+            $pdfData = [
+                'orderDetailIds' => $orderDetailIds,
+                'vendor' => $vendor,
+                'export_type' => $export_type,
+                'filename' => 'Export_' . $export_type . '_' . date('YmdHis') . '.pdf'
+            ];
+
+            // Use same PDF generation logic as pickup manifest
+            $pdf = new PDF([$pdfData], 'VendorManifestPDF', Context::getContext()->smarty);
+            $pdf->render(true);
+
+            exit;
+        } catch (Exception $e) {
+            $this->errors[] = $this->l('Error generating PDF: ') . $e->getMessage();
+            PrestaShopLogger::addLog('Export PDF Error: ' . $e->getMessage(), 3, null, 'AdminVendorOrderDetails');
+        }
+    }
+
+
+
 
     /**
      * Disable delete action

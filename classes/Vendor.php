@@ -93,7 +93,16 @@ class Vendor extends ObjectModel
         return Db::getInstance()->executeS($query);
     }
 
-  
+    public static function getVendorById($id_vendor)
+    {
+        $sql = 'SELECT v.*, s.name as supplier_name
+            FROM ' . _DB_PREFIX_ . 'mv_vendor v
+            LEFT JOIN ' . _DB_PREFIX_ . 'supplier s ON v.id_supplier = s.id_supplier
+            WHERE v.id_vendor = ' . (int)$id_vendor;
+
+        return Db::getInstance()->getRow($sql);
+    }
+
 
 
     /**
