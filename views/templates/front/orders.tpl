@@ -404,10 +404,10 @@
 </div>
 
 <script>
-window.mvChangeableInfo = {json_encode($changeable_info)};
-window.mvAllowedTransitions = {json_encode($allowed_status_transitions)};
-window.mvStatusColors = {json_encode($status_colors)};
-window.mvVendorStatuses = {json_encode($vendor_statuses)};
+window.mvChangeableInfo = {$changeable_info|json_encode nofilter};
+window.mvAllowedTransitions = {$allowed_status_transitions|json_encode nofilter};
+window.mvStatusColors = {$status_colors|json_encode nofilter};
+window.mvVendorStatuses = {$vendor_statuses|json_encode nofilter};
 
 console.log('Changeable Info:', window.mvChangeableInfo);
 console.log('Allowed Transitions:', window.mvAllowedTransitions);

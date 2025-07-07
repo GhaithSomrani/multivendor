@@ -155,7 +155,7 @@ $sql[] = 'INSERT INTO `' . _DB_PREFIX_ . 'configuration` (`name`, `value`, `date
           VALUES 
           ("MV_DEFAULT_COMMISSION", "10", NOW(), NOW()),
           ("MV_AUTO_APPROVE_VENDORS", "0", NOW(), NOW()),
-          ("MV_ALLOW_VENDOR_REGISTRATION", "1", NOW(), NOW())
+          ("MV_HIDE_FROM_VENDOR", "", NOW(), NOW())
           ON DUPLICATE KEY UPDATE `value` = VALUES(`value`), `date_upd` = VALUES(`date_upd`)';
 
 $sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'mv_order_line_status_type` (

@@ -31,17 +31,11 @@ class VendorHelper
      */
     public static function getVendorByCustomer($id_customer)
     {
-        $cacheKey = 'vendor_by_customer_' . $id_customer;
-
-
-
         $query = new DbQuery();
         $query->select('*');
         $query->from('mv_vendor');
         $query->where('id_customer = ' . (int)$id_customer);
-
         $result = Db::getInstance()->getRow($query);
-
         return $result;
     }
 
@@ -55,6 +49,7 @@ class VendorHelper
         $defaultStatusTypeId = OrderLineStatus::getDefaultStatusTypeId();
         $defaultStatusType = new OrderLineStatusType($defaultStatusTypeId);
 
+        $hiddenIdsString = OrderHelper::getHiddenStatusTypeString();
         $query = new DbQuery();
         $query->select('
         vod.id_order_detail, 
@@ -85,6 +80,7 @@ class VendorHelper
         $query->leftJoin('mv_order_line_status', 'ols', 'ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor');
         $query->leftJoin('mv_order_line_status_type', 'olst', 'olst.id_order_line_status_type = ols.id_order_line_status_type');
         $query->where('vod.id_vendor = ' . (int)$id_vendor);
+        $query->where('ols.id_order_line_status_type NOT IN (' . $hiddenIdsString . ')');
         $query->orderBy('o.date_add DESC');
 
         return Db::getInstance()->executeS($query);
@@ -105,6 +101,7 @@ class VendorHelper
         if ($start_date && $end_date) {
             $dateFilter = ' AND DATE(o.date_add) BETWEEN "' . pSQL($start_date) . '" AND "' . pSQL($end_date) . '"';
         }
+        $hiddenIdsString = OrderHelper::getHiddenStatusTypeString();
 
         $query = '
             SELECT 
@@ -119,8 +116,9 @@ class VendorHelper
                     AND DATE(o2.date_add) = CURDATE()
                 ) as todays_orders
             FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod
-            LEFT JOIN ' . _DB_PREFIX_ . 'orders o ON o.id_order = vod.id_order
-            WHERE vod.id_vendor = ' . (int)$id_vendor . $dateFilter;
+            LEFT JOIN ' . _DB_PREFIX_ . 'orders o ON o.id_order = vod.id_order 
+            LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status ols ON ols.id_order_detail = vod.id_order_detail 
+            WHERE  ols.id_order_line_status_type NOT IN (' . $hiddenIdsString . ') and vod.id_vendor = ' . (int)$id_vendor . $dateFilter;
 
         return Db::getInstance()->getRow($query);
     }
@@ -139,6 +137,8 @@ class VendorHelper
         }
 
 
+        $hiddenIdsString = OrderHelper::getHiddenStatusTypeString();
+
         $query = '
             SELECT 
                 MONTH(o.date_add) as month_num,
@@ -146,7 +146,8 @@ class VendorHelper
                 IFNULL(SUM(vod.vendor_amount), 0) as sales
             FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod
             LEFT JOIN ' . _DB_PREFIX_ . 'orders o ON o.id_order = vod.id_order
-            WHERE vod.id_vendor = ' . (int)$id_vendor . '
+            LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status ols ON ols.id_order_detail = vod.id_order_detail 
+            WHERE ols.id_order_line_status_type NOT IN (' . $hiddenIdsString . ') AND vod.id_vendor = ' . (int)$id_vendor . '
             AND YEAR(o.date_add) = ' . (int)$year . '
             GROUP BY MONTH(o.date_add)
             ORDER BY MONTH(o.date_add)';
@@ -182,7 +183,7 @@ class VendorHelper
      */
     public static function getDailySales($id_vendor, $start_date, $end_date)
     {
-        $cacheKey = "daily_sales_{$id_vendor}_{$start_date}_{$end_date}";
+        $hiddenIdsString = OrderHelper::getHiddenStatusTypeString();
 
 
         $query = '
@@ -192,9 +193,10 @@ class VendorHelper
                 IFNULL(SUM(vod.vendor_amount), 0) as sales
             FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod
             LEFT JOIN ' . _DB_PREFIX_ . 'orders o ON o.id_order = vod.id_order
-            WHERE vod.id_vendor = ' . (int)$id_vendor . '
+            LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status ols ON ols.id_order_detail = vod.id_order_detail 
+            WHERE ols.id_order_line_status_type NOT IN (' . $hiddenIdsString . ') AND vod.id_vendor = ' . (int)$id_vendor . '
             AND DATE(o.date_add) BETWEEN "' . pSQL($start_date) . '" AND "' . pSQL($end_date) . '"
-            GROUP BY DATE(o.date_add)
+            GROUP BY DATE(o.date_add) 
             ORDER BY DATE(o.date_add)';
 
         $results = Db::getInstance()->executeS($query);
@@ -250,37 +252,37 @@ class VendorHelper
      */
     public static function getStatusBreakdown($id_vendor)
     {
-        $cacheKey = "status_breakdown_{$id_vendor}";
-
 
         $defaultStatusTypeId = OrderLineStatus::getDefaultStatusTypeId();
+        $hiddenIdsString = OrderHelper::getHiddenStatusTypeString();
+        $visibleStatusFilter = ' AND lstype.id_order_line_status_type NOT IN (' . $hiddenIdsString . ')';
 
         $query = '
-            SELECT 
-                lstype.id_order_line_status_type,
-                lstype.name as status,
-                lstype.color,
-                lstype.position,
-                lstype.is_vendor_allowed,
-                (
-                    SELECT COUNT(*)
-                    FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod
-                    LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status ols 
-                        ON ols.id_order_detail = vod.id_order_detail 
-                        AND ols.id_vendor = vod.id_vendor
-                    WHERE vod.id_vendor = ' . (int)$id_vendor . '
-                    AND (
-                        ols.id_order_line_status_type = lstype.id_order_line_status_type 
-                        OR 
-                        (ols.id_order_line_status_type IS NULL AND lstype.id_order_line_status_type = ' . (int)$defaultStatusTypeId . ')
-                    )
-                ) as count
-            FROM ' . _DB_PREFIX_ . 'mv_order_line_status_type lstype
-            WHERE lstype.active = 1
-            ORDER BY lstype.position ASC';
+        SELECT 
+            lstype.id_order_line_status_type,
+            lstype.name as status,
+            lstype.color,
+            lstype.position,
+            lstype.is_vendor_allowed,
+            (
+                SELECT COUNT(*)
+                FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod
+                LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status ols
+                    ON ols.id_order_detail = vod.id_order_detail
+                    AND ols.id_vendor = vod.id_vendor
+                WHERE vod.id_vendor = ' . (int)$id_vendor . '
+                AND (
+                    ols.id_order_line_status_type = lstype.id_order_line_status_type 
+                    OR 
+                    (ols.id_order_line_status_type IS NULL AND lstype.id_order_line_status_type = ' . (int)$defaultStatusTypeId . ')
+                )
+            ) as count
+        FROM ' . _DB_PREFIX_ . 'mv_order_line_status_type lstype
+        WHERE lstype.active = 1' .
+            $visibleStatusFilter . '
+        ORDER BY lstype.position ASC';
 
         $results = Db::getInstance()->executeS($query);
-
 
         return $results;
     }
@@ -459,7 +461,7 @@ class VendorHelper
             return [
                 'success' => true,
                 'statusData' => $statusData,
-                'availableStatuses' => $availableStatuses  // Only available transitions, not all statuses
+                'availableStatuses' => $availableStatuses
             ];
         } catch (Exception $e) {
             error_log('Error in getOrderLineStatusesForAdmin: ' . $e->getMessage());
@@ -511,7 +513,6 @@ class VendorHelper
                 return ['success' => false, 'message' => 'This order detail does not belong to the specified vendor'];
             }
 
-            // Update the status
             $success = OrderLineStatus::updateStatus(
                 $id_order_detail,
                 $id_vendor,
@@ -755,7 +756,7 @@ class VendorHelper
         if (!$vendor) {
             return ['success' => false, 'message' => 'Not authorized'];
         }
-
+        $hiddenIdsString = OrderHelper::getHiddenStatusTypeString();
         $id_vendor = $vendor['id_vendor'];
 
         $query = new DbQuery();
@@ -776,6 +777,8 @@ class VendorHelper
         $query->leftJoin('mv_order_line_status', 'ols', 'ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor');
         $query->leftJoin('mv_order_line_status_type', 'olst', 'olst.id_order_line_status_type = ols.id_order_line_status_type');
         $query->where('vod.id_vendor = ' . (int)$id_vendor);
+        $query->where('ols.id_order_line_status_type NOT IN (' . $hiddenIdsString . ')');
+
         $query->orderBy('o.date_add DESC');
 
         $orderLines = Db::getInstance()->executeS($query);
@@ -819,6 +822,7 @@ class VendorHelper
         fclose($output);
         return true;
     }
+
 
     /**
      * Get the first status that has commission_action = 'add' and is vendor allowed
@@ -1141,16 +1145,16 @@ class VendorHelper
      * 
      * @param int $id_customer Customer ID
      * @return array|false Vendor data or false if not found
-     */ 
-     public static function getVendorByIdOrderDetail($id_order_detail)
-     {
-         $query = new DbQuery();
-         $query->select('v.*');
-         $query->from('mv_vendor_order_detail', 'vod');
-         $query->leftJoin('mv_vendor', 'v', 'v.id_vendor = vod.id_vendor');
-         $query->where('vod.id_order_detail = ' . (int)$id_order_detail);
-         $query->groupBy('v.id_vendor');
+     */
+    public static function getVendorByIdOrderDetail($id_order_detail)
+    {
+        $query = new DbQuery();
+        $query->select('v.*');
+        $query->from('mv_vendor_order_detail', 'vod');
+        $query->leftJoin('mv_vendor', 'v', 'v.id_vendor = vod.id_vendor');
+        $query->where('vod.id_order_detail = ' . (int)$id_order_detail);
+        $query->groupBy('v.id_vendor');
 
-         return Db::getInstance()->getRow($query);
-     }
+        return Db::getInstance()->getRow($query);
+    }
 }
