@@ -1,73 +1,6 @@
 {*
 * Vendor Order Detail View Template
 *}
- <div class="panel">
-        <div class="panel-heading">
-            <i class="icon-download"></i> {l s='Export Order Lines' d='Modules.Multivendor.Admin'}
-        </div>
-        <div class="panel-body">
-            <form method="post" action="{$export_form_action}" class="form-horizontal">
-                <input type="hidden" name="token" value="{$export_token}" />
-
-                <div class="row">
-                    <div class="col-md-3">
-                        <div class="form-group">
-                            <label class="control-label">{l s='Vendor' d='Modules.Multivendor.Admin'}</label>
-                            <select name="id_vendor" class="form-control" required>
-                                {foreach from=$vendor_options item=option}
-                                    <option value="{$option.id}">{$option.name}</option>
-                                {/foreach}
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="col-md-3">
-                        <div class="form-group">
-                            <label class="control-label">{l s='Order Line Status' d='Modules.Multivendor.Admin'}</label>
-                            <select name="id_status_type" class="form-control" required>
-                                {foreach from=$status_options item=option}
-                                    <option value="{$option.id}">{$option.name}</option>
-                                {/foreach}
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="col-md-2">
-                        <div class="form-group">
-                            <label class="control-label">{l s='Date From' d='Modules.Multivendor.Admin'}</label>
-                            <input type="date" name="date_from" class="form-control" required />
-                        </div>
-                    </div>
-
-                    <div class="col-md-2">
-                        <div class="form-group">
-                            <label class="control-label">{l s='Date To' d='Modules.Multivendor.Admin'}</label>
-                            <input type="date" name="date_to" class="form-control" required />
-                        </div>
-                    </div>
-
-                    <div class="col-md-2">
-                        <div class="form-group">
-                            <label class="control-label">{l s='Export Type' d='Modules.Multivendor.Admin'}</label>
-                            <select name="export_type" class="form-control" required>
-                                <option value="">{l s='-- Select Type --' d='Modules.Multivendor.Admin'}</option>
-                                <option value="pickup">{l s='Pickup' d='Modules.Multivendor.Admin'}</option>
-                                <option value="retour">{l s='Return' d='Modules.Multivendor.Admin'}</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="row">
-                    <div class="col-md-12 text-right">
-                        <button type="submit" name="submitExportOrderLines" class="btn btn-primary">
-                            <i class="icon-download"></i> {l s='Export PDF' d='Modules.Multivendor.Admin'}
-                        </button>
-                    </div>
-                </div>
-            </form>
-        </div>
-    </div>
 
 <div class="panel">
     <div class="panel-heading">
@@ -77,7 +10,7 @@
             - #{$vendor_order_detail->id}
         {/if}
     </div>
-   
+
     <div class="panel-body">
         {if isset($vendor_order_detail)}
             <div class="row">
