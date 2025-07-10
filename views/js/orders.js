@@ -16,6 +16,7 @@ $(document).ready(function () {
         $(this).css('background-color', color);
     });
 
+
     // Handle status change dropdown - FIXED VERSION for status type IDs
     $('.order-line-status-select').on('change', function () {
         const $select = $(this);
@@ -1168,4 +1169,415 @@ $(document).ready(function () {
         const changeableOrderDetails = Object.values(window.mvChangeableInfo || {}).filter(Boolean).length;
         console.log(`- ${totalOrderDetails} order details total, ${changeableOrderDetails} changeable`);
     }
+});
+
+
+// Mobile Functions - Add these to your existing orders.js
+
+// Mobile variables
+let isSelectMode = false;
+let selectedMobileOrders = new Set();
+
+/**
+ * Initialize mobile functionality
+ */
+function initializeMobileFunctionality() {
+    if (window.matchMedia('(max-width: 768px)').matches) {
+        initializeMobileOrderHandlers();
+        initializeMobileBulkActions();
+        initializeMobileMPNScanner();
+        initializeMobileStatusSelects();
+        initializeMobileHistoryButtons();
+        initializeMobileManifest();
+    }
+}
+
+/**
+ * Initialize mobile order handlers
+ */
+function initializeMobileOrderHandlers() {
+    const checkboxes = document.querySelectorAll('.mv-mobile-checkbox');
+    checkboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            handleMobileCheckboxChange(this);
+        });
+    });
+}
+
+/**
+ * Initialize mobile history buttons
+ */
+function initializeMobileHistoryButtons() {
+    const historyButtons = document.querySelectorAll('.mv-mobile-btn-history');
+    historyButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const orderDetailId = this.dataset.orderDetailId;
+            if (typeof viewStatusHistory === 'function') {
+                viewStatusHistory(orderDetailId);
+            }
+        });
+    });
+}
+
+/**
+ * Toggle select all functionality for mobile
+ */
+function toggleSelectAll() {
+    isSelectMode = !isSelectMode;
+    const selectButton = document.querySelector('.mv-btn-select-mobile');
+    const bulkActions = document.getElementById('mobileBulkActions');
+    const checkboxes = document.querySelectorAll('.mv-mobile-checkbox');
+    
+    if (isSelectMode) {
+        selectButton.innerHTML = '<i class="mv-icon">✖️</i> Annuler';
+        selectButton.classList.add('active');
+        bulkActions.style.display = 'block';
+        
+        checkboxes.forEach(checkbox => {
+            checkbox.style.display = 'block';
+        });
+    } else {
+        selectButton.innerHTML = '<i class="mv-icon">☑️</i> Sélectionner';
+        selectButton.classList.remove('active');
+        bulkActions.style.display = 'none';
+        selectedMobileOrders.clear();
+        
+        checkboxes.forEach(checkbox => {
+            checkbox.style.display = 'none';
+            checkbox.checked = false;
+        });
+        
+        updateMobileSelectedCount();
+    }
+}
+
+/**
+ * Handle mobile checkbox changes
+ */
+function handleMobileCheckboxChange(checkbox) {
+    const orderId = checkbox.dataset.id;
+    
+    if (checkbox.checked) {
+        selectedMobileOrders.add(orderId);
+    } else {
+        selectedMobileOrders.delete(orderId);
+    }
+    
+    updateMobileSelectedCount();
+}
+
+/**
+ * Update mobile selected count
+ */
+function updateMobileSelectedCount() {
+    const countElement = document.getElementById('mobile-selected-count');
+    const applyButton = document.getElementById('mobile-apply-bulk-status');
+    const selectElement = document.getElementById('mobile-bulk-status-select');
+    
+    if (countElement) {
+        countElement.textContent = selectedMobileOrders.size;
+    }
+    
+    const hasSelection = selectedMobileOrders.size > 0;
+    if (applyButton) {
+        applyButton.disabled = !hasSelection;
+    }
+    if (selectElement) {
+        selectElement.disabled = !hasSelection;
+    }
+}
+
+/**
+ * Initialize mobile bulk actions
+ */
+function initializeMobileBulkActions() {
+    const applyButton = document.getElementById('mobile-apply-bulk-status');
+    if (applyButton) {
+        applyButton.addEventListener('click', function() {
+            applyMobileBulkStatus();
+        });
+    }
+}
+
+/**
+ * Apply bulk status change on mobile
+ */
+function applyMobileBulkStatus() {
+    const selectElement = document.getElementById('mobile-bulk-status-select');
+    const newStatus = selectElement.value;
+    
+    if (!newStatus) {
+        showMobileNotification('Veuillez sélectionner un statut', 'warning');
+        return;
+    }
+    
+    if (selectedMobileOrders.size === 0) {
+        showMobileNotification('Aucune commande sélectionnée', 'warning');
+        return;
+    }
+    
+    if (!confirm(bulkStatusChangeConfirmText)) {
+        return;
+    }
+    
+    const applyButton = document.getElementById('mobile-apply-bulk-status');
+    const originalText = applyButton.textContent;
+    applyButton.textContent = processingText;
+    applyButton.disabled = true;
+    
+    // Use existing bulk processing function
+    if (typeof processBulkStatusChange === 'function') {
+        const orderIds = Array.from(selectedMobileOrders);
+        processBulkStatusChange(orderIds, newStatus)
+            .then(results => {
+                const successCount = results.filter(r => r.success).length;
+                const errorCount = results.length - successCount;
+                
+                if (successCount > 0) {
+                    showMobileNotification(`${successCount} ${successStatusText}`, 'success');
+                }
+                if (errorCount > 0) {
+                    showMobileNotification(`${errorCount} ${errorStatusText}`, 'error');
+                }
+                
+                setTimeout(() => window.location.reload(), 2000);
+            })
+            .catch(error => {
+                console.error('Bulk status change error:', error);
+                showMobileNotification('Erreur lors de la mise à jour', 'error');
+            })
+            .finally(() => {
+                applyButton.textContent = originalText;
+                applyButton.disabled = false;
+            });
+    } else {
+        showMobileNotification('Fonction de mise à jour groupée non disponible', 'error');
+        applyButton.textContent = originalText;
+        applyButton.disabled = false;
+    }
+}
+
+/**
+ * Initialize mobile MPN scanner
+ */
+function initializeMobileMPNScanner() {
+    const mpnInput = document.getElementById('mobile-global-mpn-input');
+    if (mpnInput) {
+        mpnInput.addEventListener('input', function() {
+            handleMobileMPNScan(this.value);
+        });
+        
+        mpnInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                this.blur();
+            }
+        });
+    }
+}
+
+/**
+ * Handle mobile MPN scan
+ */
+function handleMobileMPNScan(mpnValue) {
+    const statusMessage = document.getElementById('mobile-mpn-status-message');
+    
+    if (!mpnValue.trim()) {
+        if (statusMessage) {
+            statusMessage.textContent = 'Prêt à scanner';
+            statusMessage.className = 'mv-mobile-status-message';
+        }
+        return;
+    }
+    
+    const orderItems = document.querySelectorAll('.mv-mobile-order-item');
+    let found = false;
+    
+    orderItems.forEach(item => {
+        const productMPN = item.dataset.productMpn;
+        if (productMPN && productMPN.toLowerCase().includes(mpnValue.toLowerCase())) {
+            item.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            item.style.border = '3px solid #10b981';
+            item.style.backgroundColor = '#f0fdf4';
+            
+            setTimeout(() => {
+                item.style.border = '';
+                item.style.backgroundColor = '';
+            }, 3000);
+            
+            found = true;
+        }
+    });
+    
+    if (statusMessage) {
+        if (found) {
+            statusMessage.textContent = `Produit trouvé: ${mpnValue}`;
+            statusMessage.className = 'mv-mobile-status-message success';
+        } else {
+            statusMessage.textContent = `Aucun produit trouvé: ${mpnValue}`;
+            statusMessage.className = 'mv-mobile-status-message error';
+        }
+    }
+}
+
+/**
+ * Initialize mobile status selects
+ */
+function initializeMobileStatusSelects() {
+    const statusSelects = document.querySelectorAll('.mv-mobile-status-select.order-line-status-select');
+    
+    statusSelects.forEach(select => {
+        select.addEventListener('change', function() {
+            const orderDetailId = this.dataset.orderDetailId;
+            const newStatus = this.value;
+            const originalStatus = this.dataset.originalStatusTypeId;
+            
+            if (newStatus && newStatus !== originalStatus) {
+                updateMobileOrderLineStatus(orderDetailId, newStatus, this);
+            }
+        });
+    });
+}
+
+/**
+ * Update order line status on mobile
+ */
+function updateMobileOrderLineStatus(orderDetailId, newStatusId, selectElement) {
+    // Use existing desktop function
+    if (typeof updateOrderLineStatus === 'function') {
+        selectElement.disabled = true;
+        const loadingOption = document.createElement('option');
+        loadingOption.value = '';
+        loadingOption.text = 'Mise à jour...';
+        loadingOption.selected = true;
+        selectElement.insertBefore(loadingOption, selectElement.firstChild);
+        
+        updateOrderLineStatus(orderDetailId)
+            .then(() => {
+                showMobileNotification('Statut mis à jour avec succès', 'success');
+                setTimeout(() => window.location.reload(), 1000);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showMobileNotification('Erreur lors de la mise à jour', 'error');
+                selectElement.removeChild(loadingOption);
+                selectElement.disabled = false;
+                selectElement.value = selectElement.dataset.originalStatusTypeId;
+            });
+    } else {
+        showMobileNotification('Fonction de mise à jour non disponible', 'error');
+    }
+}
+
+/**
+ * Initialize mobile manifest functionality
+ */
+function initializeMobileManifest() {
+    const printButton = document.getElementById('mobile-print-manifest-btn');
+    if (printButton) {
+        printButton.addEventListener('click', function() {
+            if (typeof printManifest === 'function') {
+                printManifest();
+            } else {
+                showMobileNotification('Fonction d\'impression non disponible', 'warning');
+            }
+        });
+    }
+}
+
+/**
+ * Show mobile notification
+ */
+function showMobileNotification(message, type = 'info') {
+    const existingNotifications = document.querySelectorAll('.mv-mobile-notification');
+    existingNotifications.forEach(notif => notif.remove());
+    
+    const notification = document.createElement('div');
+    notification.className = `mv-mobile-notification mv-mobile-notification-${type}`;
+    notification.innerHTML = `
+        <div class="mv-mobile-notification-content">
+            <span class="mv-mobile-notification-message">${message}</span>
+            <button class="mv-mobile-notification-close" onclick="this.parentElement.parentElement.remove()">×</button>
+        </div>
+    `;
+    
+    if (!document.querySelector('#mv-mobile-notification-styles')) {
+        const styles = document.createElement('style');
+        styles.id = 'mv-mobile-notification-styles';
+        styles.textContent = `
+            .mv-mobile-notification {
+                position: fixed;
+                top: 20px;
+                left: 20px;
+                right: 20px;
+                z-index: 9999;
+                border-radius: 8px;
+                box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+                animation: slideInTop 0.3s ease;
+            }
+            .mv-mobile-notification-success {
+                background: #d4edda;
+                border: 1px solid #c3e6cb;
+                color: #155724;
+            }
+            .mv-mobile-notification-error {
+                background: #f8d7da;
+                border: 1px solid #f5c6cb;
+                color: #721c24;
+            }
+            .mv-mobile-notification-warning {
+                background: #fff3cd;
+                border: 1px solid #ffeaa7;
+                color: #856404;
+            }
+            .mv-mobile-notification-info {
+                background: #d1ecf1;
+                border: 1px solid #bee5eb;
+                color: #0c5460;
+            }
+            .mv-mobile-notification-content {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 12px 16px;
+            }
+            .mv-mobile-notification-message {
+                font-weight: 600;
+                font-size: 14px;
+            }
+            .mv-mobile-notification-close {
+                background: none;
+                border: none;
+                font-size: 18px;
+                cursor: pointer;
+                padding: 0;
+                margin-left: 12px;
+                opacity: 0.7;
+            }
+            @keyframes slideInTop {
+                from { transform: translateY(-100%); opacity: 0; }
+                to { transform: translateY(0); opacity: 1; }
+            }
+        `;
+        document.head.appendChild(styles);
+    }
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        if (notification.parentElement) {
+            notification.remove();
+        }
+    }, 5000);
+}
+
+// Add mobile initialization to existing DOMContentLoaded
+$(document).ready(function() {
+    // Your existing initialization code here...
+    
+    // Add mobile initialization
+    initializeMobileFunctionality();
+    
+    // Make functions globally available
+    window.toggleSelectAll = toggleSelectAll;
 });
