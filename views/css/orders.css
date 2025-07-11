@@ -1220,13 +1220,16 @@ td.mv-actions {
 .mv-mobile-status-badge {
     display: inline-block;
     padding: 6px 12px;
-    border-radius: 20px;
+    border-radius: 0.3rem;
     color: #fff;
     font-size: 12px;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    width: 100%;
     align-self: flex-start;
+    font-size: 0.6rem;
+    text-align: center;
 }
 
 .mv-mobile-status-select {
@@ -1424,4 +1427,5 @@ td.mv-actions {
     #pickup-manifest-block {
         display: none !important;
     }
+
 }

@@ -10,13 +10,13 @@
         </div>
         <div class="mv-card-body">
             <select class="mv-filter-dropdown-mobile" onchange="window.location.href=this.value">
-                <option value="{$link->getModuleLink('multivendor', 'orders')}" 
-                        {if $filter_status == 'all'}selected{/if}>
+                <option value="{$link->getModuleLink('multivendor', 'orders')}" {if $filter_status == 'all'}selected{/if}>
                     {l s='Tout' mod='multivendor'} ({$order_summary.total_lines})
                 </option>
                 {foreach from=$order_summary.status_breakdown item=statusData}
-                    <option value="{$link->getModuleLink('multivendor', 'orders', ['status' => $statusData.id_order_line_status_type])}"
-                            {if $filter_status == $statusData.id_order_line_status_type}selected{/if}>
+                    <option
+                        value="{$link->getModuleLink('multivendor', 'orders', ['status' => $statusData.id_order_line_status_type])}"
+                        {if $filter_status == $statusData.id_order_line_status_type}selected{/if}>
                         {$statusData.status|capitalize} ({$statusData.count})
                     </option>
                 {/foreach}
@@ -41,7 +41,7 @@
                 {l s='Sélectionner' mod='multivendor'}
             </button>
         </div>
-        
+
         {* Mobile Bulk Actions *}
         <div class="mv-mobile-bulk-actions" id="mobileBulkActions" style="display: none;">
             <div class="mv-selected-info">
@@ -72,8 +72,7 @@
     <div class="mv-card-body">
         <div class="mv-mobile-mpn-container">
             <input type="text" id="mobile-global-mpn-input" class="mv-mobile-input"
-                placeholder="{l s='Scannez le code-barres MPN...' mod='multivendor'}"
-                autocomplete="off">
+                placeholder="{l s='Scannez le code-barres MPN...' mod='multivendor'}" autocomplete="off">
             <div class="mv-mobile-mpn-status">
                 <span id="mobile-mpn-status-message" class="mv-mobile-status-message">
                     {l s='Prêt à scanner' mod='multivendor'}
@@ -92,15 +91,14 @@
         {if $order_lines}
             <div class="mv-mobile-orders-grid">
                 {foreach from=$order_lines item=line}
-                    <div class="mv-mobile-order-item" 
-                         data-id="{$line.id_order_detail}"
-                         data-status="{$line.line_status|default:'En attente'|lower}"
-                         data-product-mpn="{$line.product_mpn}"
-                         data-commission-action="{if isset($line.commission_action)}{$line.commission_action}{else}none{/if}">
-                        
+                    <div class="mv-mobile-order-item" data-id="{$line.id_order_detail}"
+                        data-status="{$line.line_status|default:'En attente'|lower}" data-product-mpn="{$line.product_mpn}"
+                        data-commission-action="{if isset($line.commission_action)}{$line.commission_action}{else}none{/if}">
+
                         <div class="mv-mobile-order-header">
                             <div class="mv-mobile-order-ref">
-                                <input type="checkbox" class="mv-mobile-checkbox" data-id="{$line.id_order_detail}" style="display: none;">
+                                <input type="checkbox" class="mv-mobile-checkbox" data-id="{$line.id_order_detail}"
+                                    style="display: none;">
                                 <a href="#" class="mv-mobile-link">
                                     #{$line.order_reference}#{$line.id_order_detail}
                                 </a>
@@ -130,44 +128,27 @@
                             <div class="mv-mobile-status-section">
                                 <div class="mv-mobile-current-status">
                                     <span class="mv-mobile-label">{l s='Statut' mod='multivendor'}</span>
-                                    {if isset($all_statuses[$line.status_type_id]) && !isset($vendor_statuses[$line.status_type_id])}
-                                        <span class="mv-mobile-status-badge"
-                                            style="background-color: {$status_colors[$line.line_status]|default:'#777'};">
-                                            {$line.line_status|capitalize}
-                                        </span>
-                                    {else}
-                                        <select class="mv-mobile-status-select order-line-status-select"
-                                            id="mobile-status-select-{$line.id_order_detail}"
-                                            data-order-detail-id="{$line.id_order_detail}"
-                                            data-original-status-type-id="{$line.status_type_id}">
-                                            {foreach from=$vendor_statuses key=status_type_id item=status_label}
-                                                {assign var="is_changeable" value=OrderHelper::isChangableStatusType($line.id_order_detail, $status_type_id)}
-                                                {if $is_changeable ||  $line.status_type_id == $status_type_id}
-                                                    <option value="{$status_type_id}"
-                                                        {if $line.status_type_id == $status_type_id}selected{/if}
-                                                        style="background-color: {$status_colors[$status_label]}; color: white;">
-                                                        {$status_label|escape:'html':'UTF-8'|capitalize}
-                                                    </option>
-                                                {/if}
-                                            {/foreach}
-                                        </select>
-                                    {/if}
+                                    <span class="mv-mobile-status-badge"
+                                        style="background-color: {$status_colors[$line.line_status]|default:'#777'};">
+                                        {$line.line_status|capitalize}
+                                    </span>
                                 </div>
                             </div>
 
                             <div class="mv-mobile-actions">
+                                <button class="mv-mobile-btn mv-mobile-btn-comment"
+                                    onclick='openStatusCommentModal({$line.id_order_detail}, "{$line.product_name}", "{$line.line_status}", "{$status_colors[$line.line_status]|default:'#777'}")'
+                                    title="{l s='Ajouter commentaire' mod='multivendor'}">
+                                    <i class="mv-icon">🔃</i>
+                                    {l s='Modifier le statut' mod='multivendor'}
+                                </button>
                                 <button class="mv-mobile-btn mv-mobile-btn-history view-status-history"
                                     data-order-detail-id="{$line.id_order_detail}"
                                     title="{l s='Voir l\'historique' mod='multivendor'}">
                                     <i class="mv-icon">📜</i>
                                     {l s='Historique' mod='multivendor'}
                                 </button>
-                                <button class="mv-mobile-btn mv-mobile-btn-comment"
-                                    onclick='openStatusCommentModal({$line.id_order_detail}, "{$line.product_name}", "{$line.line_status}", "{$status_colors[$line.line_status]|default:'#777'}")'
-                                    title="{l s='Ajouter commentaire' mod='multivendor'}">
-                                    <i class="mv-icon">🔃</i>
-                                    {l s='Commentaire' mod='multivendor'}
-                                </button>
+
                             </div>
                         </div>
                     </div>
@@ -182,14 +163,14 @@
                     </div>
                     <div class="mv-mobile-pagination-controls">
                         {if $current_page > 1}
-                            <a class="mv-mobile-pagination-btn" 
-                               href="{$link->getModuleLink('multivendor', 'orders', ['page' => $current_page-1, 'status' => $filter_status])}">
+                            <a class="mv-mobile-pagination-btn"
+                                href="{$link->getModuleLink('multivendor', 'orders', ['page' => $current_page-1, 'status' => $filter_status])}">
                                 ‹ {l s='Précédent' mod='multivendor'}
                             </a>
                         {/if}
                         {if $current_page < $pages_nb}
-                            <a class="mv-mobile-pagination-btn" 
-                               href="{$link->getModuleLink('multivendor', 'orders', ['page' => $current_page+1, 'status' => $filter_status])}">
+                            <a class="mv-mobile-pagination-btn"
+                                href="{$link->getModuleLink('multivendor', 'orders', ['page' => $current_page+1, 'status' => $filter_status])}">
                                 {l s='Suivant' mod='multivendor'} ›
                             </a>
                         {/if}
@@ -208,7 +189,8 @@
 {* Mobile Pickup Manifest *}
 <div id="mobile-pickup-manifest-block" class="mv-card">
     <div class="mv-card-header">
-        <h5 class="mv-card-title">{l s='Manifeste de collecte' mod='multivendor'} (<span id="mobile-manifest-count">0</span>)</h5>
+        <h5 class="mv-card-title">{l s='Manifeste de collecte' mod='multivendor'} (<span
+                id="mobile-manifest-count">0</span>)</h5>
         <button id="mobile-print-manifest-btn" class="mv-btn-mobile mv-btn-primary-mobile">
             <i class="mv-icon">🖨️</i>
             {l s='Imprimer' mod='multivendor'}

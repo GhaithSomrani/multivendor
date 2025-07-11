@@ -285,6 +285,9 @@ span.mv-status-badge {
     .mv-stat-value {
         font-size: 24px;
     }
+    .mv-nav {
+        flex-direction: column;
+    }
 }
 /* Date Filter Styles for Dashboard */
 

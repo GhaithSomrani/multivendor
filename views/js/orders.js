@@ -550,6 +550,7 @@ function addToManifest(orderDetailId, itemData = null) {
     const timestamp = new Date().toLocaleTimeString();
     verifiedOrderDetails.add(orderDetailId);
 
+    // Add to desktop manifest
     $('#manifest-items').append(`
         <tr data-order-detail-id="${orderDetailId}">
           <td>${orderRef}</td>
@@ -562,6 +563,25 @@ function addToManifest(orderDetailId, itemData = null) {
 
     $('#manifest-count').text(verifiedOrderDetails.size);
     $('#pickup-manifest-block').show();
+    
+    // Add to mobile manifest
+    addToMobileManifest(orderDetailId, {
+        order_reference: orderRef,
+        product_name: productName,
+        product_mpn: productMpn,
+        product_quantity: quantity,
+        timestamp: timestamp
+    });
+    
+    // Update mobile count and show mobile block
+    const mobileManifestCount = document.getElementById('mobile-manifest-count');
+    const mobileManifestBlock = document.getElementById('mobile-pickup-manifest-block');
+    if (mobileManifestCount) {
+        mobileManifestCount.textContent = verifiedOrderDetails.size;
+    }
+    if (mobileManifestBlock) {
+        mobileManifestBlock.style.display = 'block';
+    }
 }
 /**
  * Check and add to manifest if needed based on status
@@ -610,16 +630,19 @@ function removeFromManifest(orderDetailId) {
     // Remove from the set
     verifiedOrderDetails.delete(parseInt(orderDetailId));
 
-    // Remove from the UI
+    // Remove from desktop UI
     $('#manifest-items tr[data-order-detail-id="' + orderDetailId + '"]').remove();
 
-    // Update the count
+    // Update desktop count
     $('#manifest-count').text(verifiedOrderDetails.size);
 
-    // Hide the manifest block if empty
+    // Hide desktop manifest block if empty
     if (verifiedOrderDetails.size === 0) {
         $('#pickup-manifest-block').hide();
     }
+    
+    // Remove from mobile manifest
+    removeFromMobileManifest(orderDetailId);
 }
 
 /**
@@ -1198,7 +1221,7 @@ function initializeMobileFunctionality() {
 function initializeMobileOrderHandlers() {
     const checkboxes = document.querySelectorAll('.mv-mobile-checkbox');
     checkboxes.forEach(checkbox => {
-        checkbox.addEventListener('change', function() {
+        checkbox.addEventListener('change', function () {
             handleMobileCheckboxChange(this);
         });
     });
@@ -1210,7 +1233,7 @@ function initializeMobileOrderHandlers() {
 function initializeMobileHistoryButtons() {
     const historyButtons = document.querySelectorAll('.mv-mobile-btn-history');
     historyButtons.forEach(button => {
-        button.addEventListener('click', function() {
+        button.addEventListener('click', function () {
             const orderDetailId = this.dataset.orderDetailId;
             if (typeof viewStatusHistory === 'function') {
                 viewStatusHistory(orderDetailId);
@@ -1227,12 +1250,12 @@ function toggleSelectAll() {
     const selectButton = document.querySelector('.mv-btn-select-mobile');
     const bulkActions = document.getElementById('mobileBulkActions');
     const checkboxes = document.querySelectorAll('.mv-mobile-checkbox');
-    
+
     if (isSelectMode) {
         selectButton.innerHTML = '<i class="mv-icon">✖️</i> Annuler';
         selectButton.classList.add('active');
         bulkActions.style.display = 'block';
-        
+
         checkboxes.forEach(checkbox => {
             checkbox.style.display = 'block';
         });
@@ -1241,12 +1264,12 @@ function toggleSelectAll() {
         selectButton.classList.remove('active');
         bulkActions.style.display = 'none';
         selectedMobileOrders.clear();
-        
+
         checkboxes.forEach(checkbox => {
             checkbox.style.display = 'none';
             checkbox.checked = false;
         });
-        
+
         updateMobileSelectedCount();
     }
 }
@@ -1256,13 +1279,13 @@ function toggleSelectAll() {
  */
 function handleMobileCheckboxChange(checkbox) {
     const orderId = checkbox.dataset.id;
-    
+
     if (checkbox.checked) {
         selectedMobileOrders.add(orderId);
     } else {
         selectedMobileOrders.delete(orderId);
     }
-    
+
     updateMobileSelectedCount();
 }
 
@@ -1273,11 +1296,11 @@ function updateMobileSelectedCount() {
     const countElement = document.getElementById('mobile-selected-count');
     const applyButton = document.getElementById('mobile-apply-bulk-status');
     const selectElement = document.getElementById('mobile-bulk-status-select');
-    
+
     if (countElement) {
         countElement.textContent = selectedMobileOrders.size;
     }
-    
+
     const hasSelection = selectedMobileOrders.size > 0;
     if (applyButton) {
         applyButton.disabled = !hasSelection;
@@ -1293,7 +1316,7 @@ function updateMobileSelectedCount() {
 function initializeMobileBulkActions() {
     const applyButton = document.getElementById('mobile-apply-bulk-status');
     if (applyButton) {
-        applyButton.addEventListener('click', function() {
+        applyButton.addEventListener('click', function () {
             applyMobileBulkStatus();
         });
     }
@@ -1305,26 +1328,26 @@ function initializeMobileBulkActions() {
 function applyMobileBulkStatus() {
     const selectElement = document.getElementById('mobile-bulk-status-select');
     const newStatus = selectElement.value;
-    
+
     if (!newStatus) {
         showMobileNotification('Veuillez sélectionner un statut', 'warning');
         return;
     }
-    
+
     if (selectedMobileOrders.size === 0) {
         showMobileNotification('Aucune commande sélectionnée', 'warning');
         return;
     }
-    
+
     if (!confirm(bulkStatusChangeConfirmText)) {
         return;
     }
-    
+
     const applyButton = document.getElementById('mobile-apply-bulk-status');
     const originalText = applyButton.textContent;
     applyButton.textContent = processingText;
     applyButton.disabled = true;
-    
+
     // Use existing bulk processing function
     if (typeof processBulkStatusChange === 'function') {
         const orderIds = Array.from(selectedMobileOrders);
@@ -1332,14 +1355,14 @@ function applyMobileBulkStatus() {
             .then(results => {
                 const successCount = results.filter(r => r.success).length;
                 const errorCount = results.length - successCount;
-                
+
                 if (successCount > 0) {
                     showMobileNotification(`${successCount} ${successStatusText}`, 'success');
                 }
                 if (errorCount > 0) {
                     showMobileNotification(`${errorCount} ${errorStatusText}`, 'error');
                 }
-                
+
                 setTimeout(() => window.location.reload(), 2000);
             })
             .catch(error => {
@@ -1363,11 +1386,11 @@ function applyMobileBulkStatus() {
 function initializeMobileMPNScanner() {
     const mpnInput = document.getElementById('mobile-global-mpn-input');
     if (mpnInput) {
-        mpnInput.addEventListener('input', function() {
+        mpnInput.addEventListener('input', function () {
             handleMobileMPNScan(this.value);
         });
-        
-        mpnInput.addEventListener('keypress', function(e) {
+
+        mpnInput.addEventListener('keypress', function (e) {
             if (e.key === 'Enter') {
                 e.preventDefault();
                 this.blur();
@@ -1381,7 +1404,7 @@ function initializeMobileMPNScanner() {
  */
 function handleMobileMPNScan(mpnValue) {
     const statusMessage = document.getElementById('mobile-mpn-status-message');
-    
+
     if (!mpnValue.trim()) {
         if (statusMessage) {
             statusMessage.textContent = 'Prêt à scanner';
@@ -1389,26 +1412,26 @@ function handleMobileMPNScan(mpnValue) {
         }
         return;
     }
-    
+
     const orderItems = document.querySelectorAll('.mv-mobile-order-item');
     let found = false;
-    
+
     orderItems.forEach(item => {
         const productMPN = item.dataset.productMpn;
         if (productMPN && productMPN.toLowerCase().includes(mpnValue.toLowerCase())) {
             item.scrollIntoView({ behavior: 'smooth', block: 'center' });
             item.style.border = '3px solid #10b981';
             item.style.backgroundColor = '#f0fdf4';
-            
+
             setTimeout(() => {
                 item.style.border = '';
                 item.style.backgroundColor = '';
             }, 3000);
-            
+
             found = true;
         }
     });
-    
+
     if (statusMessage) {
         if (found) {
             statusMessage.textContent = `Produit trouvé: ${mpnValue}`;
@@ -1425,13 +1448,13 @@ function handleMobileMPNScan(mpnValue) {
  */
 function initializeMobileStatusSelects() {
     const statusSelects = document.querySelectorAll('.mv-mobile-status-select.order-line-status-select');
-    
+
     statusSelects.forEach(select => {
-        select.addEventListener('change', function() {
+        select.addEventListener('change', function () {
             const orderDetailId = this.dataset.orderDetailId;
             const newStatus = this.value;
             const originalStatus = this.dataset.originalStatusTypeId;
-            
+
             if (newStatus && newStatus !== originalStatus) {
                 updateMobileOrderLineStatus(orderDetailId, newStatus, this);
             }
@@ -1451,7 +1474,7 @@ function updateMobileOrderLineStatus(orderDetailId, newStatusId, selectElement) 
         loadingOption.text = 'Mise à jour...';
         loadingOption.selected = true;
         selectElement.insertBefore(loadingOption, selectElement.firstChild);
-        
+
         updateOrderLineStatus(orderDetailId)
             .then(() => {
                 showMobileNotification('Statut mis à jour avec succès', 'success');
@@ -1475,109 +1498,132 @@ function updateMobileOrderLineStatus(orderDetailId, newStatusId, selectElement) 
 function initializeMobileManifest() {
     const printButton = document.getElementById('mobile-print-manifest-btn');
     if (printButton) {
-        printButton.addEventListener('click', function() {
-            if (typeof printManifest === 'function') {
-                printManifest();
+        printButton.addEventListener('click', function () {
+            // Call the same function as desktop version
+            if (typeof printPickupManifest === 'function') {
+                printPickupManifest();
             } else {
                 showMobileNotification('Fonction d\'impression non disponible', 'warning');
             }
         });
     }
+
+    syncMobileManifest();
 }
 
-/**
- * Show mobile notification
- */
-function showMobileNotification(message, type = 'info') {
-    const existingNotifications = document.querySelectorAll('.mv-mobile-notification');
-    existingNotifications.forEach(notif => notif.remove());
+function syncMobileManifest() {
+    const mobileManifestItems = document.getElementById('mobile-manifest-items');
+    const mobileManifestCount = document.getElementById('mobile-manifest-count');
+    const mobileManifestBlock = document.getElementById('mobile-pickup-manifest-block');
     
-    const notification = document.createElement('div');
-    notification.className = `mv-mobile-notification mv-mobile-notification-${type}`;
-    notification.innerHTML = `
-        <div class="mv-mobile-notification-content">
-            <span class="mv-mobile-notification-message">${message}</span>
-            <button class="mv-mobile-notification-close" onclick="this.parentElement.parentElement.remove()">×</button>
+    if (!mobileManifestItems) return;
+    
+    // Clear existing mobile manifest
+    mobileManifestItems.innerHTML = '';
+    
+    // Sync with desktop manifest data
+    if (verifiedOrderDetails && verifiedOrderDetails.size > 0) {
+        verifiedOrderDetails.forEach(orderDetailId => {
+            const desktopRow = document.querySelector(`#manifest-items tr[data-order-detail-id="${orderDetailId}"]`);
+            if (desktopRow) {
+                addToMobileManifest(orderDetailId, {
+                    order_reference: desktopRow.cells[0].textContent,
+                    product_name: desktopRow.cells[1].textContent,
+                    product_mpn: desktopRow.cells[2].textContent,
+                    product_quantity: desktopRow.cells[3].textContent,
+                    timestamp: desktopRow.cells[4].textContent
+                });
+            }
+        });
+        
+        // Update count and show block
+        if (mobileManifestCount) {
+            mobileManifestCount.textContent = verifiedOrderDetails.size;
+        }
+        if (mobileManifestBlock) {
+            mobileManifestBlock.style.display = 'block';
+        }
+    } else {
+        // Hide mobile manifest block if empty
+        if (mobileManifestBlock) {
+            mobileManifestBlock.style.display = 'none';
+        }
+        if (mobileManifestCount) {
+            mobileManifestCount.textContent = '0';
+        }
+    }
+}
+
+
+function addToMobileManifest(orderDetailId, itemData) {
+    const mobileManifestItems = document.getElementById('mobile-manifest-items');
+    if (!mobileManifestItems) return;
+    
+    // Check if item already exists in mobile manifest
+    const existingItem = mobileManifestItems.querySelector(`[data-order-detail-id="${orderDetailId}"]`);
+    if (existingItem) return;
+    
+    const manifestItem = document.createElement('div');
+    manifestItem.className = 'mv-mobile-manifest-item';
+    manifestItem.setAttribute('data-order-detail-id', orderDetailId);
+    
+    manifestItem.innerHTML = `
+        <div class="mv-mobile-manifest-header">
+            <span class="mv-mobile-manifest-ref">${itemData.order_reference}</span>
+            <span class="mv-mobile-manifest-qty">Qty: ${itemData.product_quantity}</span>
+        </div>
+        <div class="mv-mobile-manifest-product">${itemData.product_name}</div>
+        <div class="mv-mobile-manifest-mpn">${itemData.product_mpn}</div>
+        <div class="mv-mobile-manifest-time" style="font-size: 12px; color: #999; margin-top: 8px;">
+            Vérifié: ${itemData.timestamp}
         </div>
     `;
     
-    if (!document.querySelector('#mv-mobile-notification-styles')) {
-        const styles = document.createElement('style');
-        styles.id = 'mv-mobile-notification-styles';
-        styles.textContent = `
-            .mv-mobile-notification {
-                position: fixed;
-                top: 20px;
-                left: 20px;
-                right: 20px;
-                z-index: 9999;
-                border-radius: 8px;
-                box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-                animation: slideInTop 0.3s ease;
-            }
-            .mv-mobile-notification-success {
-                background: #d4edda;
-                border: 1px solid #c3e6cb;
-                color: #155724;
-            }
-            .mv-mobile-notification-error {
-                background: #f8d7da;
-                border: 1px solid #f5c6cb;
-                color: #721c24;
-            }
-            .mv-mobile-notification-warning {
-                background: #fff3cd;
-                border: 1px solid #ffeaa7;
-                color: #856404;
-            }
-            .mv-mobile-notification-info {
-                background: #d1ecf1;
-                border: 1px solid #bee5eb;
-                color: #0c5460;
-            }
-            .mv-mobile-notification-content {
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                padding: 12px 16px;
-            }
-            .mv-mobile-notification-message {
-                font-weight: 600;
-                font-size: 14px;
-            }
-            .mv-mobile-notification-close {
-                background: none;
-                border: none;
-                font-size: 18px;
-                cursor: pointer;
-                padding: 0;
-                margin-left: 12px;
-                opacity: 0.7;
-            }
-            @keyframes slideInTop {
-                from { transform: translateY(-100%); opacity: 0; }
-                to { transform: translateY(0); opacity: 1; }
-            }
-        `;
-        document.head.appendChild(styles);
-    }
-    
-    document.body.appendChild(notification);
-    
-    setTimeout(() => {
-        if (notification.parentElement) {
-            notification.remove();
-        }
-    }, 5000);
+    mobileManifestItems.appendChild(manifestItem);
 }
 
-// Add mobile initialization to existing DOMContentLoaded
-$(document).ready(function() {
-    // Your existing initialization code here...
+function removeFromMobileManifest(orderDetailId) {
+    const mobileManifestItems = document.getElementById('mobile-manifest-items');
+    if (!mobileManifestItems) return;
     
+    const existingItem = mobileManifestItems.querySelector(`[data-order-detail-id="${orderDetailId}"]`);
+    if (existingItem) {
+        existingItem.remove();
+    }
+    
+    // Update count
+    const mobileManifestCount = document.getElementById('mobile-manifest-count');
+    if (mobileManifestCount && verifiedOrderDetails) {
+        mobileManifestCount.textContent = verifiedOrderDetails.size;
+    }
+    
+    // Hide block if empty
+    const mobileManifestBlock = document.getElementById('mobile-pickup-manifest-block');
+    if (mobileManifestBlock && (!verifiedOrderDetails || verifiedOrderDetails.size === 0)) {
+        mobileManifestBlock.style.display = 'none';
+    }
+}
+$(document).ready(function() {
+    if (window.innerWidth <= 768) {
+        initializeMobileManifest();
+    }
+});
+
+// Update mobile manifest when window is resized
+$(window).resize(function() {
+    if (window.innerWidth <= 768) {
+        syncMobileManifest();
+    }
+});
+
+
+// Add mobile initialization to existing DOMContentLoaded
+$(document).ready(function () {
+    // Your existing initialization code here...
+
     // Add mobile initialization
     initializeMobileFunctionality();
-    
+
     // Make functions globally available
     window.toggleSelectAll = toggleSelectAll;
 });
