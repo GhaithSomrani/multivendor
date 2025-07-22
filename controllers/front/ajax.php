@@ -3,14 +3,6 @@
 /**
  * AJAX controller for multivendor module - COMPLETE FIXED VERSION
  */
-
-if (!defined('_PS_VERSION_')) {
-    exit;
-}
-
-// Load VendorHelper class
-require_once(_PS_MODULE_DIR_ . 'multivendor/classes/VendorHelper.php');
-
 class MultivendorAjaxModuleFrontController extends ModuleFrontController
 {
     // Disable the standard page rendering

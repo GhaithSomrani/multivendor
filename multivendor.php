@@ -24,7 +24,10 @@ require_once(dirname(__FILE__) . '/classes/VendorHelper.php');
 require_once(dirname(__FILE__) . '/classes/pdf/HTMLTemplateVendorManifestPDF.php');
 require_once(dirname(__FILE__) . '/classes/OrderHelper.php');
 require_once(dirname(__FILE__) . '/classes/TransactionHelper.php');
-
+require_once(dirname(__FILE__) . '/classes/Manifest.php');
+require_once(dirname(__FILE__) . '/classes/ManifestHelper.php');
+require_once(dirname(__FILE__) . '/classes/pdf/HTMLTemplateManifestPDF.php');
+require_once(dirname(__FILE__) . '/classes/traits/VendorInterfaceTrait.php');
 
 class multivendor extends Module
 {
@@ -32,7 +35,7 @@ class multivendor extends Module
     {
         $this->name = 'multivendor';
         $this->tab = 'market_place';
-        $this->version = '1.1.0';
+        $this->version = '2.0.0';
         $this->author = 'Ghaith Somrani';
         $this->need_instance = 0;
         $this->ps_versions_compliancy = [
