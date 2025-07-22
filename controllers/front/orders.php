@@ -133,7 +133,7 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
         $query = new DbQuery();
         $query->select('vod.id_order_detail, vod.product_name, vod.product_reference, vod.product_quantity, vod.vendor_amount,
           o.reference as order_reference, o.date_add as order_date, vod.product_mpn,
-          vod.id_vendor, vod.commission_amount, vod.vendor_amount, vod.id_order, 
+          vod.id_vendor, vod.commission_amount, vod.vendor_amount, vod.id_order, vod.product_id, vod.product_attribute_id,
           COALESCE(ols.id_order_line_status_type, ' . (int)$defaultStatusTypeId . ') as status_type_id,
           COALESCE(olst.name, "Pending") as line_status');
         $query->from('mv_vendor_order_detail', 'vod');

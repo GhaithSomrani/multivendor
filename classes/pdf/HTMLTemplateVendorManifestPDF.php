@@ -74,7 +74,6 @@ class HTMLTemplateVendorManifestPDF extends HTMLTemplate
                 $lineStatus = null;
                 $vendorOrderDetail = (float)OrderHelper::getVendorAmountByOrderDetail($id_order_detail);
                 $currency = new Currency($order->id_currency);
-
                 $manifestItem = [
                     'vendor' => [
                         'id' => $vendorObj->id,
@@ -97,7 +96,7 @@ class HTMLTemplateVendorManifestPDF extends HTMLTemplate
                         'total_price_tax_incl' => (float)$orderDetail->total_price_tax_incl,
                         'product_weight' => (float)($orderDetail->product_weight ?: 0.5),
                         'product_mpn' => $orderDetail->product_mpn ?: '',
-                        'barcode' => $this->generateBarcode($orderDetail->product_mpn),
+                        'barcode' =>$orderDetail->product_mpn,
                     ],
                     'vendor_amount' => $vendorOrderDetail,
                     'pickup_id' => 'PU-' . $order->reference . '-' . $id_order_detail,
@@ -127,19 +126,20 @@ class HTMLTemplateVendorManifestPDF extends HTMLTemplate
         }
     }
 
-    protected function generateBarcode($mpn)
-    {
-        try {
-            if (empty($mpn)) {
-                return '';
-            }
-            $barcode = new TCPDFBarcode($mpn, 'C128');
-            return $barcode->getBarcodeHTML(1, 15, 'black');
-        } catch (Exception $e) {
-            error_log('Error generating barcode: ' . $e->getMessage());
-            return '';
-        }
-    }
+    // protected function generateBarcode($mpn)
+    // {
+    //     try {
+    //         if (empty($mpn)) {
+    //             return '';
+    //         }
+    //         $barcode = new TCPDFBarcode($mpn, 'C128');
+   
+    //         return $barcode->getBarcodeHTML(200, 150, 'black');
+    //     } catch (Exception $e) {
+    //         error_log('Error generating barcode: ' . $e->getMessage());
+    //         return '';
+    //     }
+    // }
 
     protected function getShopAddress()
     {
@@ -178,5 +178,9 @@ class HTMLTemplateVendorManifestPDF extends HTMLTemplate
             error_log('Error in getHeader(): ' . $e->getMessage());
             return '';
         }
+    }
+    public function getFooter()
+    {
+        return '';
     }
 }

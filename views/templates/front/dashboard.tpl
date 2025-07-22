@@ -52,12 +52,10 @@
                     <div class="mv-card-body">
                         <form action="{$vendor_dashboard_url}" method="post" class="mv-date-filter-form">
                             <div class="mv-date-filter-options">
-
                                 <div class="mv-date-option">
                                     <input type="radio" id="filter-this-month" name="date_filter_type" value="this_month" {if $date_filter_type == 'this_month'}checked{/if}>
                                     <label for="filter-this-month">{l s='Ce mois' mod='multivendor'}</label>
                                 </div>
-
                                 
                                 <div class="mv-date-option">
                                     <input type="radio" id="filter-custom" name="date_filter_type" value="custom" {if $date_filter_type == 'custom'}checked{/if}>
@@ -112,117 +110,15 @@
                         </div>
                     </div>
                 </div>
-                
-                <div class="mv-charts-row">
-                    <div class="mv-card mv-chart-card">
-                        <div class="mv-card-header">
-                            <h3 class="mv-card-title">{l s='Ventes quotidiennes' mod='multivendor'} - {$filter_label}</h3>
-                        </div>
-                        <div class="mv-card-body">
-                            <canvas id="filteredDaysChart" class="mv-chart"></canvas>
-                        </div>
-                    </div>
-                    
-                    <div class="mv-card mv-chart-card">
-                        <div class="mv-card-header">
-                            <h3 class="mv-card-title">{l s='Ventes mensuelles' mod='multivendor'}</h3>
-                        </div>
-                        <div class="mv-card-body">
-                            <canvas id="salesChart" class="mv-chart"></canvas>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="mv-grid-row">
-                    <div class="mv-grid-col">
-                        <div class="mv-card">
-                            <div class="mv-card-header">
-                                <h3 class="mv-card-title">{l s='Lignes de commande récentes' mod='multivendor'}</h3>
-                            </div>
-                            <div class="mv-card-body">
-                                {if $recent_order_lines}
-                                    <div class="mv-table-container">
-                                        <table class="mv-table">
-                                            <thead>
-                                                <tr>
-                                                    <th>{l s='Commande #' mod='multivendor'}</th>
-                                                    <th>{l s='Produit' mod='multivendor'}</th>
-                                                    <th>{l s='Qté' mod='multivendor'}</th>
-                                                    <th>{l s='Total' mod='multivendor'}</th>
-                                                    <th>{l s='Statut' mod='multivendor'}</th>
-                                                    <th>{l s='Date' mod='multivendor'}</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {foreach from=$recent_order_lines item=line}
-                                                    <tr>
-                                                        <td>
-                                                            <a href="#" class="mv-link">
-                                                                #{$line.order_reference}
-                                                            </a>
-                                                        </td>
-                                                        <td class="mv-product-name">{$line.product_name|truncate:30:'...'}</td>
-                                                        <td class="mv-text-center">{$line.product_quantity}</td>
-                                                        <td>{Tools::displayPrice($line.vendor_amount)}</td>
-                                                        <td>
-                                                            <span class="mv-status-badge" style="background-color: {$line.status_color};">
-                                                                {$line.line_status|default:'En attente'|capitalize}
-                                                            </span>
-                                                        </td>
-                                                        <td>{$line.order_date|date_format:'%Y-%m-%d'}</td>
-                                                    </tr>
-                                                {/foreach}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                    <div class="mv-text-center">
-                                        <a href="{$vendor_orders_url}" class="mv-btn mv-btn-outline">
-                                            {l s='Voir toutes les lignes de commande' mod='multivendor'}
-                                        </a>
-                                    </div>
-                                {else}
-                                    <p class="mv-empty-state">{l s='Aucune ligne de commande récente.' mod='multivendor'}</p>
-                                {/if}
-                            </div>
-                        </div>
-                    </div>
-                </div>
 
-                <div class="mv-grid-row">
-                    <div class="mv-grid-col">
-                        <div class="mv-card">
-                            <div class="mv-card-header">
-                                <h3 class="mv-card-title">{l s='Produits les plus vendus' mod='multivendor'} - {$filter_label}</h3>
-                            </div>
-                            <div class="mv-card-body">
-                                {if $top_products}
-                                    <div class="mv-table-container">
-                                        <table class="mv-table">
-                                            <thead>
-                                                <tr>
-                                                    <th>{l s='Produit' mod='multivendor'}</th>
-                                                    <th>{l s='Quantité' mod='multivendor'}</th>
-                                                    <th>{l s='Ventes' mod='multivendor'}</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {foreach from=$top_products item=product}
-                                                    <tr>
-                                                        <td>{$product.product_name}</td>
-                                                        <td>{$product.quantity_sold}</td>
-                                                        <td>{$product.total_sales|displayPrice}</td>
-                                                    </tr>
-                                                {/foreach}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                {else}
-                                    <p class="mv-empty-state">{l s='Aucune donnée de vente disponible.' mod='multivendor'}</p>
-                                {/if}
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                {* Mobile/Desktop Detection for Content *}
+                {if Context::getContext()->isMobile() == 1}
+                    {* Load Mobile Dashboard Template *}
+                    {include file="module:multivendor/views/templates/front/dashboard/mobile.tpl"}
+                {else}
+                    {* Load Desktop Dashboard Template *}
+                    {include file="module:multivendor/views/templates/front/dashboard/desktop.tpl"}
+                {/if}
             </main>
         </div>
     </div>
@@ -251,119 +147,123 @@
             toggleCustomDateRange();
             
             // Daily Filtered Sales Chart
-            var ctxFilteredDays = document.getElementById('filteredDaysChart').getContext('2d');
-            var filteredDaysData = {
-                labels: [
-                    {foreach from=$filtered_daily_sales item=day}
-                        '{$day.date}',
-                    {/foreach}
-                ],
-                datasets: [{
-                    label: '{l s='Ventes quotidiennes' mod='multivendor'}',
-                    data: [
+            var ctxFilteredDays = document.getElementById('filteredDaysChart');
+            if (ctxFilteredDays) {
+                var filteredDaysData = {
+                    labels: [
                         {foreach from=$filtered_daily_sales item=day}
-                            {$day.sales},
+                            '{$day.date}',
                         {/foreach}
                     ],
-                    backgroundColor: 'rgba(52, 211, 153, 0.2)',
-                    borderColor: 'rgba(16, 185, 129, 1)',
-                    borderWidth: 2,
-                    tension: 0.1,
-                    fill: true
-                }]
-            };
-            
-            var filteredDaysChart = new Chart(ctxFilteredDays, {
-                type: 'line',
-                data: filteredDaysData,
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            display: false
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    return '{$currency_sign}' + context.raw.toFixed(2);
+                    datasets: [{
+                        label: '{l s='Ventes quotidiennes' mod='multivendor'}',
+                        data: [
+                            {foreach from=$filtered_daily_sales item=day}
+                                {$day.sales},
+                            {/foreach}
+                        ],
+                        backgroundColor: 'rgba(52, 211, 153, 0.2)',
+                        borderColor: 'rgba(16, 185, 129, 1)',
+                        borderWidth: 2,
+                        tension: 0.1,
+                        fill: true
+                    }]
+                };
+                
+                var filteredDaysChart = new Chart(ctxFilteredDays.getContext('2d'), {
+                    type: 'line',
+                    data: filteredDaysData,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return '{$currency_sign}' + context.raw.toFixed(2);
+                                    }
                                 }
                             }
-                        }
-                    },
-                    scales: {
-                        x: {
-                            display: true,
-                            grid: {
-                                display: false
-                            }
                         },
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                callback: function(value, index, values) {
-                                    return '{$currency_sign}' + value.toFixed(0);
+                        scales: {
+                            x: {
+                                display: true,
+                                grid: {
+                                    display: false
+                                }
+                            },
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    callback: function(value, index, values) {
+                                        return '{$currency_sign}' + value.toFixed(0);
+                                    }
                                 }
                             }
                         }
                     }
-                }
-            });
+                });
+            }
             
             // Monthly Sales Chart - Bar Chart 
-            var ctxMonthly = document.getElementById('salesChart').getContext('2d');
-            var monthlyData = {
-                labels: [
-                    {foreach from=$monthly_sales item=month}
-                        '{$month.month}',
-                    {/foreach}
-                ],
-                datasets: [{
-                    label: '{l s='Ventes mensuelles' mod='multivendor'}',
-                    data: [
+            var ctxMonthly = document.getElementById('salesChart');
+            if (ctxMonthly) {
+                var monthlyData = {
+                    labels: [
                         {foreach from=$monthly_sales item=month}
-                            {$month.sales},
+                            '{$month.month}',
                         {/foreach}
                     ],
-                    backgroundColor: 'rgba(99, 102, 241, 0.7)',
-                    borderColor: 'rgba(99, 102, 241, 1)',
-                    borderWidth: 1,
-                    borderRadius: 4,
-                    barPercentage: 0.6,
-                    categoryPercentage: 0.7
-                }]
-            };
-            
-            var salesChart = new Chart(ctxMonthly, {
-                type: 'bar',
-                data: monthlyData,
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            display: false
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    return '{$currency_sign}' + context.raw.toFixed(2);
+                    datasets: [{
+                        label: '{l s='Ventes mensuelles' mod='multivendor'}',
+                        data: [
+                            {foreach from=$monthly_sales item=month}
+                                {$month.sales},
+                            {/foreach}
+                        ],
+                        backgroundColor: 'rgba(99, 102, 241, 0.7)',
+                        borderColor: 'rgba(99, 102, 241, 1)',
+                        borderWidth: 1,
+                        borderRadius: 4,
+                        barPercentage: 0.6,
+                        categoryPercentage: 0.7
+                    }]
+                };
+                
+                var salesChart = new Chart(ctxMonthly.getContext('2d'), {
+                    type: 'bar',
+                    data: monthlyData,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return '{$currency_sign}' + context.raw.toFixed(2);
+                                    }
                                 }
                             }
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                callback: function(value, index, values) {
-                                    return '{$currency_sign}' + value;
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    callback: function(value, index, values) {
+                                        return '{$currency_sign}' + value;
+                                    }
                                 }
                             }
                         }
                     }
-                }
-            });
+                });
+            }
         });
     </script>
 {/block}

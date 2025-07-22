@@ -73,14 +73,5 @@ class MultivendorManifestModuleFrontController extends ModuleFrontController
         // The PDF will be generated in initContent()
     }
 
-    // Keep this method as it might be used by the template class
-    protected function generateBarcode($mpn)
-    {
-        if (empty($mpn)) {
-            return '';
-        }
-
-        $barcode = new TCPDFBarcode($mpn, 'C128');
-        return $barcode->getBarcodeHTML(1, 15, 'black');
-    }
+   
 }

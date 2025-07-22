@@ -48,7 +48,8 @@
         <div class="mv-select-actions">
             <div class="mv-checkbox">
                 <input type="checkbox" id="select-all-orders" class="mv-checkbox-input">
-                <label for="select-all-orders" class="mv-checkbox-label">{l s='Tout sélectionner' mod='multivendor'}</label>
+                <label for="select-all-orders"
+                    class="mv-checkbox-label">{l s='Tout sélectionner' mod='multivendor'}</label>
             </div>
             <span class="mv-selected-count" id="selected-count">0 {l s='sélectionné(s)' mod='multivendor'}</span>
         </div>
@@ -71,8 +72,7 @@
     <div class="mv-global-mpn-container">
         <div class="mv-input-group">
             <input type="text" id="global-mpn-input" class="form-control mv-global-mpn-input"
-                placeholder="{l s='Scannez le code-barres MPN ici...' mod='multivendor'}"
-                autocomplete="off">
+                placeholder="{l s='Scannez le code-barres MPN ici...' mod='multivendor'}" autocomplete="off">
             <div class="mv-input-group-append">
                 <span class="mv-input-group-text">
                     <i class="mv-icon">🔍</i>
@@ -94,6 +94,7 @@
                         <tr>
                             <th class="mv-checkbox-col"></th>
                             <th>{l s='Référence' mod='multivendor'}</th>
+                            <th>{l s='Image' mod='multivendor'}</th>
                             <th>{l s='Produit' mod='multivendor'}</th>
                             <th>{l s='Qté' mod='multivendor'}</th>
                             <th>{l s='Total' mod='multivendor'}</th>
@@ -104,8 +105,7 @@
                     </thead>
                     <tbody>
                         {foreach from=$order_lines item=line}
-                            <tr data-id="{$line.id_order_detail}"
-                                data-status="{$line.line_status|default:'En attente'|lower}"
+                            <tr data-id="{$line.id_order_detail}" data-status="{$line.line_status|default:'En attente'|lower}"
                                 data-product-mpn="{$line.product_mpn}"
                                 data-commission-action="{if isset($line.commission_action)}{$line.commission_action}{else}none{/if}">
                                 <td class="mv-checkbox-col">
@@ -117,7 +117,13 @@
                                         #{$line.order_reference}#{$line.id_order_detail}
                                     </a>
                                 </td>
-                                <td class="mv-product-name">{$line.product_name|truncate:80:'...'}
+                                <td class="mv-product-image">
+                                    {assign var="product_image" value=OrderHelper::getProductImageLink($line.product_id, $line.product_attribute_id)}
+                                    <img src="{$product_image}" alt="{$line.product_name|escape:'html':'UTF-8'}"
+                                        class="mv-product-image">
+                                </td>
+                                <td class="mv-product-name">
+                                    {$line.product_name}
                                     <br> (SKU : {$line.product_reference})
                                 </td>
                                 <td class="mv-text-center">{$line.product_quantity}</td>
@@ -222,7 +228,8 @@
             <div class="mv-card">
                 <div class="mv-card-header">
                     <div class="d-flex justify-content-between align-items-center">
-                        <h3 class="mv-card-title">{l s='Manifeste de collecte' mod='multivendor'} (<span id="manifest-count">0</span>)</h3>
+                        <h3 class="mv-card-title">{l s='Manifeste de collecte' mod='multivendor'} (<span
+                                id="manifest-count">0</span>)</h3>
                         <button id="print-manifest-btn" class="mv-btn mv-btn-primary">
                             <i class="mv-icon">🖨️</i> {l s='Imprimer le manifeste' mod='multivendor'}
                         </button>

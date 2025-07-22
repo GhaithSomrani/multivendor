@@ -488,4 +488,58 @@ class OrderHelper
         }
         return $hiddenIdsString;
     }
+
+    /**
+     * Get product image link by product ID or product attribute ID
+     * 
+     * @param int $id_product Product ID
+     * @param int $id_product_attribute Product attribute ID (optional)
+     * @param string $image_type Image type (home_default, large_default, etc.)
+     * @param bool $force_https Force HTTPS
+     * @return string|false Image URL or false if not found
+     */
+    public static function getProductImageLink($id_product, $id_product_attribute = null, $image_type = 'cart_default', $force_https = false)
+    {
+        if (!$id_product) {
+            return false;
+        }
+
+        $context = Context::getContext();
+        $link = $context->link;
+
+        try {
+            $product = new Product($id_product, false, $context->language->id);
+            if (!Validate::isLoadedObject($product)) {
+                return false;
+            }
+
+            // Check if combination has specific images
+            if ($id_product_attribute) {
+                $Product = new Product($id_product, false, $context->language->id);
+                $images = $Product->getCombinationImages($context->language->id) ;
+                if (!empty($images[$id_product_attribute])) {
+                    $id_image = $images[$id_product_attribute][0]['id_image'];
+                    return $link->getImageLink($product->link_rewrite, $id_product . '-' . $id_image, $image_type, null, null, null, $force_https);
+                }
+            }
+
+            // Use cover image
+            $cover = Product::getCover($id_product);
+            if ($cover && isset($cover['id_image'])) {
+                return $link->getImageLink($product->link_rewrite, $id_product . '-' . $cover['id_image'], $image_type, null, null, null, $force_https);
+            }
+
+            // Get any image as fallback
+            $images = Image::getImages($context->language->id, $id_product);
+            if (!empty($images)) {
+                return $link->getImageLink($product->link_rewrite, $id_product . '-' . $images[0]['id_image'], $image_type, null, null, null, $force_https);
+            }
+
+            // Return placeholder image
+            return $link->getImageLink('default', 'default', $image_type, null, null, null, $force_https);
+        } catch (Exception $e) {
+            PrestaShopLogger::addLog('ProductImageHelper error: ' . $e->getMessage(), 3);
+            return false;
+        }
+    }
 }

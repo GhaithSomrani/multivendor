@@ -735,10 +735,6 @@ tr.mv-mpn-found {
     cursor: pointer;
 }
 
-td.mv-actions {
-    display: flex;
-}
-
 .mv-btn-comment {
     background: none;
     border: 1px solid #6366f1;
@@ -1428,4 +1424,14 @@ td.mv-actions {
         display: none !important;
     }
 
+}
+
+/* .mv-product-name { 
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+} */
+.mv-product-image {
+ 
+    border-radius:8px;
 }

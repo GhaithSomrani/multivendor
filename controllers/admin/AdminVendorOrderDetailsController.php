@@ -149,10 +149,10 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
     {
         // Get all active vendors
         $vendors = Vendor::getAllVendors();
-        
+
         // Get all active order line status types
         $statusTypes = OrderLineStatusType::getAllActiveStatusTypes();
-        
+
         // Assign variables to Smarty
         $this->context->smarty->assign([
             'vendors' => $vendors,
@@ -160,7 +160,7 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
             'current_index' => self::$currentIndex,
             'token' => $this->token
         ]);
-        
+
         // Fetch and return the template
         return $this->context->smarty->fetch(_PS_MODULE_DIR_ . 'multivendor/views/templates/admin/vendor_export_card.tpl');
     }
@@ -172,7 +172,7 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
     {
         // Add the export card at the top
         $exportCard = $this->renderExportCard();
-        
+
         // Get the original list content
         $content = parent::renderList();
 
@@ -310,7 +310,7 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
             $this->processExportFilteredPDF();
             return;
         }
-        
+
         parent::postProcess();
     }
 
@@ -395,13 +395,63 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
             return false;
         }
 
-        // Add view specific logic here if needed
-        return parent::renderView();
+        // Load order
+        $order = new Order($vendorOrderDetail->id_order);
+
+        // Load vendor
+        $vendor_data = Vendor::getVendorById($vendorOrderDetail->id_vendor);
+        $vendor = (object)[
+            'id' => $vendor_data['id_vendor'],
+            'shop_name' => $vendor_data['shop_name'],
+            'id_supplier' => $vendor_data['id_supplier'],
+            'status' => $vendor_data['status']
+        ];
+
+        // Load currency
+        $currency = new Currency($order->id_currency);
+
+        // Get current status
+        $status_info = Db::getInstance()->getRow(
+            '
+        SELECT ols.*, olst.name as status_name, olst.color
+        FROM ' . _DB_PREFIX_ . 'mv_order_line_status ols
+        LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status_type olst ON olst.id_order_line_status_type = ols.id_order_line_status_type
+        WHERE ols.id_order_detail = ' . (int)$vendorOrderDetail->id_order_detail . '
+        AND ols.id_vendor = ' . (int)$vendorOrderDetail->id_vendor
+        );
+
+        // Get status history
+        $status_history = Db::getInstance()->executeS(
+            '
+        SELECT olsl.*, 
+               old_st.name as old_status_name, old_st.color as old_status_color,
+               new_st.name as new_status_name, new_st.color as new_status_color,
+               e.firstname as changed_by_firstname, e.lastname as changed_by_lastname
+        FROM ' . _DB_PREFIX_ . 'mv_order_line_status_log olsl
+        LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status_type old_st ON old_st.id_order_line_status_type = olsl.old_id_order_line_status_type
+        LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status_type new_st ON new_st.id_order_line_status_type = olsl.new_id_order_line_status_type
+        LEFT JOIN ' . _DB_PREFIX_ . 'employee e ON e.id_employee = olsl.changed_by
+        WHERE olsl.id_order_detail = ' . (int)$vendorOrderDetail->id_order_detail . '
+        AND olsl.id_vendor = ' . (int)$vendorOrderDetail->id_vendor . '
+        ORDER BY olsl.date_add DESC'
+        );
+
+        // Assign to template
+        $this->context->smarty->assign([
+            'vendor_order_detail' => $vendorOrderDetail,
+            'order' => $order,
+            'vendor' => (object)$vendor,
+            'currency' => $currency,
+            'status_info' => $status_info,
+            'status_history' => $status_history ?: []
+        ]);
+
+        // Get the template content and return it directly
+        $this->content = $this->context->smarty->fetch($this->module->getLocalPath() . 'views/templates/admin/vendor_order_detail_view.tpl');
+
+        return $this->content;
     }
 
-    /**
-     * Disable delete action
-     */
     public function processDelete()
     {
         $this->errors[] = $this->l('Delete action is not allowed for this list.');

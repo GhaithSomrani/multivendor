@@ -1,6 +1,7 @@
 {* views/templates/pdf/VendorManifestPDF.tpl - Fixed version without header include *}
 <!DOCTYPE html>
 <html>
+
 <head>
     <meta charset="utf-8">
     <title>{if isset($pdf_title)}{$pdf_title}{else}BON DE RAMASSAGE{/if}</title>
@@ -34,10 +35,8 @@
         }
 
         .pickup-box {
-            border: 1px solid #ccc;
             padding: 10px;
             margin-bottom: 15px;
-            background-color: #f9f9f9;
         }
 
         .pickup-label {
@@ -54,15 +53,19 @@
             margin-bottom: 15px;
         }
 
-        th, td {
-            border: 1px solid #ccc;
+        th,
+        td {
             padding: 8px;
             text-align: left;
             vertical-align: top;
         }
 
+        .details th,
+        .details td {
+            border: 1px solid #ccc;
+        }
+
         th {
-            background-color: #f0f0f0;
             font-weight: bold;
             text-align: center;
         }
@@ -76,14 +79,16 @@
         }
 
         .manifest-summary {
-            background-color: #f8f9fa;
             padding: 10px;
             border: 1px solid #ddd;
             margin-bottom: 15px;
         }
 
+        tr td {
+            font-size: 8px;
+        }
+
         .total-row {
-            background-color: #f0f0f0;
             font-weight: bold;
         }
 
@@ -97,6 +102,7 @@
         }
     </style>
 </head>
+
 <body>
     {* Debug: Check if manifests data exists *}
     {if !isset($manifests) || !$manifests}
@@ -121,7 +127,6 @@
 
         <div class="pickup-header">
             <div class="pickup-title">{if isset($pdf_title)}{$pdf_title}{else}BON DE RAMASSAGE{/if}</div>
-            <div class="pickup-subtitle">{if isset($pdf_subtitle)}{$pdf_subtitle}{else}Document de Collecte Multi-Articles{/if}</div>
             <div style="margin-top: 10px;">
                 <strong>ID Manifeste :</strong> {$manifest_id}
             </div>
@@ -134,7 +139,6 @@
             <tr>
                 <td width="50%">
                     <div class="pickup-box">
-                        <div class="pickup-label">RAMASSAGE CHEZ (FOURNISSEUR) :</div>
                         <strong>{$first_manifest.supplier_address.name|default:"Nom du fournisseur"}</strong><br>
                         {if isset($first_manifest.supplier_address.address) && $first_manifest.supplier_address.address}
                             {$first_manifest.supplier_address.address}<br>
@@ -154,8 +158,7 @@
                     </div>
                 </td>
                 <td width="50%">
-                    <div class="pickup-box">
-                        <div class="pickup-label">DÉTAILS DU RAMASSAGE :</div>
+                    <div class="">
                         <table>
                             <tr>
                                 <td width="50%"><strong>Date :</strong></td>
@@ -179,8 +182,9 @@
             </tr>
         </table>
 
+
         {* Items table *}
-        <table style="margin-top: 20px;">
+        <table style="margin-top: 20px;" class="details">
             <thead>
                 <tr>
                     <th width="20%"><strong>Référence Commande</strong></th>
@@ -196,6 +200,8 @@
                 {assign var=total_qty value=0}
                 {assign var=calculated_total_value value=0}
 
+
+
                 {foreach from=$manifests item=manifest}
                     <tr>
                         <td width="20%" class="text-center" valign="center">
@@ -207,21 +213,9 @@
                         <td width="15%" class="text-center" valign="center">
                             {$manifest.orderDetail.product_reference|default:"SKU-"|cat:$manifest.orderDetail.id}
                         </td>
-                        <td width="20%" class="text-center" valign="center">
-                            {if isset($manifest.orderDetail.product_mpn) && $manifest.orderDetail.product_mpn}
-                                {if isset($manifest.orderDetail.barcode) && $manifest.orderDetail.barcode}
-                                    <div class="barcode-container">
-                                        {$manifest.orderDetail.barcode nofilter}
-                                        <div style="font-size: 10px; margin-top: 2px;">
-                                            {$manifest.orderDetail.product_mpn}
-                                        </div>
-                                    </div>
-                                {else}
-                                    {$manifest.orderDetail.product_mpn}
-                                {/if}
-                            {else}
-                                N/A
-                            {/if}
+                        <td width="20%">
+                            {$manifest.orderDetail.barcode|escape:'html':'UTF-8'}
+
                         </td>
                         <td width="5%" class="text-center" valign="center">
                             {$manifest.orderDetail.product_quantity|default:0}
@@ -229,11 +223,11 @@
                         </td>
                         <td width="10%" class="text-right" valign="center">
                             {if isset($manifest.vendor_amount) && $manifest.vendor_amount}
-                                {$manifest.vendor_amount|string_format:"%.2f"}€
+                                {$manifest.vendor_amount|string_format:"%.2f"}
                                 {assign var=calculated_total_value value=$calculated_total_value + $manifest.vendor_amount}
                             {else}
                                 {assign var=line_total value=($manifest.orderDetail.product_quantity * $manifest.orderDetail.unit_price_tax_incl)}
-                                {$line_total|string_format:"%.2f"}€
+                                {$line_total|string_format:"%.2f"}
                                 {assign var=calculated_total_value value=$calculated_total_value + $line_total}
                             {/if}
                         </td>
@@ -243,35 +237,27 @@
 
                 {* Total row *}
                 <tr class="total-row">
-                    <td colspan="4" class="text-right"><strong>TOTAUX :</strong></td>
+                    <td colspan="4" class="text-left"><strong>Montant Total HT :</strong></td>
                     <td class="text-center"><strong>{$total_qty}</strong></td>
-                    <td class="text-right"><strong>{$calculated_total_value|string_format:"%.2f"}€</strong></td>
+                    {assign var=calculated_total_value_HT value=$calculated_total_value*0.81}
+                    <td class="text-right"><strong>{$calculated_total_value_HT|string_format:"%.2f"} </strong></td>
+                </tr>
+
+                <tr class="total-row">
+                    <td colspan="4" class="text-left"><strong>TVA :</strong></td>
+                    <td class="text-center"><strong>-</strong></td>
+                    <td class="text-right"><strong>19% </strong></td>
+                </tr>
+                
+                
+                <tr class="total-row">
+                    <td colspan="4" class="text-left"><strong>Montant Total TTC :</strong></td>
+                    <td class="text-center"><strong>{$total_qty}</strong></td>
+                    <td class="text-right"><strong>{$calculated_total_value|string_format:"%.2f"} TND</strong></td>
                 </tr>
             </tbody>
         </table>
 
-        {* Summary section *}
-        <div class="manifest-summary">
-            <h3>Résumé du Manifeste</h3>
-            <table>
-                <tr>
-                    <td width="50%"><strong>Total des articles :</strong></td>
-                    <td width="50%">{$manifests|count}</td>
-                </tr>
-                <tr>
-                    <td width="50%"><strong>Total des commandes :</strong></td>
-                    <td width="50%">{$total_orders}</td>
-                </tr>
-                <tr>
-                    <td width="50%"><strong>Quantité totale :</strong></td>
-                    <td width="50%">{$total_qty}</td>
-                </tr>
-                <tr>
-                    <td width="50%"><strong>Valeur totale :</strong></td>
-                    <td width="50%"><strong>{$calculated_total_value|string_format:"%.2f"}€</strong></td>
-                </tr>
-            </table>
-        </div>
 
         {* Signature section *}
         <table style="margin-top: 30px;">
@@ -287,7 +273,7 @@
                 </td>
                 <td width="50%">
                     <div class="pickup-box">
-                        <div class="pickup-label">SIGNATURE TRANSPORTEUR :</div>
+                        <div class="pickup-label">SIGNATURE MAGASINIER :</div>
                         <div style="height: 60px; border-bottom: 1px solid #666; margin-top: 10px;"></div>
                         <div style="margin-top: 5px; font-size: 10px;">
                             Nom et signature du transporteur
@@ -296,17 +282,7 @@
                 </td>
             </tr>
         </table>
-
-        {* Footer with shop information *}
-        {if isset($shop_address)}
-        <div style="margin-top: 30px; text-align: center; font-size: 10px; color: #666; border-top: 1px solid #ccc; padding-top: 10px;">
-            {$shop_address}
-            {if isset($shop_phone) && $shop_phone}
-                <br>Téléphone : {$shop_phone}
-            {/if}
-        </div>
-        {/if}
-
     {/if}
 </body>
+
 </html>

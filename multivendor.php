@@ -76,6 +76,7 @@ class multivendor extends Module
             !$this->registerHook('actionValidateOrder') ||
             !$this->registerHook('displayBackOfficeHeader') ||
             !$this->registerHook('actionAdminControllerSetMedia') ||
+            !$this->registerHook('actionObjectOrderUpdateAfter') ||
             !$this->registerHook('actionObjectOrderDetailAddAfter') ||
             !$this->registerHook('actionObjectOrderDetailUpdateAfter') ||
             !$this->registerHook('actionObjectOrderDetailDeleteAfter') ||
@@ -670,6 +671,48 @@ class multivendor extends Module
     {
         if (isset($params['object'])) {
             OrderHelper::deleteOrderDetailForVendor($params['object']);
+        }
+    }
+
+    public function hookActionObjectOrderUpdateAfter($params)
+    {
+        $order = $params['object'];
+
+        if (!Validate::isLoadedObject($order)) {
+            return;
+        }
+
+        try {
+            PrestaShopLogger::addLog(
+                'Multivendor: Order update detected for order #' . $order->id,
+                1,
+                null,
+                'multivendor',
+                $order->id
+            );
+
+            $this->processOrderUpdateForVendors($order);
+        } catch (Exception $e) {
+            PrestaShopLogger::addLog(
+                'Multivendor hookActionObjectOrderUpdateAfter error: ' . $e->getMessage(),
+                3,
+                null,
+                'multivendor',
+                $order->id
+            );
+        }
+    }
+    private function processOrderUpdateForVendors($order)
+    {
+        $orderDetails = $order->getOrderDetailList();
+
+        foreach ($orderDetails as $orderDetail) {
+            $orderDetailObj = new OrderDetail($orderDetail['id_order_detail']);
+
+            if (!Validate::isLoadedObject($orderDetailObj)) {
+                continue;
+            }
+            OrderHelper::processOrderDetailForVendor($orderDetailObj);
         }
     }
 
