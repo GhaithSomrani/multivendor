@@ -1,7 +1,7 @@
 <?php
 
 /**
- * OrderLineStatusLog model class - Updated to use status type IDs with webservice user name resolution
+ * OrderLineStatusLog model class - Updated to use status type IDs
  */
 class OrderLineStatusLog extends ObjectModel
 {
@@ -45,7 +45,6 @@ class OrderLineStatusLog extends ObjectModel
             'date_add' => ['type' => self::TYPE_DATE, 'validate' => 'isDate']
         ]
     ];
-
     protected $webserviceParameters = [
         'objectsNodeName' => 'order_line_history',
         'objectNodeName' => 'order_line_history',
@@ -55,45 +54,10 @@ class OrderLineStatusLog extends ObjectModel
             'old_id_order_line_status_type' => [],
             'new_id_order_line_status_type' => [],
             'comment' => [],
-            'changed_by' => ['getter' => 'getChangedByName', 'setter' => false],
+            'changed_by' => [],
             'date_add' => []
         ]
     ];
-
-    /**
-     * Get the name of the user who made the change for webservice
-     * Used by webservice getter
-     * 
-     * @return string User name or "System"
-     */
-    public function getChangedByName()
-    {
-        if ($this->changed_by == 0) {
-            return 'System';
-        }
-
-        // Try to get employee name first (admin)
-        $employee = new Employee($this->changed_by);
-        if (Validate::isLoadedObject($employee)) {
-            return trim($employee->firstname . ' ' . $employee->lastname);
-        }
-
-        // Try to get customer name (vendor)
-        $customer = new Customer($this->changed_by);
-        if (Validate::isLoadedObject($customer)) {
-            return trim($customer->firstname . ' ' . $customer->lastname);
-        }
-
-        return 'Unknown User';
-    }
-
-    /**
-     * Get the type of user who made the change for webservice
-     * 
-     * @return string User type: 'system', 'admin', 'vendor', or 'unknown'
-     */
-    
-
     /**
      * Log status change
      *
@@ -133,13 +97,7 @@ class OrderLineStatusLog extends ObjectModel
             old_st.color as old_status_color, 
             new_st.color as new_status_color,
             COALESCE(e.firstname, c.firstname) as changed_by_firstname, 
-            COALESCE(e.lastname, c.lastname) as changed_by_lastname,
-            CASE 
-                WHEN l.changed_by = 0 THEN "system"
-                WHEN e.id_employee IS NOT NULL THEN "admin"
-                WHEN c.id_customer IS NOT NULL THEN "vendor"
-                ELSE "unknown"
-            END as changed_by_type');
+            COALESCE(e.lastname, c.lastname) as changed_by_lastname');
         $query->from('mv_order_line_status_log', 'l');
         $query->leftJoin('mv_order_line_status_type', 'old_st', 'old_st.id_order_line_status_type = l.old_id_order_line_status_type');
         $query->leftJoin('mv_order_line_status_type', 'new_st', 'new_st.id_order_line_status_type = l.new_id_order_line_status_type');
@@ -150,26 +108,4 @@ class OrderLineStatusLog extends ObjectModel
 
         return Db::getInstance()->executeS($query);
     }
-
-    /**
-     * Get status history with detailed user information for webservice
-     *
-     * @param int $id_order_detail Order detail ID
-     * @return array Status history with user details
-     */
-    public static function getStatusHistoryForWebservice($id_order_detail)
-    {
-        $history = self::getStatusHistory($id_order_detail);
-        
-        foreach ($history as &$entry) {
-            if ($entry['changed_by'] == 0) {
-                $entry['changed_by_name'] = 'System';
-            } else {
-                $entry['changed_by_name'] = trim($entry['changed_by_firstname'] . ' ' . $entry['changed_by_lastname']);
-            }
-        }
-        
-        return $history;
-    }
-
 }

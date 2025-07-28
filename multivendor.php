@@ -32,7 +32,7 @@ class multivendor extends Module
     {
         $this->name = 'multivendor';
         $this->tab = 'market_place';
-        $this->version = '1.1.0';
+        $this->version = '2.0.0';
         $this->author = 'Ghaith Somrani';
         $this->need_instance = 0;
         $this->ps_versions_compliancy = [
@@ -651,6 +651,7 @@ class multivendor extends Module
     {
         if (isset($params['object'])) {
             OrderHelper::processOrderDetailForVendor($params['object']);
+ 
         }
     }
 
@@ -661,6 +662,7 @@ class multivendor extends Module
     {
         if (isset($params['object'])) {
             OrderHelper::updateOrderDetailForVendor($params['object']);
+  
         }
     }
 
@@ -671,6 +673,7 @@ class multivendor extends Module
     {
         if (isset($params['object'])) {
             OrderHelper::deleteOrderDetailForVendor($params['object']);
+        
         }
     }
 
@@ -712,6 +715,7 @@ class multivendor extends Module
             if (!Validate::isLoadedObject($orderDetailObj)) {
                 continue;
             }
+
             OrderHelper::processOrderDetailForVendor($orderDetailObj);
         }
     }
