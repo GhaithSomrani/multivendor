@@ -110,7 +110,8 @@ class AdminVendorPaymentsController extends ModuleAdminController
                         'id' => 'id',
                         'name' => 'name'
                     ],
-                    'required' => true
+                    'required' => true,
+                    'onchange' => 'reloadTransactionsByVendor(this.value);'
                 ],
                 [
                     'type' => 'html',
@@ -177,9 +178,9 @@ class AdminVendorPaymentsController extends ModuleAdminController
     {
         // Get all pending transactions
         $pendingTransactions = $this->getAllPendingTransactions();
-        
+
         $html = '<div class="form-group">
-            <div class="col-lg-9">
+            <div class="col-lg-12">
                 <div class="panel panel-default">
                     <div class="panel-heading">
                         <h3 class="panel-title">' . $this->l('Pending Transactions') . '</h3>
@@ -191,7 +192,9 @@ class AdminVendorPaymentsController extends ModuleAdminController
                                     <th><input type="checkbox" id="select-all"> ' . $this->l('All') . '</th>
                                     <th>' . $this->l('Vendor') . '</th>
                                     <th>' . $this->l('Order') . '</th>
+                                    <th>' . $this->l('Order Detail ID') . '</th>
                                     <th>' . $this->l('Product') . '</th>
+                                    <th>' . $this->l('Product Reference (Qty)') . '</th>
                                     <th>' . $this->l('Amount') . '</th>
                                     <th>' . $this->l('Date') . '</th>
                                 </tr>
@@ -211,7 +214,9 @@ class AdminVendorPaymentsController extends ModuleAdminController
                     </td>
                     <td>' . htmlspecialchars($transaction['vendor_name']) . '</td>
                     <td>#' . htmlspecialchars($transaction['order_reference']) . '</td>
+                    <td>' . (int)$transaction['id_order_detail'] . '</td>
                     <td>' . htmlspecialchars($transaction['product_name']) . '</td>
+                    <td>' . htmlspecialchars($transaction['product_reference']) . ' (' . (int)$transaction['product_quantity'] . ')</td>
                     <td>' . number_format($transaction['vendor_amount'], 2) . ' ' . $this->context->currency->sign . '</td>
                     <td>' . date('d/m/Y', strtotime($transaction['order_date'])) . '</td>
                 </tr>';
@@ -232,6 +237,71 @@ class AdminVendorPaymentsController extends ModuleAdminController
         </div>
         
         <script type="text/javascript">
+             function updateTotals() {
+            var total = 0;
+            var count = 0;
+            
+            $(".transaction-checkbox:checked").each(function() {
+                total += parseFloat($(this).data("amount"));
+                count++;
+            });
+            
+            $("#selected-count").text(count);
+            $("#selected-total").text(total.toFixed(2));
+            $("input[name=\'amount\']").val(total.toFixed(2));
+            
+            // Update select all checkbox
+            var totalCheckboxes = $(".transaction-checkbox").length;
+            $("#select-all").prop("checked", count === totalCheckboxes && count > 0);
+        }
+        function reloadTransactionsByVendor(vendorId) {
+            var tbody = $("#transactions-tbody");
+            
+            if (!vendorId || vendorId === "0") {
+                tbody.html("<tr><td colspan=\"8\" class=\"text-center\">' . $this->l('Please select a vendor') . '</td></tr>");
+                updateTotals();
+                return;
+            }
+            
+            // Show loading
+            tbody.html("<tr><td colspan=\"8\" class=\"text-center\"><i class=\"icon-spinner icon-spin\"></i> ' . $this->l('Loading transactions...') . '</td></tr>");
+            
+            $.ajax({
+                url: "' . self::$currentIndex . '",
+                type: "POST",
+                data: {
+                    ajax: 1,
+                    action: "getVendorTransactions",
+                    id_vendor: vendorId,
+                    token: "' . $this->token . '"
+                },
+                dataType: "json",
+                success: function(response) {
+                    if (response.success && response.html) {
+                        tbody.html(response.html);
+                        bindCheckboxEvents();
+                        updateTotals();
+                    } else {
+                        tbody.html("<tr><td colspan=\"8\" class=\"text-center\">' . $this->l('No pending transactions found for this vendor') . '</td></tr>");
+                        updateTotals();
+                    }
+                },
+                error: function() {
+                    tbody.html("<tr><td colspan=\"8\" class=\"text-center\" style=\"color: red;\">' . $this->l('Error loading transactions. Please try again.') . '</td></tr>");
+                }
+            });
+        }
+        
+        function bindCheckboxEvents() {
+            // Unbind previous events to avoid duplicates
+            $(".transaction-checkbox").off("change");
+            
+            // Individual checkbox change
+            $(".transaction-checkbox").change(function() {
+                updateTotals();
+            });
+        }
+        
         $(document).ready(function() {
             // Select all functionality
             $("#select-all").change(function() {
@@ -239,31 +309,8 @@ class AdminVendorPaymentsController extends ModuleAdminController
                 updateTotals();
             });
             
-            // Individual checkbox change
-            $(".transaction-checkbox").change(function() {
-                updateTotals();
-                
-                // Update vendor selection if needed
-                var selectedVendor = null;
-                var selectedCheckboxes = $(".transaction-checkbox:checked");
-                
-                if (selectedCheckboxes.length > 0) {
-                    selectedVendor = $(selectedCheckboxes[0]).data("vendor");
-                    
-                    // Check if all selected items are from same vendor
-                    var sameVendor = true;
-                    selectedCheckboxes.each(function() {
-                        if ($(this).data("vendor") !== selectedVendor) {
-                            sameVendor = false;
-                            return false;
-                        }
-                    });
-                    
-                    if (sameVendor) {
-                        $("select[name=\'id_vendor\']").val(selectedVendor);
-                    }
-                }
-            });
+            // Bind initial checkbox events
+            bindCheckboxEvents();
             
             function updateTotals() {
                 var total = 0;
@@ -282,6 +329,12 @@ class AdminVendorPaymentsController extends ModuleAdminController
                 var totalCheckboxes = $(".transaction-checkbox").length;
                 $("#select-all").prop("checked", count === totalCheckboxes && count > 0);
             }
+            
+            // Auto-load if vendor is pre-selected
+            var preSelectedVendor = $("select[name=\'id_vendor\']").val();
+            if (preSelectedVendor) {
+                reloadTransactionsByVendor(preSelectedVendor);
+            }
         });
         </script>';
 
@@ -289,16 +342,61 @@ class AdminVendorPaymentsController extends ModuleAdminController
     }
 
     /**
+     * AJAX handler to get vendor transactions
+     */
+    public function ajaxProcessGetVendorTransactions()
+    {
+        $id_vendor = (int)Tools::getValue('id_vendor');
+
+        if (!$id_vendor) {
+            die(json_encode(['success' => false, 'message' => $this->l('Invalid vendor ID')]));
+        }
+
+        $transactions = $this->getAllPendingTransactions($id_vendor);
+        $html = '';
+
+        if ($transactions) {
+            foreach ($transactions as $transaction) {
+                $html .= '<tr>
+                    <td>
+                        <input type="checkbox" 
+                               name="selected_order_details[]" 
+                               value="' . (int)$transaction['id_vendor_transaction'] . '"
+                               data-amount="' . (float)$transaction['vendor_amount'] . '"
+                               data-vendor="' . (int)$transaction['id_vendor'] . '"
+                               class="transaction-checkbox">
+                    </td>
+                    <td>' . htmlspecialchars($transaction['vendor_name']) . '</td>
+                    <td>#' . htmlspecialchars($transaction['order_reference']) . '</td>
+                    <td>' . (int)$transaction['id_order_detail'] . '</td>
+                    <td>' . htmlspecialchars($transaction['product_name']) . '</td>
+                    <td>' . htmlspecialchars($transaction['product_reference']) . ' (' . (int)$transaction['product_quantity'] . ')</td>
+                    <td>' . number_format($transaction['vendor_amount'], 2) . ' ' . $this->context->currency->sign . '</td>
+                    <td>' . date('d/m/Y', strtotime($transaction['order_date'])) . '</td>
+                </tr>';
+            }
+        }
+
+        die(json_encode([
+            'success' => true,
+            'html' => $html,
+            'count' => count($transactions)
+        ]));
+    }
+
+    /**
      * Get all pending transactions from mv_vendor_transaction
      */
-    protected function getAllPendingTransactions()
+    protected function getAllPendingTransactions($id_vendor = null)
     {
         $query = '
             SELECT 
                 vt.id_vendor_transaction,
+                vt.order_detail_id as id_order_detail,
                 vt.vendor_amount,
                 vod.id_vendor,
                 vod.product_name,
+                vod.product_reference,
                 vod.product_quantity,
                 o.reference as order_reference,
                 o.date_add as order_date,
@@ -309,9 +407,13 @@ class AdminVendorPaymentsController extends ModuleAdminController
             INNER JOIN ' . _DB_PREFIX_ . 'mv_vendor v ON v.id_vendor = vod.id_vendor
             WHERE vt.status = "pending"
             AND vt.id_vendor_payment = 0
-            AND vt.transaction_type = "commission"
-            ORDER BY v.shop_name, o.date_add DESC
-        ';
+            AND vt.transaction_type = "commission"';
+
+        if ($id_vendor) {
+            $query .= ' AND vod.id_vendor = ' . (int)$id_vendor;
+        }
+
+        $query .= ' ORDER BY v.shop_name, o.date_add DESC';
 
         return Db::getInstance()->executeS($query);
     }
@@ -322,7 +424,7 @@ class AdminVendorPaymentsController extends ModuleAdminController
     public function processAdd()
     {
         $selectedTransactions = Tools::getValue('selected_order_details');
-        
+
         if (empty($selectedTransactions)) {
             $this->errors[] = $this->l('Please select at least one transaction for payment.');
             return false;
@@ -331,9 +433,10 @@ class AdminVendorPaymentsController extends ModuleAdminController
         // Calculate total and validate transactions
         $totalAmount = 0;
         $validTransactions = [];
-        
+
         foreach ($selectedTransactions as $transactionId) {
-            $transaction = Db::getInstance()->getRow('
+            $transaction = Db::getInstance()->getRow(
+                '
                 SELECT vt.*, vod.id_vendor 
                 FROM ' . _DB_PREFIX_ . 'mv_vendor_transaction vt
                 INNER JOIN ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod ON vod.id_order_detail = vt.order_detail_id
@@ -341,7 +444,7 @@ class AdminVendorPaymentsController extends ModuleAdminController
                 AND vt.status = "pending" 
                 AND vt.id_vendor_payment = 0'
             );
-            
+
             if ($transaction) {
                 $totalAmount += (float)$transaction['vendor_amount'];
                 $validTransactions[] = $transaction;
@@ -355,14 +458,14 @@ class AdminVendorPaymentsController extends ModuleAdminController
 
         // Set the calculated amount
         $_POST['amount'] = $totalAmount;
-        
+
         // Set vendor from first transaction if not set
         if (!Tools::getValue('id_vendor') && !empty($validTransactions)) {
             $_POST['id_vendor'] = $validTransactions[0]['id_vendor'];
         }
 
         $result = parent::processAdd();
-        
+
         if ($result && $this->object && $this->object->id) {
             // Update selected transactions
             $transactionIds = array_column($validTransactions, 'id_vendor_transaction');
@@ -392,11 +495,11 @@ class AdminVendorPaymentsController extends ModuleAdminController
     }
 
     // ... rest of your existing methods (renderView, processBulk, etc.)
-    
+
     public function renderView()
     {
         $payment = new VendorPayment($this->id_object);
-        
+
         if (!Validate::isLoadedObject($payment)) {
             $this->errors[] = $this->l('Payment not found.');
             return false;
