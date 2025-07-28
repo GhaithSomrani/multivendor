@@ -69,17 +69,10 @@
                         {if isset($transaction_details)}
                             <tr>
                                 <td><strong>{l s='Total Transactions:' mod='multivendor'}</strong></td>
-                                <td>{count($transaction_details)}</td>
                             </tr>
                             <tr>
                                 <td><strong>{l s='Total Commission:' mod='multivendor'}</strong></td>
-                                <td class="text-success">
-                                    {assign var="total_commission" value=0}
-                                    {foreach from=$transaction_details item=detail}
-                                        {assign var="total_commission" value=$total_commission+$detail.commission_amount}
-                                    {/foreach}
-                                    {Tools::displayPrice($total_commission, $currency)}
-                                </td>
+                               
                             </tr>
                         {/if}
                         <tr>
@@ -103,7 +96,6 @@
                                         <th>{l s='Order ID' mod='multivendor'}</th>
                                         <th>{l s='Order Reference' mod='multivendor'}</th>
                                         <th>{l s='Product' mod='multivendor'}</th>
-                                        <th>{l s='Commission Amount' mod='multivendor'}</th>
                                         <th>{l s='Vendor Amount' mod='multivendor'}</th>
                                         <th>{l s='Transaction Type' mod='multivendor'}</th>
                                         <th>{l s='Order Date' mod='multivendor'}</th>
@@ -129,7 +121,6 @@
                                                     <br><small class="text-info">Qty: {$detail.product_quantity}</small>
                                                 {/if}
                                             </td>
-                                            <td class="text-success">{Tools::displayPrice($detail.commission_amount, $currency)}</td>
                                             <td class="text-info">{Tools::displayPrice($detail.vendor_amount, $currency)}</td>
                                             <td>{$detail.transaction_type|default:'commission'|ucfirst}</td>
                                             <td>{dateFormat date=$detail.order_date full=0}</td>

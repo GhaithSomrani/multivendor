@@ -485,8 +485,8 @@ class OrderHelper
         if (!empty($hiddenConfig)) {
             $hiddenIds = array_map('intval', explode(',', $hiddenConfig));
             $hiddenIdsString = implode(',', $hiddenIds);
-            return $hiddenIdsString;
         }
+        return $hiddenIdsString;
     }
 
     /**
@@ -516,7 +516,7 @@ class OrderHelper
             // Check if combination has specific images
             if ($id_product_attribute) {
                 $Product = new Product($id_product, false, $context->language->id);
-                $images = $Product->getCombinationImages($context->language->id);
+                $images = $Product->getCombinationImages($context->language->id) ;
                 if (!empty($images[$id_product_attribute])) {
                     $id_image = $images[$id_product_attribute][0]['id_image'];
                     return $link->getImageLink($product->link_rewrite, $id_product . '-' . $id_image, $image_type, null, null, null, $force_https);
