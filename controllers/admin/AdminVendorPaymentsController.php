@@ -78,7 +78,6 @@ class AdminVendorPaymentsController extends ModuleAdminController
         ];
     }
 
-
     /**
      * Initialize toolbar for view page with print button
      */
@@ -219,11 +218,17 @@ class AdminVendorPaymentsController extends ModuleAdminController
                     'options' => [
                         'query' => $vendorsArray,
                         'id' => 'id',
-                        'name' => 'name'
+                        'name' => 'name',
+                        'default' => [
+                            'value' => '',
+                            'label' => $this->l('Select vendor')
+                        ]
                     ],
                     'required' => true,
                     'disabled' => $this->object->id ? true : false, // Disable vendor change in edit mode
-                    'onchange' => !$this->object->id ? 'reloadTransactionsByVendor(this.value);' : ''
+                    // Use unified vendor selection function
+                    'onchange' => !$this->object->id ? 'onVendorSelectionChange(this.value);' : '',
+                    'hint' => !$this->object->id ? $this->l('Select a vendor to view and select their pending transactions') : ''
                 ]
             ],
             'submit' => [
@@ -236,7 +241,7 @@ class AdminVendorPaymentsController extends ModuleAdminController
             $this->fields_form['input'][] = [
                 'type' => 'html',
                 'name' => 'order_details_table',
-                'html_content' => $this->renderOrderDetailsTable()
+                'html_content' => $this->renderUnifiedTransactionTable()
             ];
             $this->fields_form['input'][] = [
                 'type' => 'text',
@@ -259,51 +264,338 @@ class AdminVendorPaymentsController extends ModuleAdminController
                 'name' => 'amount',
                 'required' => true,
                 'suffix' => $this->context->currency->sign,
-                'readonly' => true // Keep readonly for existing payments
+                'readonly' => true
             ];
         }
 
-        // Add common fields
-        $this->fields_form['input'] = array_merge($this->fields_form['input'], [
-            [
-                'type' => 'select',
-                'label' => $this->l('Payment Method'),
-                'name' => 'payment_method',
-                'options' => [
-                    'query' => $paymentMethods,
-                    'id' => 'id',
-                    'name' => 'name'
-                ],
-                'required' => true
+        // Add other payment fields
+        $this->fields_form['input'][] = [
+            'type' => 'select',
+            'label' => $this->l('Payment Method'),
+            'name' => 'payment_method',
+            'options' => [
+                'query' => $paymentMethods,
+                'id' => 'id',
+                'name' => 'name'
             ],
-            [
-                'type' => 'text',
-                'label' => $this->l('Reference'),
-                'name' => 'reference',
-                'required' => true
-            ],
-            [
-                'type' => 'select',
-                'label' => $this->l('Status'),
-                'name' => 'status',
-                'options' => [
-                    'query' => [
-                        ['id' => 'pending', 'name' => $this->l('Pending')],
-                        ['id' => 'completed', 'name' => $this->l('Completed')],
-                        ['id' => 'cancelled', 'name' => $this->l('Cancelled')]
-                    ],
-                    'id' => 'id',
-                    'name' => 'name'
-                ],
-                'required' => true
-            ]
-        ]);
+            'required' => true
+        ];
 
-        if (!$this->object->id) {
-            $this->fields_value['status'] = 'completed';
-        }
+        $this->fields_form['input'][] = [
+            'type' => 'text',
+            'label' => $this->l('Reference'),
+            'name' => 'reference',
+            'hint' => $this->l('Transaction ID, Check Number, etc.')
+        ];
+
+        $this->fields_form['input'][] = [
+            'type' => 'textarea',
+            'label' => $this->l('Notes'),
+            'name' => 'notes',
+            'rows' => 3
+        ];
 
         return parent::renderForm();
+    }
+
+    protected function renderUnifiedTransactionTable()
+    {
+        // Get all order line status types for filtering
+        $statusTypes = $this->getAllOrderLineStatusTypes();
+
+        $html = '<div class="form-group">
+        <div class="col-lg-12">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h3 class="panel-title">' . $this->l('Vendor Transactions') . '</h3>
+                </div>
+                <div class="panel-body">
+                    <!-- Status Filter (only visible when vendor is selected) -->
+                    <div id="status-filter-section" class="row" style="margin-bottom: 15px; display: none;">
+                        <div class="col-md-6">
+                            <label for="status-filter">' . $this->l('Filter by Status') . ':</label>
+                            <select id="status-filter" class="form-control">
+                                <option value="">' . $this->l('All Statuses') . '</option>';
+
+        foreach ($statusTypes as $status) {
+            $html .= '<option value="' . (int)$status['id_order_line_status_type'] . '">' . htmlspecialchars($status['name']) . '</option>';
+        }
+
+        $html .= '          </select>
+                        </div>
+                        <div class="col-md-6">
+                            <button type="button" id="clear-status-filter" class="btn btn-default" style="margin-top: 25px;">
+                                <i class="icon-remove"></i> ' . $this->l('Clear Filter') . '
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Instructions -->
+                    <div id="vendor-selection-message" class="alert alert-info">
+                        <i class="icon-info-circle"></i> ' . $this->l('Please select a vendor above to view their pending transactions.') . '
+                    </div>
+
+                    <!-- Loading indicator -->
+                    <div id="loading-indicator" style="display: none; text-align: center; padding: 20px;">
+                        <i class="icon-spinner icon-spin"></i> ' . $this->l('Loading transactions...') . '
+                    </div>
+
+                    <!-- Transactions table -->
+                    <div id="transactions-container" style="display: none;">
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th width="30">
+                                            <input type="checkbox" id="select-all" title="' . $this->l('Select All') . '">
+                                        </th>
+                                        <th>' . $this->l('Order') . '</th>
+                                        <th>' . $this->l('Order Detail ID') . '</th>
+                                        <th>' . $this->l('Product') . '</th>
+                                        <th>' . $this->l('Reference (Qty)') . '</th>
+                                        <th>' . $this->l('Amount') . '</th>
+                                        <th>' . $this->l('Status') . '</th>
+                                        <th>' . $this->l('Date') . '</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="transactions-tbody">
+                                    <!-- Dynamic content -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Summary -->
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="alert alert-info">
+                                    <strong>' . $this->l('Selection Summary') . ':</strong><br>
+                                    <span id="selected-count">0</span> ' . $this->l('transactions selected') . ' - 
+                                    <strong>' . $this->l('Total') . ':</strong> <span id="selected-total">0.00</span> ' . $this->context->currency->sign . '
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- No transactions message -->
+                    <div id="no-transactions-message" class="alert alert-warning" style="display: none;">
+                        <i class="icon-warning-sign"></i> ' . $this->l('No pending transactions found for the selected vendor.') . '
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>';
+
+        $html .= $this->getUnifiedTransactionJavaScript();
+
+        return $html;
+    }
+
+    protected function getUnifiedTransactionJavaScript()
+    {
+        return '<script type="text/javascript">
+        $(document).ready(function() {
+            // Initialize form state
+            var selectedVendor = null;
+            
+            // Status filter change
+            $("#status-filter").on("change", function() {
+                if (selectedVendor) {
+                    loadVendorTransactions(selectedVendor, $(this).val());
+                }
+            });
+            
+            // Clear status filter
+            $("#clear-status-filter").click(function() {
+                $("#status-filter").val("");
+                if (selectedVendor) {
+                    loadVendorTransactions(selectedVendor, "");
+                }
+            });
+            
+            $("#select-all").change(function() {
+                $(".transaction-checkbox:visible").prop("checked", this.checked);
+                updateTotals();
+            });
+            
+            // Individual checkbox change
+            $(document).on("change", ".transaction-checkbox", function() {
+                updateTotals();
+                updateSelectAllState();
+            });
+            
+            function updateSelectAllState() {
+                var totalCheckboxes = $(".transaction-checkbox:visible").length;
+                var checkedCheckboxes = $(".transaction-checkbox:visible:checked").length;
+                
+                if (totalCheckboxes === 0) {
+                    $("#select-all").prop("indeterminate", false).prop("checked", false);
+                } else if (checkedCheckboxes === totalCheckboxes) {
+                    $("#select-all").prop("indeterminate", false).prop("checked", true);
+                } else if (checkedCheckboxes > 0) {
+                    $("#select-all").prop("indeterminate", true);
+                } else {
+                    $("#select-all").prop("indeterminate", false).prop("checked", false);
+                }
+            }
+            
+            function loadVendorTransactions(vendorId, statusFilter) {
+                statusFilter = statusFilter || "";
+                
+                // Show loading
+                $("#loading-indicator").show();
+                $("#transactions-container, #no-transactions-message").hide();
+                
+                $.ajax({
+                    url: "' . self::$currentIndex . '",
+                    type: "POST",
+                    data: {
+                        ajax: 1,
+                        action: "getFilteredTransactions",
+                        id_vendor: vendorId,
+                        status_filter: statusFilter,
+                        token: "' . $this->token . '"
+                    },
+                    dataType: "json",
+                    success: function(response) {
+                        $("#loading-indicator").hide();
+                        
+                        if (response.success) {
+                            if (response.count > 0) {
+                                $("#transactions-tbody").html(response.html);
+                                $("#transactions-container").show();
+                                $("#status-filter-section").show();
+                            } else {
+                                $("#no-transactions-message").show();
+                                $("#status-filter-section").hide();
+                            }
+                            updateTotals();
+                            updateSelectAllState();
+                        } else {
+                            $("#no-transactions-message").show();
+                            $("#status-filter-section").hide();
+                            console.error("Error loading transactions:", response.message);
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        $("#loading-indicator").hide();
+                        $("#no-transactions-message").show();
+                        $("#status-filter-section").hide();
+                        console.error("AJAX error:", error);
+                    }
+                });
+            }
+            
+            function updateTotals() {
+                var selectedCheckboxes = $(".transaction-checkbox:checked");
+                var count = selectedCheckboxes.length;
+                var total = 0;
+                
+                selectedCheckboxes.each(function() {
+                    total += parseFloat($(this).data("amount")) || 0;
+                });
+                
+                $("#selected-count").text(count);
+                $("#selected-total").text(total.toFixed(2));
+                
+                // Update the main amount field
+                $("input[name=\'amount\']").val(total.toFixed(2));
+                
+                // Enable/disable form submission based on selection
+                var submitButton = $("button[name=\'submitAddvendor_payment\'], input[name=\'submitAddvendor_payment\']");
+                if (count > 0) {
+                    submitButton.prop("disabled", false).removeClass("disabled");
+                } else {
+                    submitButton.prop("disabled", true).addClass("disabled");
+                }
+            }
+            
+            updateTotals();
+        });
+        
+        function onVendorSelectionChange(vendorId) {
+            if (vendorId && vendorId !== "") {
+                selectedVendor = parseInt(vendorId);
+                
+                // Hide instruction message
+                $("#vendor-selection-message").hide();
+                
+                // Clear status filter
+                $("#status-filter").val("");
+                
+                loadVendorTransactions(selectedVendor, "");
+            } else {
+                selectedVendor = null;
+                
+                $("#vendor-selection-message").show();
+                $("#transactions-container, #no-transactions-message, #status-filter-section").hide();
+                
+                // Clear totals
+                $("#selected-count").text("0");
+                $("#selected-total").text("0.00");
+                $("input[name=\'amount\']").val("0.00");
+                
+                // Disable submit button
+                var submitButton = $("button[name=\'submitAddvendor_payment\'], input[name=\'submitAddvendor_payment\']");
+                submitButton.prop("disabled", true).addClass("disabled");
+            }
+        }
+        
+        // Make loadVendorTransactions globally accessible
+        window.loadVendorTransactions = function(vendorId, statusFilter) {
+            statusFilter = statusFilter || "";
+            
+            // Show loading
+            $("#loading-indicator").show();
+            $("#transactions-container, #no-transactions-message").hide();
+            
+            $.ajax({
+                url: "' . self::$currentIndex . '",
+                type: "POST",
+                data: {
+                    ajax: 1,
+                    action: "getFilteredTransactions",
+                    id_vendor: vendorId,
+                    status_filter: statusFilter,
+                    token: "' . $this->token . '"
+                },
+                dataType: "json",
+                success: function(response) {
+                    $("#loading-indicator").hide();
+                    
+                    if (response.success) {
+                        if (response.count > 0) {
+                            $("#transactions-tbody").html(response.html);
+                            $("#transactions-container").show();
+                            $("#status-filter-section").show();
+                        } else {
+                            $("#no-transactions-message").show();
+                            $("#status-filter-section").hide();
+                        }
+                        
+                        // Update totals and checkbox states
+                        $("#selected-count").text("0");
+                        $("#selected-total").text("0.00");
+                        $("input[name=\'amount\']").val("0.00");
+                        $("#select-all").prop("checked", false).prop("indeterminate", false);
+                        
+                        // Disable submit button until transactions are selected
+                        var submitButton = $("button[name=\'submitAddvendor_payment\'], input[name=\'submitAddvendor_payment\']");
+                        submitButton.prop("disabled", true).addClass("disabled");
+                    } else {
+                        $("#no-transactions-message").show();
+                        $("#status-filter-section").hide();
+                        console.error("Error loading transactions:", response.message);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    $("#loading-indicator").hide();
+                    $("#no-transactions-message").show();
+                    $("#status-filter-section").hide();
+                    console.error("AJAX error:", error);
+                }
+            });
+        };
+    </script>';
     }
 
     /**
@@ -328,6 +620,7 @@ class AdminVendorPaymentsController extends ModuleAdminController
                         <thead>
                             <tr>
                                 <th>' . $this->l('Order') . '</th>
+                                <th>' . $this->l('Order Detail ID') . '</th>
                                 <th>' . $this->l('Product') . '</th>
                                 <th>' . $this->l('Product Reference (Qty)') . '</th>
                                 <th>' . $this->l('Amount') . '</th>
@@ -341,6 +634,7 @@ class AdminVendorPaymentsController extends ModuleAdminController
             foreach ($transactionDetails as $transaction) {
                 $html .= '<tr id="transaction-row-' . (int)$transaction['id_vendor_transaction'] . '">
                     <td>#' . htmlspecialchars($transaction['order_reference']) . '</td>
+                    <td>' . (int)$transaction['id_order_detail'] . '</td>
                     <td>' . htmlspecialchars($transaction['product_name']) . '</td>
                     <td>' . htmlspecialchars($transaction['product_reference']) . ' (' . (int)$transaction['product_quantity'] . ')</td>
                     <td>' . number_format($transaction['vendor_amount'], 2) . ' ' . $this->context->currency->sign . '</td>
@@ -356,7 +650,7 @@ class AdminVendorPaymentsController extends ModuleAdminController
                 </tr>';
             }
         } else {
-            $html .= '<tr><td colspan="6" class="text-center">' . $this->l('No transactions found for this payment') . '</td></tr>';
+            $html .= '<tr><td colspan="7" class="text-center">' . $this->l('No transactions found for this payment') . '</td></tr>';
         }
 
         $html .= '      </tbody>
@@ -365,6 +659,26 @@ class AdminVendorPaymentsController extends ModuleAdminController
                     <!-- Add new transactions section -->
                     <div class="alert alert-info">
                         <h4>' . $this->l('Add More Transactions') . '</h4>
+                        <!-- Status Filter for available transactions -->
+                        <div class="row" style="margin-bottom: 15px;">
+                            <div class="col-md-6">
+                                <label for="available-status-filter">' . $this->l('Filter by Status') . ':</label>
+                                <select id="available-status-filter" class="form-control">
+                                    <option value="">' . $this->l('All Statuses') . '</option>';
+
+        $statusTypes = $this->getAllOrderLineStatusTypes();
+        foreach ($statusTypes as $status) {
+            $html .= '<option value="' . (int)$status['id_order_line_status_type'] . '">' . htmlspecialchars($status['name']) . '</option>';
+        }
+
+        $html .= '              </select>
+                            </div>
+                            <div class="col-md-6">
+                                <button type="button" id="clear-available-status-filter" class="btn btn-default" style="margin-top: 25px;">
+                                    <i class="icon-remove"></i> ' . $this->l('Clear Filter') . '
+                                </button>
+                            </div>
+                        </div>
                         <button type="button" id="show-available-transactions" class="btn btn-primary">
                             <i class="icon-plus"></i> ' . $this->l('Add Transactions') . '
                         </button>
@@ -432,7 +746,23 @@ class AdminVendorPaymentsController extends ModuleAdminController
                 }
             });
             
-            function loadAvailableTransactions() {
+            // Status filter for available transactions
+            $("#available-status-filter").on("change", function() {
+                if ($("#available-transactions").is(":visible")) {
+                    loadAvailableTransactionsWithFilter();
+                }
+            });
+            
+            // Clear available status filter
+            $("#clear-available-status-filter").click(function() {
+                $("#available-status-filter").val("");
+                if ($("#available-transactions").is(":visible")) {
+                    loadAvailableTransactionsWithFilter();
+                }
+            });
+            
+            function loadAvailableTransactionsWithFilter() {
+                var statusFilter = $("#available-status-filter").val();
                 $.ajax({
                     url: "' . self::$currentIndex . '",
                     type: "POST",
@@ -441,6 +771,7 @@ class AdminVendorPaymentsController extends ModuleAdminController
                         action: "getAvailableTransactions",
                         vendor_id: ' . (int)($this->object->id_vendor ?? 0) . ',
                         payment_id: ' . (int)$this->object->id . ',
+                        status_filter: statusFilter,
                         token: "' . $this->token . '"
                     },
                     dataType: "json",
@@ -450,6 +781,10 @@ class AdminVendorPaymentsController extends ModuleAdminController
                         }
                     }
                 });
+            }
+            
+            function loadAvailableTransactions() {
+                loadAvailableTransactionsWithFilter();
             }
             
             // Add transaction to payment
@@ -551,12 +886,13 @@ class AdminVendorPaymentsController extends ModuleAdminController
     {
         $vendor_id = (int)Tools::getValue('vendor_id');
         $payment_id = (int)Tools::getValue('payment_id');
+        $status_filter = Tools::getValue('status_filter') ? (int)Tools::getValue('status_filter') : null;
 
         if (!$vendor_id) {
             die(json_encode(['success' => false, 'message' => $this->l('Invalid vendor ID')]));
         }
 
-        $transactions = $this->getAllPendingTransactions($vendor_id);
+        $transactions = $this->getAllPendingTransactions($vendor_id, $status_filter);
         $html = '';
 
         if ($transactions) {
@@ -564,8 +900,10 @@ class AdminVendorPaymentsController extends ModuleAdminController
                 <thead>
                     <tr>
                         <th>' . $this->l('Order') . '</th>
+                        <th>' . $this->l('Order Detail ID') . '</th>
                         <th>' . $this->l('Product') . '</th>
                         <th>' . $this->l('Amount') . '</th>
+                        <th>' . $this->l('Status') . '</th>
                         <th>' . $this->l('Actions') . '</th>
                     </tr>
                 </thead>
@@ -574,8 +912,10 @@ class AdminVendorPaymentsController extends ModuleAdminController
             foreach ($transactions as $transaction) {
                 $html .= '<tr>
                     <td>#' . htmlspecialchars($transaction['order_reference']) . '</td>
+                    <td>' . (int)$transaction['id_order_detail'] . '</td>
                     <td>' . htmlspecialchars($transaction['product_name']) . '</td>
                     <td>' . number_format($transaction['vendor_amount'], 2) . ' ' . $this->context->currency->sign . '</td>
+                    <td><span class="badge" style="background-color: ' . htmlspecialchars($transaction['status_color']) . '">' . htmlspecialchars($transaction['status_name']) . '</span></td>
                     <td>
                         <button type="button" 
                                 class="btn btn-success btn-xs add-transaction"
@@ -662,140 +1002,6 @@ class AdminVendorPaymentsController extends ModuleAdminController
                 'id_vendor_payment = ' . (int)$payment_id
             );
         }
-    }
-
-    /**
-     * Render order details table with checkboxes (for new payments)
-     */
-    protected function renderOrderDetailsTable()
-    {
-        // Get all vendors for the dropdown
-        $vendors = Vendor::getAllVendors();
-        $vendorsArray = [];
-        foreach ($vendors as $vendor) {
-            $vendorsArray[] = [
-                'id' => $vendor['id_vendor'],
-                'name' => $vendor['shop_name']
-            ];
-        }
-
-        // Get all order line status types for filtering
-        $statusTypes = $this->getAllOrderLineStatusTypes();
-
-        $html = '<div class="form-group">
-        <div class="col-lg-12">
-            <div class="panel panel-default">
-                <div class="panel-heading">
-                    <h3 class="panel-title">' . $this->l('Pending Transactions') . '</h3>
-                </div>
-                <div class="panel-body">
-                    <!-- Filter Controls -->
-                    <div class="row" style="margin-bottom: 15px;">
-                        <div class="col-md-4">
-                            <label for="filter-vendor">' . $this->l('Filter by Vendor') . ':</label>
-                            <select id="filter-vendor" class="form-control">
-                                <option value="">' . $this->l('All Vendors') . '</option>';
-
-        foreach ($vendorsArray as $vendor) {
-            $html .= '<option value="' . (int)$vendor['id'] . '">' . htmlspecialchars($vendor['name']) . '</option>';
-        }
-
-        $html .= '          </select>
-                        </div>
-                        <div class="col-md-4">
-                            <label for="filter-status">' . $this->l('Filter by Status') . ':</label>
-                            <select id="filter-status" class="form-control">
-                                <option value="">' . $this->l('All Statuses') . '</option>';
-
-        foreach ($statusTypes as $status) {
-            $html .= '<option value="' . (int)$status['id_order_line_status_type'] . '">' . htmlspecialchars($status['name']) . '</option>';
-        }
-
-        $html .= '          </select>
-                        </div>
-                        <div class="col-md-4">
-                            <button type="button" id="apply-filters" class="btn btn-primary" style="margin-top: 25px;">
-                                <i class="icon-filter"></i> ' . $this->l('Apply Filters') . '
-                            </button>
-                            <button type="button" id="clear-filters" class="btn btn-default" style="margin-top: 25px;">
-                                <i class="icon-remove"></i> ' . $this->l('Clear') . '
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <!-- Loading indicator -->
-                    <div id="loading-indicator" class="text-center" style="display: none;">
-                        <i class="icon-spinner icon-spin"></i> ' . $this->l('Loading transactions...') . '
-                    </div>
-                    
-                    <!-- Transactions Table -->
-                    <table class="table table-striped">
-                        <thead>
-                            <tr>
-                                <th><input type="checkbox" id="select-all"> ' . $this->l('All') . '</th>
-                                <th>' . $this->l('Vendor') . '</th>
-                                <th>' . $this->l('Order') . '</th>
-                                <th>' . $this->l('Order Detail ID') . '</th>
-                                <th>' . $this->l('Product') . '</th>
-                                <th>' . $this->l('Product Reference (Qty)') . '</th>
-                                <th>' . $this->l('Amount') . '</th>
-                                <th>' . $this->l('Status') . '</th>
-                                <th>' . $this->l('Date') . '</th>
-                            </tr>
-                        </thead>
-                        <tbody id="transactions-tbody">';
-
-        // Load initial data (all pending transactions)
-        $pendingTransactions = $this->getAllPendingTransactions();
-        if ($pendingTransactions) {
-            foreach ($pendingTransactions as $transaction) {
-                $html .= $this->renderTransactionRow($transaction);
-            }
-        } else {
-            $html .= '<tr><td colspan="9" class="text-center">' . $this->l('No pending transactions found') . '</td></tr>';
-        }
-
-        $html .= '      </tbody>
-                    </table>
-                    
-                    <!-- Selection Summary -->
-                    <div class="alert alert-info">
-                        <strong>' . $this->l('Selected') . ':</strong> <span id="selected-count">0</span> ' . $this->l('transactions') . ' - 
-                        <strong>' . $this->l('Total') . ':</strong> <span id="selected-total">0.00</span> ' . $this->context->currency->sign . '
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>';
-
-        $html .= $this->getTransactionSelectionJavaScript();
-
-        return $html;
-    }
-
-    /**
-     * Render individual transaction row
-     */
-    protected function renderTransactionRow($transaction)
-    {
-        return '<tr data-vendor="' . (int)$transaction['id_vendor'] . '" data-status="' . (int)$transaction['status_type_id'] . '">
-        <td>
-            <input type="checkbox" 
-                   name="selected_order_details[]" 
-                   value="' . (int)$transaction['id_vendor_transaction'] . '"
-                   data-amount="' . (float)$transaction['vendor_amount'] . '"
-                   data-vendor="' . (int)$transaction['id_vendor'] . '"
-                   class="transaction-checkbox">
-        </td>
-        <td>' . htmlspecialchars($transaction['vendor_name']) . '</td>
-        <td>#' . htmlspecialchars($transaction['order_reference']) . '</td>
-        <td>' . (int)$transaction['id_order_detail'] . '</td>
-        <td>' . htmlspecialchars($transaction['product_name']) . '</td>
-        <td>' . htmlspecialchars($transaction['product_reference']) . ' (' . (int)$transaction['product_quantity'] . ')</td>
-        <td>' . number_format($transaction['vendor_amount'], 2) . ' ' . $this->context->currency->sign . '</td>
-        <td><span class="badge" style="background-color: ' . htmlspecialchars($transaction['status_color']) . '">' . htmlspecialchars($transaction['status_name']) . '</span></td>
-        <td>' . date('d/m/Y', strtotime($transaction['order_date'])) . '</td>
-    </tr>';
     }
 
     /**
@@ -887,18 +1093,48 @@ class AdminVendorPaymentsController extends ModuleAdminController
     }
 
     /**
+     * Render individual transaction row
+     */
+    protected function renderTransactionRow($transaction)
+    {
+        return '<tr>
+        <td>
+            <input type="checkbox" 
+                   name="selected_order_details[]" 
+                   value="' . (int)$transaction['id_vendor_transaction'] . '"
+                   data-amount="' . (float)$transaction['vendor_amount'] . '"
+                   data-vendor="' . (int)$transaction['id_vendor'] . '"
+                   class="transaction-checkbox">
+        </td>
+        <td>#' . htmlspecialchars($transaction['order_reference']) . '</td>
+        <td>' . (int)$transaction['id_order_detail'] . '</td>
+        <td>' . htmlspecialchars($transaction['product_name']) . '</td>
+        <td>' . htmlspecialchars($transaction['product_reference']) . ' (' . (int)$transaction['product_quantity'] . ')</td>
+        <td class="text-right"><strong>' . number_format($transaction['vendor_amount'], 2) . ' ' . $this->context->currency->sign . '</strong></td>
+        <td><span class="badge" style="background-color: ' . htmlspecialchars($transaction['status_color']) . '">' . htmlspecialchars($transaction['status_name']) . '</span></td>
+        <td>' . date('d/m/Y', strtotime($transaction['order_date'])) . '</td>
+    </tr>';
+    }
+
+    /**
      * Process form submission for new payments
      */
     public function processAdd()
     {
         $selectedTransactions = Tools::getValue('selected_order_details');
+        $selectedVendor = (int)Tools::getValue('id_vendor');
 
         if (empty($selectedTransactions)) {
             $this->errors[] = $this->l('Please select at least one transaction for payment.');
             return false;
         }
 
-        // Calculate total and validate transactions
+        if (!$selectedVendor) {
+            $this->errors[] = $this->l('Please select a vendor for payment.');
+            return false;
+        }
+
+        // Calculate total and validate transactions belong to selected vendor
         $totalAmount = 0;
         $validTransactions = [];
 
@@ -910,27 +1146,26 @@ class AdminVendorPaymentsController extends ModuleAdminController
                 INNER JOIN ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod ON vod.id_order_detail = vt.order_detail_id
                 WHERE vt.id_vendor_transaction = ' . (int)$transactionId . '
                 AND vt.status = "pending" 
-                AND vt.id_vendor_payment = 0'
+                AND vt.id_vendor_payment = 0
+                AND vod.id_vendor = ' . (int)$selectedVendor
             );
 
             if ($transaction) {
                 $totalAmount += (float)$transaction['vendor_amount'];
                 $validTransactions[] = $transaction;
+            } else {
+                $this->errors[] = $this->l('Invalid transaction selected or transaction does not belong to selected vendor.');
+                return false;
             }
         }
 
         if (empty($validTransactions)) {
-            $this->errors[] = $this->l('No valid transactions selected.');
+            $this->errors[] = $this->l('No valid transactions selected for the chosen vendor.');
             return false;
         }
 
         // Set the calculated amount
         $_POST['amount'] = $totalAmount;
-
-        // Set vendor from first transaction if not set
-        if (!Tools::getValue('id_vendor') && !empty($validTransactions)) {
-            $_POST['id_vendor'] = $validTransactions[0]['id_vendor'];
-        }
 
         $result = parent::processAdd();
 
@@ -1013,6 +1248,7 @@ class AdminVendorPaymentsController extends ModuleAdminController
                 vt.status,
                 vt.date_add as transaction_date,
                 vod.product_name,
+                vod.id_order_detail,
                 vod.product_reference,
                 vod.product_quantity,
                 vod.id_vendor,
@@ -1028,107 +1264,6 @@ class AdminVendorPaymentsController extends ModuleAdminController
         ';
 
         return Db::getInstance()->executeS($query);
-    }
-
-    /**
-     * JavaScript for enhanced transaction selection (for new payments)
-     */
-    protected function getTransactionSelectionJavaScript()
-    {
-        return '<script type="text/javascript">
-        $(document).ready(function() {
-            // Filter functionality
-            $("#apply-filters, #filter-vendor, #filter-status").on("change click", function() {
-                if ($(this).is("select")) {
-                    // Auto-apply on dropdown change
-                    applyFilters();
-                } else if ($(this).is("button")) {
-                    // Manual apply button
-                    applyFilters();
-                }
-            });
-            
-            $("#clear-filters").click(function() {
-                $("#filter-vendor, #filter-status").val("");
-                applyFilters();
-            });
-            
-            // Select all functionality
-            $("#select-all").change(function() {
-                $(".transaction-checkbox:visible").prop("checked", this.checked);
-                updateTotals();
-            });
-            
-            // Individual checkbox change
-            $(document).on("change", ".transaction-checkbox", function() {
-                updateTotals();
-            });
-            
-            function applyFilters() {
-                var vendorId = $("#filter-vendor").val();
-                var statusFilter = $("#filter-status").val();
-                
-                $("#loading-indicator").show();
-                $("#transactions-tbody").hide();
-                
-                $.ajax({
-                    url: "' . self::$currentIndex . '",
-                    type: "POST",
-                    data: {
-                        ajax: 1,
-                        action: "getFilteredTransactions",
-                        id_vendor: vendorId,
-                        status_filter: statusFilter,
-                        token: "' . $this->token . '"
-                    },
-                    dataType: "json",
-                    success: function(response) {
-                        $("#loading-indicator").hide();
-                        $("#transactions-tbody").show();
-                        
-                        if (response.success) {
-                            $("#transactions-tbody").html(response.html);
-                            updateTotals();
-                        } else {
-                            $("#transactions-tbody").html("<tr><td colspan=\"9\" class=\"text-center text-danger\">" + (response.message || "' . $this->l('Error loading transactions') . '") + "</td></tr>");
-                        }
-                    },
-                    error: function() {
-                        $("#loading-indicator").hide();
-                        $("#transactions-tbody").show();
-                        $("#transactions-tbody").html("<tr><td colspan=\"9\" class=\"text-center text-danger\">' . $this->l('Error loading transactions. Please try again.') . '</td></tr>");
-                    }
-                });
-            }
-            
-            function updateTotals() {
-                var total = 0;
-                var count = 0;
-                
-                $(".transaction-checkbox:checked").each(function() {
-                    total += parseFloat($(this).data("amount"));
-                    count++;
-                });
-                
-                $("#selected-count").text(count);
-                $("#selected-total").text(total.toFixed(2));
-                $("input[name=\'amount\']").val(total.toFixed(2));
-                
-                // Update select all checkbox
-                var visibleCheckboxes = $(".transaction-checkbox:visible").length;
-                var checkedCheckboxes = $(".transaction-checkbox:visible:checked").length;
-                $("#select-all").prop("checked", checkedCheckboxes > 0 && checkedCheckboxes === visibleCheckboxes);
-                $("#select-all").prop("indeterminate", checkedCheckboxes > 0 && checkedCheckboxes < visibleCheckboxes);
-            }
-            
-            // Auto-load if vendor is pre-selected in main form
-            var preSelectedVendor = $("select[name=\'id_vendor\']").val();
-            if (preSelectedVendor) {
-                $("#filter-vendor").val(preSelectedVendor);
-                applyFilters();
-            }
-        });
-    </script>';
     }
 
     /**

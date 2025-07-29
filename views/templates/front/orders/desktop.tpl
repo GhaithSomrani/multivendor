@@ -100,6 +100,7 @@
                             <th>{l s='Total' mod='multivendor'}</th>
                             <th>{l s='Statut' mod='multivendor'}</th>
                             <th>{l s='Date' mod='multivendor'}</th>
+                            <th>{l s='Payé' mod='multivendor'}</th>
                             <th>{l s='Actions' mod='multivendor'}</th>
                         </tr>
                     </thead>
@@ -153,6 +154,9 @@
                                     {/if}
                                 </td>
                                 <td>{$line.order_date|date_format:'%Y-%m-%d'}</td>
+                                {assign var='paid' value=TransactionHelper::isOrderDetailPaid($line.id_order_detail)}
+                                <td> {if $paid} ✅ {else} ❌ {/if}</td>
+
                                 <td class="mv-actions">
                                     <button class="mv-btn-icon view-status-history"
                                         data-order-detail-id="{$line.id_order_detail}"

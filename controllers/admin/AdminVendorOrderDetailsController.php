@@ -87,6 +87,12 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
                 'currency' => true,
                 'callback' => 'displayVendorAmount'
             ],
+            'payment_status' => [
+                'title' => $this->l('Statut de paiement'),
+                'callback' => 'displayPaymentStatus',
+                'orderby' => false,
+                'search' => false
+            ],
             'name' => [
                 'title' => $this->l('Statut ligne de commande'),
                 'type' => 'select',
@@ -111,7 +117,10 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
             o.id_order,
             v.shop_name as vendor_name,
             olst.name as name,
-            COALESCE(olst.color, "#777777") as status_color
+            COALESCE(olst.color, "#777777") as status_color,
+            vt.id_vendor_payment,
+            vp.status as payment_status,
+            vp.reference as payment_reference
         ';
 
         $this->_join = '
@@ -119,7 +128,48 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
             LEFT JOIN `' . _DB_PREFIX_ . 'mv_vendor` v ON (v.id_vendor = a.id_vendor)
             LEFT JOIN `' . _DB_PREFIX_ . 'mv_order_line_status` ols ON (ols.id_order_detail = a.id_order_detail AND ols.id_vendor = a.id_vendor)
             LEFT JOIN `' . _DB_PREFIX_ . 'mv_order_line_status_type` olst ON (olst.id_order_line_status_type = ols.id_order_line_status_type)
+            LEFT JOIN `' . _DB_PREFIX_ . 'mv_vendor_transaction` vt ON (vt.order_detail_id = a.id_order_detail AND vt.transaction_type = "commission")
+            LEFT JOIN `' . _DB_PREFIX_ . 'mv_vendor_payment` vp ON (vp.id_vendor_payment = vt.id_vendor_payment)
         ';
+    }
+
+    /**
+     * Display payment status
+     */
+    public function displayPaymentStatus($value, $row)
+    {
+        if (isset($row['id_vendor_payment']) && $row['id_vendor_payment'] > 0) {
+            $status = isset($row['payment_status']) ? $row['payment_status'] : 'pending';
+            $color = '';
+            $text = '';
+
+            switch ($status) {
+                case 'completed':
+                    $color = '#28a745';
+                    $text = $this->l('Payé');
+                    break;
+                case 'pending':
+                    $color = '#ffc107';
+                    $text = $this->l('En attente');
+                    break;
+                case 'cancelled':
+                    $color = '#dc3545';
+                    $text = $this->l('Annulé');
+                    break;
+                default:
+                    $color = '#6c757d';
+                    $text = $this->l('Inconnu');
+            }
+
+            $payment_ref = isset($row['payment_reference']) ? $row['payment_reference'] : '';
+            $title = $payment_ref ? 'title="Réf: ' . htmlspecialchars($payment_ref) . '"' : '';
+
+            return '<span class="badge" style="background-color: ' . $color . '; color: white; padding: 4px 8px; border-radius: 3px;" ' . $title . '>' .
+                htmlspecialchars($text) . '</span>';
+        } else {
+            return '<span class="badge" style="background-color: #6c757d; color: white; padding: 4px 8px; border-radius: 3px;">' .
+                $this->l('Non payé') . '</span>';
+        }
     }
 
     /**
@@ -420,6 +470,18 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
         AND ols.id_vendor = ' . (int)$vendorOrderDetail->id_vendor
         );
 
+        // Get payment information
+        $payment_info = Db::getInstance()->getRow(
+            '
+        SELECT vt.id_vendor_payment, vp.amount, vp.payment_method, vp.reference, vp.status, vp.date_add as payment_date
+        FROM ' . _DB_PREFIX_ . 'mv_vendor_transaction vt
+        LEFT JOIN ' . _DB_PREFIX_ . 'mv_vendor_payment vp ON vp.id_vendor_payment = vt.id_vendor_payment
+        WHERE vt.order_detail_id = ' . (int)$vendorOrderDetail->id_order_detail . '
+        AND vt.transaction_type = "commission"
+        ORDER BY vt.date_add DESC
+       '
+        );
+
         // Get status history
         $status_history = Db::getInstance()->executeS(
             '
@@ -443,6 +505,7 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
             'vendor' => (object)$vendor,
             'currency' => $currency,
             'status_info' => $status_info,
+            'payment_info' => $payment_info,
             'status_history' => $status_history ?: []
         ]);
 

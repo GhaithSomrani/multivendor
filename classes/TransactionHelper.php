@@ -358,4 +358,16 @@ class TransactionHelper
 
         return (float)Db::getInstance()->getValue($query);
     }
+
+    public static function isOrderDetailPaid($id_order_detail)
+    {
+        $query = new DbQuery();
+        $query->select('COUNT(*)');
+        $query->from('mv_vendor_transaction', 'vt');
+        $query->where('vt.order_detail_id = ' . (int)$id_order_detail);
+        $query->where('vt.status = "paid"');
+        $query->where('vt.transaction_type = "commission"');
+
+        return (bool)Db::getInstance()->getValue($query);
+    }
 }

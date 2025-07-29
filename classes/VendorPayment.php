@@ -130,4 +130,5 @@ class VendorPayment extends ObjectModel
 
         return $payments;
     }
+
 }
