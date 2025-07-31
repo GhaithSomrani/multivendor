@@ -225,8 +225,7 @@ class AdminVendorPaymentsController extends ModuleAdminController
                         ]
                     ],
                     'required' => true,
-                    'disabled' => $this->object->id ? true : false, // Disable vendor change in edit mode
-                    // Use unified vendor selection function
+                    'disabled' => $this->object->id ? true : false,
                     'onchange' => !$this->object->id ? 'onVendorSelectionChange(this.value);' : '',
                     'hint' => !$this->object->id ? $this->l('Select a vendor to view and select their pending transactions') : ''
                 ]
@@ -268,7 +267,7 @@ class AdminVendorPaymentsController extends ModuleAdminController
             ];
         }
 
-        // Add other payment fields
+        // Add payment method field
         $this->fields_form['input'][] = [
             'type' => 'select',
             'label' => $this->l('Payment Method'),
@@ -281,19 +280,44 @@ class AdminVendorPaymentsController extends ModuleAdminController
             'required' => true
         ];
 
+        // Add reference field
         $this->fields_form['input'][] = [
             'type' => 'text',
             'label' => $this->l('Reference'),
             'name' => 'reference',
-            'hint' => $this->l('Transaction ID, Check Number, etc.')
+            'hint' => $this->l('Transaction ID, Check Number, etc.'),
+            'required' => true
         ];
 
+        // Add status field
+        $this->fields_form['input'][] = [
+            'type' => 'select',
+            'label' => $this->l('Status'),
+            'name' => 'status',
+            'options' => [
+                'query' => [
+                    ['id' => 'pending', 'name' => $this->l('Pending')],
+                    ['id' => 'completed', 'name' => $this->l('Completed')],
+                    ['id' => 'cancelled', 'name' => $this->l('Cancelled')]
+                ],
+                'id' => 'id',
+                'name' => 'name'
+            ],
+            'required' => true
+        ];
+
+        // Add notes field
         $this->fields_form['input'][] = [
             'type' => 'textarea',
             'label' => $this->l('Notes'),
             'name' => 'notes',
             'rows' => 3
         ];
+
+        // Set default values for new payments
+        if (!$this->object->id) {
+            $this->fields_value['status'] = 'completed';
+        }
 
         return parent::renderForm();
     }
@@ -540,7 +564,7 @@ class AdminVendorPaymentsController extends ModuleAdminController
             }
         }
         
-        // Make loadVendorTransactions globally accessible
+        // Make loadVendorTransactions globally accessible for debugging
         window.loadVendorTransactions = function(vendorId, statusFilter) {
             statusFilter = statusFilter || "";
             
@@ -1018,10 +1042,11 @@ class AdminVendorPaymentsController extends ModuleAdminController
     }
 
     /**
-     * Get all pending transactions from mv_vendor_transaction
+     * Get all pending transactions from mv_vendor_transaction with proper status filtering
      */
     protected function getAllPendingTransactions($id_vendor = null, $status_filter = null)
     {
+        // Get default status type information
         $defaultStatusTypeId = OrderLineStatus::getDefaultStatusTypeId();
         $defaultStatusType = new OrderLineStatusType($defaultStatusTypeId);
 
@@ -1064,18 +1089,29 @@ class AdminVendorPaymentsController extends ModuleAdminController
     }
 
     /**
-     * AJAX handler for filtered transactions
+     * AJAX handler for filtered transactions - FIXED VERSION
      */
     public function ajaxProcessGetFilteredTransactions()
     {
         $id_vendor = Tools::getValue('id_vendor') ? (int)Tools::getValue('id_vendor') : null;
         $status_filter = Tools::getValue('status_filter') ? (int)Tools::getValue('status_filter') : null;
 
+        // Log the request for debugging
+        PrestaShopLogger::addLog('AJAX getFilteredTransactions called - Vendor: ' . $id_vendor . ', Status: ' . $status_filter, 1, null, 'AdminVendorPaymentsController');
+
         try {
+            if (!$id_vendor) {
+                die(json_encode([
+                    'success' => false,
+                    'message' => $this->l('Vendor ID is required'),
+                    'count' => 0
+                ]));
+            }
+
             $transactions = $this->getAllPendingTransactions($id_vendor, $status_filter);
             $html = '';
 
-            if ($transactions) {
+            if ($transactions && count($transactions) > 0) {
                 foreach ($transactions as $transaction) {
                     $html .= $this->renderTransactionRow($transaction);
                 }
@@ -1084,11 +1120,20 @@ class AdminVendorPaymentsController extends ModuleAdminController
             die(json_encode([
                 'success' => true,
                 'html' => $html,
-                'count' => count($transactions)
+                'count' => count($transactions),
+                'debug' => [
+                    'vendor_id' => $id_vendor,
+                    'status_filter' => $status_filter,
+                    'transaction_count' => count($transactions)
+                ]
             ]));
         } catch (Exception $e) {
-            PrestaShopLogger::addLog('Error in ajaxProcessGetFilteredTransactions: ' . $e->getMessage(), 3);
-            die(json_encode(['success' => false, 'message' => $this->l('Error loading transactions')]));
+            PrestaShopLogger::addLog('Error in ajaxProcessGetFilteredTransactions: ' . $e->getMessage(), 3, null, 'AdminVendorPaymentsController');
+            die(json_encode([
+                'success' => false,
+                'message' => $this->l('Error loading transactions: ') . $e->getMessage(),
+                'count' => 0
+            ]));
         }
     }
 
