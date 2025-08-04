@@ -227,7 +227,6 @@
         <div class="header">
 
             <div class="website-info">
-                <h1>LA MODE</h1>
                 <div class="address">
                     LaMode enseigne de E-Market SARL<br>
                     MF: 1381766 S/A/M/000<br>
@@ -291,7 +290,7 @@
                         <th>SKU</th>
                         <th>MPN (Code-barres)</th>
                         <th>Qté</th>
-                        <th>Valeur</th>
+                        <th>Montant HT</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -302,7 +301,7 @@
                             <td>{$detail.product_reference|default:'-'}</td>
                             <td class="center">-</td>
                             <td class="center">{$detail.product_quantity|default:'1'}</td>
-                            <td class="right">{$detail.vendor_amount|number_format:2}</td>
+                            <td class="right">{($detail.vendor_amount*0.81)|number_format:2}</td>
                         </tr>
                     {/foreach}
                 </tbody>

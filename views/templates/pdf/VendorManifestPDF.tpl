@@ -192,7 +192,7 @@
                     <th width="15%"><strong>SKU</strong></th>
                     <th width="20%"><strong>MPN (Code-barres)</strong></th>
                     <th width="5%"><strong>Qté</strong></th>
-                    <th width="10%"><strong>Valeur</strong></th>
+                    <th width="10%"><strong>Montant TTC</strong></th>
                 </tr>
             </thead>
             <tbody>
@@ -245,8 +245,10 @@
 
                 <tr class="total-row">
                     <td colspan="4" class="text-left"><strong>TVA :</strong></td>
-                    <td class="text-center"><strong>-</strong></td>
-                    <td class="text-right"><strong>19% </strong></td>
+                    {assign var=calculated_HT value=$calculated_total_value*0.19}
+
+                    <td class="text-center"><strong>19% </strong></td>
+                    <td class="text-right"><strong>{$calculated_HT} </strong></td>
                 </tr>
                 
                 

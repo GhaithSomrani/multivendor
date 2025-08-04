@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Admin Vendor Order Details Controller - Complete with Export Card
+ * Admin Vendor Order Details Controller - Complete with Export Card and Order Status
  */
 
 if (!defined('_PS_VERSION_')) {
@@ -21,7 +21,15 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
         $this->_defaultOrderWay = 'DESC';
         $this->list_id = 'vendor_order_details';
 
-        // Disable add/edit/delete actions
+        // Enable bulk actions for checkbox selection
+        $this->bulk_actions = [
+            'updateStatus' => [
+                'text' => 'Mettre à jour le statut',
+                'icon' => 'icon-refresh',
+            ]
+        ];
+
+        // Disable add/edit/delete actions but keep view
         $this->addRowAction('view');
         $this->allow_export = true;
         $this->_use_found_rows = true;
@@ -35,13 +43,13 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
                 'class' => 'fixed-width-xs'
             ],
             'order_reference' => [
-                'title' => $this->l('Référence de commande'),
+                'title' => $this->l('Référence'),
                 'filter_key' => 'o!reference',
                 'havingFilter' => true,
                 'callback' => 'displayOrderReference',
             ],
             'id_order_detail' => [
-                'title' => $this->l('ID Détail de commande'),
+                'title' => $this->l('ID Détail '),
                 'align' => 'center',
                 'class' => 'fixed-width-sm',
                 'filter_key' => 'a!id_order_detail'
@@ -52,7 +60,7 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
                 'havingFilter' => true
             ],
             'product_name' => [
-                'title' => $this->l('Nom du produit'),
+                'title' => $this->l('Nom'),
                 'filter_key' => 'a!product_name',
                 'maxlength' => 60
             ],
@@ -62,25 +70,12 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
                 'align' => 'center'
             ],
             'product_quantity' => [
-                'title' => $this->l('Quantité'),
+                'title' => $this->l('QTÉ'),
                 'align' => 'center',
                 'class' => 'fixed-width-xs',
                 'filter_key' => 'a!product_quantity'
             ],
-            'commission_rate' => [
-                'title' => $this->l('Taux de commission (%)'),
-                'type' => 'percentage',
-                'align' => 'center',
-                'filter_key' => 'a!commission_rate',
-                'havingFilter' => true
-            ],
-            'commission_amount' => [
-                'title' => $this->l('Montant de commission'),
-                'type' => 'price',
-                'currency' => true,
-                'filter_key' => 'a!commission_amount',
-                'havingFilter' => true,
-            ],
+           
             'vendor_amount' => [
                 'title' => $this->l('Montant vendeur'),
                 'type' => 'price',
@@ -92,6 +87,14 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
                 'callback' => 'displayPaymentStatus',
                 'orderby' => false,
                 'search' => false
+            ],
+            'order_status_name' => [
+                'title' => $this->l('Statut de commande'),
+                'type' => 'select',
+                'list' => [],
+                'filter_key' => 'osl!name',
+                'havingFilter' => true,
+                'callback' => 'displayOrderStatus'
             ],
             'name' => [
                 'title' => $this->l('Statut ligne de commande'),
@@ -110,17 +113,21 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
         ];
 
         $this->populateStatusList();
+        $this->populateOrderStatusList();
 
         $this->_select = '
             o.reference as order_reference,
             o.date_add as order_date,
             o.id_order,
+            o.current_state as order_current_state,
             v.shop_name as vendor_name,
             olst.name as name,
             COALESCE(olst.color, "#777777") as status_color,
             vt.id_vendor_payment,
             vp.status as payment_status,
-            vp.reference as payment_reference
+            vp.reference as payment_reference,
+            osl.name as order_status_name,
+            COALESCE(os.color, "#777777") as order_status_color
         ';
 
         $this->_join = '
@@ -130,7 +137,278 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
             LEFT JOIN `' . _DB_PREFIX_ . 'mv_order_line_status_type` olst ON (olst.id_order_line_status_type = ols.id_order_line_status_type)
             LEFT JOIN `' . _DB_PREFIX_ . 'mv_vendor_transaction` vt ON (vt.order_detail_id = a.id_order_detail AND vt.transaction_type = "commission")
             LEFT JOIN `' . _DB_PREFIX_ . 'mv_vendor_payment` vp ON (vp.id_vendor_payment = vt.id_vendor_payment)
+            LEFT JOIN `' . _DB_PREFIX_ . 'order_state_lang` osl ON (osl.id_order_state = o.current_state AND osl.id_lang = ' . (int)$this->context->language->id . ')
+            LEFT JOIN `' . _DB_PREFIX_ . 'order_state` os ON (os.id_order_state = o.current_state)
         ';
+    }
+
+    /**
+     * Populate the order status list for the dropdown filter
+     */
+    protected function populateOrderStatusList()
+    {
+        $statuses = Db::getInstance()->executeS('
+            SELECT DISTINCT osl.name
+            FROM `' . _DB_PREFIX_ . 'order_state_lang` osl
+            INNER JOIN `' . _DB_PREFIX_ . 'order_state` os ON (os.id_order_state = osl.id_order_state)
+            WHERE osl.id_lang = ' . (int)$this->context->language->id . '
+            AND os.deleted = 0
+            ORDER BY osl.name ASC
+        ');
+
+        $statusList = [];
+        foreach ($statuses as $status) {
+            $statusList[$status['name']] = $status['name'];
+        }
+
+        $this->fields_list['order_status_name']['list'] = $statusList;
+    }
+
+    /**
+     * Display order status with color
+     */
+    public function displayOrderStatus($status, $row)
+    {
+        if (!$status) {
+            return '<span class="badge" style="background-color: #6c757d; color: white; padding: 4px 8px; border-radius: 3px;">' .
+                $this->l('Inconnu') . '</span>';
+        }
+
+        $color = isset($row['order_status_color']) ? $row['order_status_color'] : '#777777';
+        return '<span class="badge" style="background-color: ' . $color . '; color: white; padding: 4px 8px; border-radius: 3px;">' .
+            htmlspecialchars($status) . '</span>';
+    }
+
+    /**
+     * Process bulk status update for selected checkboxes
+     */
+    public function ajaxProcessAjaxMassUpdateStatus()
+    {
+        // Security checks
+        if (!$this->context->employee || !$this->context->employee->id) {
+            die(json_encode(['success' => false, 'message' => 'Access denied: Admin access required']));
+        }
+
+        // Get parameters
+        $id = (int)Tools::getValue('id');
+        $id_new_status = (int)Tools::getValue('status_id');
+        $comment = Tools::getValue('comment', 'Mise à jour AJAX');
+
+        // Validation
+        if (!$id || !$id_new_status) {
+            die(json_encode([
+                'success' => false,
+                'message' => 'ID and Status ID are required'
+            ]));
+        }
+
+        try {
+            // Load the vendor order detail
+            $vendorOrderDetail = new VendorOrderDetail((int)$id);
+            if (!Validate::isLoadedObject($vendorOrderDetail)) {
+                die(json_encode([
+                    'success' => false,
+                    'message' => 'Vendor order detail not found for ID: ' . $id
+                ]));
+            }
+
+            // Validate status type
+            $statusType = new OrderLineStatusType($id_new_status);
+            if (!Validate::isLoadedObject($statusType)) {
+                die(json_encode([
+                    'success' => false,
+                    'message' => 'Invalid status type ID: ' . $id_new_status
+                ]));
+            }
+
+            // Use the existing VendorHelper function exactly as in processBulkUpdateStatus
+            $result = VendorHelper::updateOrderLineStatusAsAdmin(
+                $vendorOrderDetail->id_order_detail,
+                $vendorOrderDetail->id_vendor,
+                $id_new_status,
+                Context::getContext()->employee->id,
+                $comment
+            );
+
+            if ($result['success']) {
+                // Return success with detailed information
+                die(json_encode([
+                    'success' => true,
+                    'message' => 'Status updated successfully',
+                    'data' => [
+                        'id' => $id,
+                        'order_detail_id' => $vendorOrderDetail->id_order_detail,
+                        'vendor_id' => $vendorOrderDetail->id_vendor,
+                        'new_status' => $id_new_status,
+                        'status_name' => $statusType->name,
+                        'vendor_helper_message' => $result['message'] ?? 'Updated via VendorHelper'
+                    ]
+                ]));
+            } else {
+                // Return error from VendorHelper
+                die(json_encode([
+                    'success' => false,
+                    'message' => $result['message'] ?? 'Unknown error from VendorHelper'
+                ]));
+            }
+        } catch (Exception $e) {
+            PrestaShopLogger::addLog(
+                'AJAX Mass Update Error: ' . $e->getMessage(),
+                3,
+                null,
+                'AdminVendorOrderDetails',
+                $id
+            );
+
+            die(json_encode([
+                'success' => false,
+                'message' => 'Exception: ' . $e->getMessage()
+            ]));
+        }
+    }
+
+    /**
+     * Render mass update panel using template
+     */
+    protected function renderMassUpdatePanel()
+    {
+        // Get all active order line status types
+        $statusTypes = OrderLineStatusType::getAllActiveStatusTypes();
+
+        // Get all vendors for filtering
+        $vendors = Vendor::getAllVendors();
+
+        // Assign variables to Smarty
+        $this->context->smarty->assign([
+            'status_types' => $statusTypes,
+            'vendors' => $vendors,
+            'current_index' => self::$currentIndex,
+            'token' => $this->token
+        ]);
+
+        // Fetch and return the template
+        return $this->context->smarty->fetch(_PS_MODULE_DIR_ . 'multivendor/views/templates/admin/panel/mass_update_panel.tpl');
+    }
+
+    /**
+     * Process mass status update (original filter-based method)
+     */
+    protected function processMassUpdateStatus()
+    {
+        $id_vendor = (int)Tools::getValue('mass_vendor_id');
+        $id_new_status = (int)Tools::getValue('mass_new_status');
+        $comment = Tools::getValue('mass_comment', 'Mise à jour en masse');
+
+        // Optional filters
+        $id_current_status = (int)Tools::getValue('mass_current_status');
+        $date_from = Tools::getValue('mass_date_from');
+        $date_to = Tools::getValue('mass_date_to');
+        $order_reference = Tools::getValue('mass_order_reference');
+
+        // Validation
+        if (empty($id_vendor) || empty($id_new_status)) {
+            $this->errors[] = $this->l('Vendeur et nouveau statut sont requis.');
+            return;
+        }
+
+        // Get vendor info
+        $vendor = Vendor::getVendorById($id_vendor);
+        if (!$vendor) {
+            $this->errors[] = $this->l('Vendeur introuvable.');
+            return;
+        }
+
+        // Get status type info
+        $statusType = new OrderLineStatusType($id_new_status);
+        if (!Validate::isLoadedObject($statusType)) {
+            $this->errors[] = $this->l('Statut introuvable.');
+            return;
+        }
+
+        try {
+            // Build query to get matching order details
+            $sql = 'SELECT DISTINCT vod.id_order_detail
+                FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod
+                INNER JOIN ' . _DB_PREFIX_ . 'order_detail od ON vod.id_order_detail = od.id_order_detail
+                INNER JOIN ' . _DB_PREFIX_ . 'orders o ON od.id_order = o.id_order
+                LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status ols ON (vod.id_order_detail = ols.id_order_detail AND vod.id_vendor = ols.id_vendor)
+                WHERE vod.id_vendor = ' . (int)$id_vendor;
+
+            // Add optional filters
+            if ($id_current_status > 0) {
+                $sql .= ' AND ols.id_order_line_status_type = ' . (int)$id_current_status;
+            }
+
+            if ($date_from) {
+                $sql .= ' AND DATE(o.date_add) >= "' . pSQL($date_from) . '"';
+            }
+
+            if ($date_to) {
+                $sql .= ' AND DATE(o.date_add) <= "' . pSQL($date_to) . '"';
+            }
+
+            if ($order_reference) {
+                $sql .= ' AND o.reference LIKE "%' . pSQL($order_reference) . '%"';
+            }
+
+            $sql .= ' ORDER BY o.date_add DESC';
+
+            $results = Db::getInstance()->executeS($sql);
+
+            if (!$results || empty($results)) {
+                $this->errors[] = $this->l('Aucun détail de commande trouvé avec les critères spécifiés.');
+                return;
+            }
+
+            $success_count = 0;
+            $error_count = 0;
+
+            // Extract order detail IDs and update each one
+            foreach ($results as $row) {
+                $updateResult = VendorHelper::updateOrderLineStatusAsAdmin(
+                    $row['id_order_detail'],
+                    $id_vendor,
+                    $id_new_status,
+                    Context::getContext()->employee->id,
+                    $comment
+                );
+
+                if ($updateResult['success']) {
+                    $success_count++;
+                } else {
+                    $error_count++;
+                }
+            }
+
+            $this->confirmations[] = sprintf(
+                $this->l('Mise à jour réussie : %d lignes mises à jour, %d erreurs.'),
+                $success_count,
+                $error_count
+            );
+
+            // Log the mass update
+            PrestaShopLogger::addLog(
+                sprintf(
+                    'Mass status update: Vendor %d, Status %d, %d order details updated',
+                    $id_vendor,
+                    $id_new_status,
+                    $success_count
+                ),
+                1,
+                null,
+                'AdminVendorOrderDetails',
+                null,
+                true
+            );
+        } catch (Exception $e) {
+            $this->errors[] = $this->l('Erreur lors de la mise à jour en masse : ') . $e->getMessage();
+            PrestaShopLogger::addLog(
+                'Mass status update error: ' . $e->getMessage(),
+                3,
+                null,
+                'AdminVendorOrderDetails'
+            );
+        }
     }
 
     /**
@@ -216,11 +494,14 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
     }
 
     /**
-     * Override renderList to add export card and custom filter form
+     * Override renderList to add mass update panel, export card and custom filter form
      */
     public function renderList()
     {
-        // Add the export card at the top
+        // Add the mass update panel at the top
+        $massUpdatePanel = $this->renderMassUpdatePanel();
+
+        // Add the export card
         $exportCard = $this->renderExportCard();
 
         // Get the original list content
@@ -255,8 +536,8 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
             </div>         
         </div>';
 
-        // Combine them
-        return $exportCard . $filter_form . $content;
+        // Combine them all
+        return  $exportCard . $filter_form . $massUpdatePanel . $content;
     }
 
     /**
@@ -352,12 +633,32 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
     }
 
     /**
-     * Handle POST actions including export
+     * Handle POST actions including export and mass update
      */
     public function postProcess()
     {
+        // Handle AJAX requests
+        if (Tools::getValue('ajax')) {
+            $action = Tools::getValue('action');
+
+            switch ($action) {
+                case 'ajaxMassUpdateStatus':
+                    $this->ajaxProcessAjaxMassUpdateStatus();
+                    break;
+            }
+
+            // If we reach here, unknown AJAX action
+            die(json_encode(['success' => false, 'message' => 'Unknown AJAX action']));
+        }
+
+        // Handle other POST actions
         if (Tools::getValue('action') === 'exportFilteredPDF') {
             $this->processExportFilteredPDF();
+            return;
+        }
+
+        if (Tools::getValue('action') === 'massUpdateStatus') {
+            $this->processMassUpdateStatus();
             return;
         }
 
@@ -498,6 +799,15 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
         ORDER BY olsl.date_add DESC'
         );
 
+        // Get order status information
+        $order_status_info = Db::getInstance()->getRow('
+            SELECT osl.name as order_status_name, os.color as order_status_color
+            FROM ' . _DB_PREFIX_ . 'order_state_lang osl
+            LEFT JOIN ' . _DB_PREFIX_ . 'order_state os ON os.id_order_state = osl.id_order_state
+            WHERE osl.id_order_state = ' . (int)$order->current_state . '
+            AND osl.id_lang = ' . (int)$this->context->language->id
+        );
+
         // Assign to template
         $this->context->smarty->assign([
             'vendor_order_detail' => $vendorOrderDetail,
@@ -506,7 +816,8 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
             'currency' => $currency,
             'status_info' => $status_info,
             'payment_info' => $payment_info,
-            'status_history' => $status_history ?: []
+            'status_history' => $status_history ?: [],
+            'order_status_info' => $order_status_info
         ]);
 
         // Get the template content and return it directly
