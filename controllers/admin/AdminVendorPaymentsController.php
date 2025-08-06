@@ -63,8 +63,8 @@ class AdminVendorPaymentsController extends ModuleAdminController
             ]
         ];
 
-        $this->_select = 'v.shop_name as vendor_name';
-        $this->_join = 'LEFT JOIN `' . _DB_PREFIX_ . 'mv_vendor` v ON (v.id_vendor = a.id_vendor)';
+        $this->_select = 'vendor.shop_name as vendor_name';
+        $this->_join = 'LEFT JOIN `' . _DB_PREFIX_ . 'mv_vendor` vendor ON (vendor.id_vendor = a.id_vendor)';
 
         // Add both view and edit actions
         $this->addRowAction('view');
@@ -372,132 +372,7 @@ class AdminVendorPaymentsController extends ModuleAdminController
         );
     }
 
-    /**
-     * JavaScript for edit mode transaction management
-     */
-    protected function getEditTransactionJavaScript()
-    {
-        return '<script type="text/javascript">
-        $(document).ready(function() {
-            // Remove transaction from payment
-            $(document).on("click", ".remove-transaction", function() {
-                var transactionId = $(this).data("transaction-id");
-                var amount = parseFloat($(this).data("amount"));
-                
-                if (confirm("' . $this->l('Are you sure you want to remove this transaction from the payment?') . '")) {
-                    $.ajax({
-                        url: "' . self::$currentIndex . '",
-                        type: "POST",
-                        data: {
-                            ajax: 1,
-                            action: "removeTransactionFromPayment",
-                            transaction_id: transactionId,
-                            payment_id: ' . (int)$this->object->id . ',
-                            token: "' . $this->token . '"
-                        },
-                        dataType: "json",
-                        success: function(response) {
-                            if (response.success) {
-                                $("#transaction-row-" + transactionId).remove();
-                                updatePaymentAmount(-amount);
-                                showSuccessMessage("' . $this->l('Transaction removed successfully') . '");
-                            } else {
-                                alert(response.message || "' . $this->l('Error removing transaction') . '");
-                            }
-                        }
-                    });
-                }
-            });
-            
-            // Show available transactions
-            $("#show-available-transactions").click(function() {
-                $("#available-transactions").toggle();
-                if ($("#available-transactions").is(":visible")) {
-                    loadAvailableTransactions();
-                }
-            });
-            
-            // Status filter for available transactions
-            $("#available-status-filter").on("change", function() {
-                if ($("#available-transactions").is(":visible")) {
-                    loadAvailableTransactionsWithFilter();
-                }
-            });
-            
-            // Clear available status filter
-            $("#clear-available-status-filter").click(function() {
-                $("#available-status-filter").val("");
-                if ($("#available-transactions").is(":visible")) {
-                    loadAvailableTransactionsWithFilter();
-                }
-            });
-            
-            function loadAvailableTransactionsWithFilter() {
-                var statusFilter = $("#available-status-filter").val();
-                $.ajax({
-                    url: "' . self::$currentIndex . '",
-                    type: "POST",
-                    data: {
-                        ajax: 1,
-                        action: "getAvailableTransactions",
-                        vendor_id: ' . (int)($this->object->id_vendor ?? 0) . ',
-                        payment_id: ' . (int)$this->object->id . ',
-                        status_filter: statusFilter,
-                        token: "' . $this->token . '"
-                    },
-                    dataType: "json",
-                    success: function(response) {
-                        if (response.success) {
-                            $("#pending-transactions-container").html(response.html);
-                        }
-                    }
-                });
-            }
-            
-            function loadAvailableTransactions() {
-                loadAvailableTransactionsWithFilter();
-            }
-            
-            // Add transaction to payment
-            $(document).on("click", ".add-transaction", function() {
-                var transactionId = $(this).data("transaction-id");
-                var amount = parseFloat($(this).data("amount"));
-                
-                $.ajax({
-                    url: "' . self::$currentIndex . '",
-                    type: "POST",
-                    data: {
-                        ajax: 1,
-                        action: "addTransactionToPayment",
-                        transaction_id: transactionId,
-                        payment_id: ' . (int)$this->object->id . ',
-                        token: "' . $this->token . '"
-                    },
-                    dataType: "json",
-                    success: function(response) {
-                        if (response.success) {
-                            location.reload(); // Reload to show updated data
-                        } else {
-                            alert(response.message || "' . $this->l('Error adding transaction') . '");
-                        }
-                    }
-                });
-            });
-            
-            function updatePaymentAmount(change) {
-                var currentAmount = parseFloat($("input[name=\'amount\']").val()) || 0;
-                var newAmount = currentAmount + change;
-                $("input[name=\'amount\']").val(newAmount.toFixed(2));
-            }
-            
-            function showSuccessMessage(message) {
-                var alert = $("<div class=\"alert alert-success\">" + message + "</div>");
-                $(".panel-body").prepend(alert);
-                setTimeout(function() { alert.fadeOut(); }, 3000);
-            }
-        });
-    </script>';
-    }
+   
 
     /**
      * AJAX: Remove transaction from payment
@@ -558,13 +433,14 @@ class AdminVendorPaymentsController extends ModuleAdminController
         $vendor_id = (int)Tools::getValue('vendor_id');
         $payment_id = (int)Tools::getValue('payment_id');
         $status_filter = Tools::getValue('status_filter') ? (int)Tools::getValue('status_filter') : null;
-
+        $date_from = Tools::getValue('date_from') ? pSQL(Tools::getValue('date_from')) : null;
+        $date_to = Tools::getValue('date_to') ? pSQL(Tools::getValue('date_to')) : null;
         if (!$vendor_id) {
             die(json_encode(['success' => false, 'message' => $this->l('Invalid vendor ID')]));
         }
 
         try {
-            $transactions = $this->getAllPendingTransactions($vendor_id, $status_filter);
+            $transactions = $this->getAllPendingTransactions($vendor_id, $status_filter , $date_from, $date_to);
 
             // Assign variables to Smarty
             $this->context->smarty->assign([
@@ -669,7 +545,7 @@ class AdminVendorPaymentsController extends ModuleAdminController
     /**
      * Get all pending transactions from mv_vendor_transaction with proper status filtering
      */
-    protected function getAllPendingTransactions($id_vendor = null, $status_filter = null)
+    protected function getAllPendingTransactions($id_vendor = null, $status_filter = null, $date_from = null, $date_to = null)
     {
         // Get default status type information
         $defaultStatusTypeId = OrderLineStatus::getDefaultStatusTypeId();
@@ -680,6 +556,7 @@ class AdminVendorPaymentsController extends ModuleAdminController
         vt.id_vendor_transaction,
         vt.order_detail_id as id_order_detail,
         vt.vendor_amount,
+        vt.date_add as transaction_date,
         vod.id_vendor,
         vod.product_name,
         vod.product_reference,
@@ -705,9 +582,16 @@ class AdminVendorPaymentsController extends ModuleAdminController
             $query .= ' AND vod.id_vendor = ' . (int)$id_vendor;
         }
 
-        // Add status filter - FIXED: Proper handling of COALESCE in HAVING clause
+        // Add date filters
+        if ($date_from) {
+            $query .= ' AND DATE(o.date_add) >= "' . pSQL($date_from) . '"';
+        }
+        if ($date_to) {
+            $query .= ' AND DATE(o.date_add) <= "' . pSQL($date_to) . '"';
+        }
+
+        // Add status filter using HAVING clause
         if ($status_filter) {
-            // Use HAVING clause to filter on the computed COALESCE value
             $query .= ' HAVING status_type_id = ' . (int)$status_filter;
         }
 
@@ -715,7 +599,6 @@ class AdminVendorPaymentsController extends ModuleAdminController
 
         return Db::getInstance()->executeS($query);
     }
-
     /**
      * AJAX handler for filtered transactions - FIXED VERSION
      */
@@ -723,9 +606,11 @@ class AdminVendorPaymentsController extends ModuleAdminController
     {
         $id_vendor = Tools::getValue('id_vendor') ? (int)Tools::getValue('id_vendor') : null;
         $status_filter = Tools::getValue('status_filter') ? (int)Tools::getValue('status_filter') : null;
+        $date_from = Tools::getValue('date_from') ? pSQL(Tools::getValue('date_from')) : null;
+        $date_to = Tools::getValue('date_to') ? pSQL(Tools::getValue('date_to')) : null;
 
         // Log the request for debugging
-        PrestaShopLogger::addLog('AJAX getFilteredTransactions called - Vendor: ' . $id_vendor . ', Status: ' . $status_filter, 1, null, 'AdminVendorPaymentsController');
+        PrestaShopLogger::addLog('AJAX getFilteredTransactions called - Vendor: ' . $id_vendor . ', Status: ' . $status_filter . ', Date From: ' . $date_from . ', Date To: ' . $date_to, 1, null, 'AdminVendorPaymentsController');
 
         try {
             if (!$id_vendor) {
@@ -736,7 +621,7 @@ class AdminVendorPaymentsController extends ModuleAdminController
                 ]));
             }
 
-            $transactions = $this->getAllPendingTransactions($id_vendor, $status_filter);
+            $transactions = $this->getAllPendingTransactions($id_vendor, $status_filter, $date_from, $date_to);
             $html = '';
 
             if ($transactions && count($transactions) > 0) {
@@ -752,6 +637,8 @@ class AdminVendorPaymentsController extends ModuleAdminController
                 'debug' => [
                     'vendor_id' => $id_vendor,
                     'status_filter' => $status_filter,
+                    'date_from' => $date_from,
+                    'date_to' => $date_to,
                     'transaction_count' => count($transactions)
                 ]
             ]));
@@ -759,8 +646,7 @@ class AdminVendorPaymentsController extends ModuleAdminController
             PrestaShopLogger::addLog('Error in ajaxProcessGetFilteredTransactions: ' . $e->getMessage(), 3, null, 'AdminVendorPaymentsController');
             die(json_encode([
                 'success' => false,
-                'message' => $this->l('Error loading transactions: ') . $e->getMessage(),
-                'count' => 0
+                'message' => $this->l('Error loading transactions: ') . $e->getMessage()
             ]));
         }
     }

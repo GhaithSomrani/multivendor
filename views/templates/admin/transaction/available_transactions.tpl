@@ -10,8 +10,10 @@
                 <th>{l s='Order' mod='multivendor'}</th>
                 <th>{l s='Order Detail ID' mod='multivendor'}</th>
                 <th>{l s='Product' mod='multivendor'}</th>
+                <th>{l s='SKU' mod='multivendor'}</th>
                 <th>{l s='Amount' mod='multivendor'}</th>
                 <th>{l s='Status' mod='multivendor'}</th>
+                <th>{l s='Date' mod='multivendor'}</th>
                 <th>{l s='Actions' mod='multivendor'}</th>
             </tr>
         </thead>
@@ -21,11 +23,21 @@
                     <td>#{$transaction.order_reference|escape:'htmlall':'UTF-8'}</td>
                     <td>{$transaction.id_order_detail|intval}</td>
                     <td>{$transaction.product_name|escape:'htmlall':'UTF-8'}</td>
+                    <td>
+                        {if $transaction.product_reference}
+                            {$transaction.product_reference|escape:'htmlall':'UTF-8'}
+                        {else}
+                            <span class="text-muted">-</span>
+                        {/if}
+                    </td>
                     <td>{$transaction.vendor_amount|number_format:2} {$currency_sign|escape:'htmlall':'UTF-8'}</td>
                     <td>
                         <span class="badge" style="background-color: {$transaction.status_color|escape:'htmlall':'UTF-8'}">
                             {$transaction.status_name|escape:'htmlall':'UTF-8'}
                         </span>
+                    </td>
+                    <td>
+                        <small>{$transaction.order_date|date_format:'%Y-%m-%d'}</small>
                     </td>
                     <td>
                         <button type="button" 
