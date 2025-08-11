@@ -130,14 +130,61 @@ class Vendor extends ObjectModel
     )'
         );
 
-        $totalCommissionRefunded = Db::getInstance()->getValue(
-            '
-    SELECT SUM(vod.vendor_amount) 
+    $totalCommissionRefunded = Db::getInstance()->getValue(
+    'SELECT SUM(vt.vendor_amount)
     FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod
     LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status ols ON ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor
     LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status_type olst ON olst.id_order_line_status_type = ols.id_order_line_status_type
+    LEFT JOIN ' . _DB_PREFIX_ . 'mv_vendor_transaction vt ON vt.order_detail_id = vod.id_order_detail
+    LEFT JOIN ' . _DB_PREFIX_ . 'mv_vendor_payment vp ON vp.id_vendor_payment = vt.id_vendor_payment
     WHERE vod.id_vendor = ' . (int)$id_vendor . '
-    AND olst.commission_action = "refund"'
+    AND olst.id_order_line_status_type != 15
+    AND vt.status = "pending"
+    AND vt.transaction_type = "refund"
+    AND vt.id_vendor_payment = 0
+    AND vt.id_vendor_transaction = (
+        SELECT MAX(vt2.id_vendor_transaction)
+        FROM ' . _DB_PREFIX_ . 'mv_vendor_transaction vt2
+        WHERE vt2.order_detail_id = vt.order_detail_id
+        AND vt2.status = "pending"
+        AND vt2.id_vendor_payment = 0
+    );'
+);
+
+$pendingAmount = Db::getInstance()->getValue(
+    'SELECT SUM(vt.vendor_amount)
+    FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod
+    LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status ols ON ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor
+    LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status_type olst ON olst.id_order_line_status_type = ols.id_order_line_status_type
+    LEFT JOIN ' . _DB_PREFIX_ . 'mv_vendor_transaction vt ON vt.order_detail_id = vod.id_order_detail
+    LEFT JOIN ' . _DB_PREFIX_ . 'mv_vendor_payment vp ON vp.id_vendor_payment = vt.id_vendor_payment
+    WHERE vod.id_vendor = ' . (int)$id_vendor . '
+    AND olst.id_order_line_status_type != 15
+    AND vt.status = "pending"
+    AND vt.transaction_type = "commission"
+    AND vt.id_vendor_payment = 0
+    AND vt.id_vendor_transaction = (
+        SELECT MAX(vt2.id_vendor_transaction)
+        FROM ' . _DB_PREFIX_ . 'mv_vendor_transaction vt2
+        WHERE vt2.order_detail_id = vt.order_detail_id
+        AND vt2.status = "pending"
+        AND vt2.id_vendor_payment = 0
+    );'
+);
+
+
+        $totalCommissionPending = Db::getInstance()->getValue(
+            'SELECT SUM(vt.vendor_amount) 
+     FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod 
+     LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status ols ON ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor 
+     LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status_type olst ON olst.id_order_line_status_type = ols.id_order_line_status_type 
+     LEFT JOIN ' . _DB_PREFIX_ . 'mv_vendor_transaction vt ON vt.order_detail_id = vod.id_order_detail 
+     LEFT JOIN ' . _DB_PREFIX_ . 'mv_vendor_payment vp ON vp.id_vendor_payment = vt.id_vendor_payment 
+     WHERE vod.id_vendor = ' . (int)$id_vendor . ' 
+     AND olst.id_order_line_status_type = 15
+     AND vt.transaction_type =  "commission" 
+     AND  vt.status = "pending"  
+     AND vt.id_vendor_payment = 0;'
         );
 
         $paidCommission = Db::getInstance()->getValue(
@@ -147,11 +194,12 @@ class Vendor extends ObjectModel
     WHERE id_vendor = ' . (int)$id_vendor . ' AND status = "completed"'
         );
 
-        $pendingAmount = (float)$totalCommissionAdded - (float)$paidCommission;
+
 
         return [
             'total_commission_added' => (float)$totalCommissionAdded,
             'total_commission_refunded' => (float)$totalCommissionRefunded,
+            'total_commission_pending' => (float)$totalCommissionPending,
             'paid_commission' => (float)$paidCommission,
             'pending_amount' => (float)$pendingAmount
         ];

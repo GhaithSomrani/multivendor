@@ -364,9 +364,12 @@ class TransactionHelper
         $query = new DbQuery();
         $query->select('COUNT(*)');
         $query->from('mv_vendor_transaction', 'vt');
+        $query->leftJoin('mv_vendor_payment','vp','vt.id_vendor_payment = vp.id_vendor_payment');
         $query->where('vt.order_detail_id = ' . (int)$id_order_detail);
         $query->where('vt.status = "paid"');
         $query->where('vt.transaction_type = "commission"');
+        $query->where('vt.transaction_type = "commission"');
+        $query->where('vp.status = "completed"');
 
         return (bool)Db::getInstance()->getValue($query);
     }

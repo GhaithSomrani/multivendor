@@ -316,7 +316,7 @@ class AdminVendorPaymentsController extends ModuleAdminController
 
         // Set default values for new payments
         if (!$this->object->id) {
-            $this->fields_value['status'] = 'completed';
+            $this->fields_value['status'] = 'pending';
         }
 
         return parent::renderForm();
@@ -552,7 +552,7 @@ class AdminVendorPaymentsController extends ModuleAdminController
         $defaultStatusType = new OrderLineStatusType($defaultStatusTypeId);
 
         $query = '
-    SELECT 
+        SELECT 
         vt.id_vendor_transaction,
         vt.order_detail_id as id_order_detail,
         vt.vendor_amount,
@@ -567,22 +567,21 @@ class AdminVendorPaymentsController extends ModuleAdminController
         COALESCE(olst.id_order_line_status_type, ' . (int)$defaultStatusTypeId . ') as status_type_id,
         COALESCE(olst.name, "' . pSQL($defaultStatusType->name) . '") as status_name,
         COALESCE(olst.color, "' . pSQL($defaultStatusType->color) . '") as status_color
-    FROM ' . _DB_PREFIX_ . 'mv_vendor_transaction vt
-    INNER JOIN ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod ON vod.id_order_detail = vt.order_detail_id
-    INNER JOIN ' . _DB_PREFIX_ . 'orders o ON o.id_order = vod.id_order
-    INNER JOIN ' . _DB_PREFIX_ . 'mv_vendor v ON v.id_vendor = vod.id_vendor
-    LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status ols ON ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor
-    LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status_type olst ON olst.id_order_line_status_type = ols.id_order_line_status_type
-    WHERE vt.status = "pending"
-    AND vt.id_vendor_payment = 0
-    AND vt.transaction_type = "commission"';
+        FROM ' . _DB_PREFIX_ . 'mv_vendor_transaction vt
+        INNER JOIN ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod ON vod.id_order_detail = vt.order_detail_id
+        INNER JOIN ' . _DB_PREFIX_ . 'orders o ON o.id_order = vod.id_order
+        INNER JOIN ' . _DB_PREFIX_ . 'mv_vendor v ON v.id_vendor = vod.id_vendor
+        LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status ols ON ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor
+        LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status_type olst ON olst.id_order_line_status_type = ols.id_order_line_status_type
+        WHERE vt.status = "pending"
+        AND vt.id_vendor_payment = 0 ';
+        // AND vt.transaction_type = "commission" 
+        // AND olst.commission_action = "add"';
 
-        // Add vendor filter
         if ($id_vendor) {
             $query .= ' AND vod.id_vendor = ' . (int)$id_vendor;
         }
 
-        // Add date filters
         if ($date_from) {
             $query .= ' AND DATE(o.date_add) >= "' . pSQL($date_from) . '"';
         }
@@ -590,12 +589,11 @@ class AdminVendorPaymentsController extends ModuleAdminController
             $query .= ' AND DATE(o.date_add) <= "' . pSQL($date_to) . '"';
         }
 
-        // Add status filter using HAVING clause
         if ($status_filter) {
             $query .= ' HAVING status_type_id = ' . (int)$status_filter;
         }
 
-        $query .= ' ORDER BY v.shop_name, o.date_add DESC';
+        $query .= '  ORDER BY v.shop_name, o.date_add DESC  ';
 
         return Db::getInstance()->executeS($query);
     }
@@ -810,7 +808,6 @@ class AdminVendorPaymentsController extends ModuleAdminController
             LEFT JOIN ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod ON vod.id_order_detail = vt.order_detail_id
             LEFT JOIN ' . _DB_PREFIX_ . 'orders o ON o.id_order = vod.id_order
             WHERE vt.id_vendor_payment = ' . (int)$id_vendor_payment . '
-            AND vt.transaction_type = "commission"
             ORDER BY o.date_add DESC
         ';
 

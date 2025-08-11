@@ -34,7 +34,7 @@ class VendorPayment extends ObjectModel
         'primary' => 'id_vendor_payment',
         'fields' => [
             'id_vendor' => ['type' => self::TYPE_INT, 'validate' => 'isUnsignedId', 'required' => true],
-            'amount' => ['type' => self::TYPE_FLOAT, 'validate' => 'isPrice', 'required' => true],
+            'amount' => ['type' => self::TYPE_FLOAT, 'validate' => 'isFloat', 'required' => true],
             'payment_method' => ['type' => self::TYPE_STRING, 'validate' => 'isGenericName', 'required' => true, 'size' => 64],
             'reference' => ['type' => self::TYPE_STRING, 'validate' => 'isGenericName', 'required' => true, 'size' => 64],
             'status' => ['type' => self::TYPE_STRING, 'validate' => 'isGenericName', 'required' => true, 'size' => 32],
@@ -50,12 +50,17 @@ class VendorPayment extends ObjectModel
      * @param int $offset Optional offset
      * @return array Payments
      */
-    public static function getVendorPayments($id_vendor, $limit = null, $offset = null)
+    public static function getVendorPayments($id_vendor, $limit = null, $offset = null, $completed_only = true)
     {
+
         $query = new DbQuery();
         $query->select('*');
         $query->from('mv_vendor_payment');
         $query->where('id_vendor = ' . (int)$id_vendor);
+        if ($completed_only) {
+            $query->where('status = "completed"');
+        }
+
         $query->orderBy('date_add DESC');
 
         if ($limit) {
@@ -104,7 +109,6 @@ class VendorPayment extends ObjectModel
     LEFT JOIN ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod ON vod.id_order_detail = vt.order_detail_id
     LEFT JOIN ' . _DB_PREFIX_ . 'orders o ON o.id_order = vod.id_order
     WHERE vt.id_vendor_payment = ' . (int)$id_vendor_payment . '
-    AND vt.transaction_type = "commission"
     ORDER BY o.date_add DESC';
 
         $results = Db::getInstance()->executeS($query);
@@ -130,5 +134,4 @@ class VendorPayment extends ObjectModel
 
         return $payments;
     }
-
 }
