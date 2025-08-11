@@ -1,6 +1,6 @@
 {*
-* Admin Vendor Payments - Transaction Table Template
-* File: views/templates/admin/transaction_table.tpl
+* Admin Vendor Payments - Transaction Table Template with Refund Filter
+* File: views/templates/admin/transaction/transaction_table.tpl
 *}
 
 <div class="form-group">
@@ -13,7 +13,7 @@
                 <!-- Filters Section -->
                 <div id="filters-section" class="row" style="margin-bottom: 15px">
                     <!-- Status Filter -->
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <label for="status-filter">{l s='Filter by Status' mod='multivendor'}:</label>
                         <select id="status-filter" class="form-control">
                             <option value="">{l s='All Statuses' mod='multivendor'}</option>
@@ -26,72 +26,96 @@
                     </div>
                     
                     <!-- Date From Filter -->
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         <label for="date-from-filter">{l s='From Date' mod='multivendor'}:</label>
                         <input type="date" id="date-from-filter" class="form-control" />
                     </div>
                     
                     <!-- Date To Filter -->
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         <label for="date-to-filter">{l s='To Date' mod='multivendor'}:</label>
                         <input type="date" id="date-to-filter" class="form-control" />
                     </div>
                     
-                    <!-- Clear Filters Button -->
+                    <!-- Refund Filter Checkbox -->
                     <div class="col-md-2">
+                        <label for="include-refunds-filter" style="display: block; margin-bottom: 5px;">
+                            {l s='Transaction Types' mod='multivendor'}:
+                        </label>
+                        <div class="checkbox" style="margin-top: 5px;">
+                            <label style="font-weight: normal;">
+                                <input type="checkbox" id="include-refunds-filter" value="1">
+                                {l s='Include Refunds' mod='multivendor'}
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- Clear Filters Button -->
+                    <div class="col-md-3">
                         <button type="button" id="clear-filters" class="btn btn-default" style="margin-top: 25px;">
                             <i class="icon-remove"></i> {l s='Clear All' mod='multivendor'}
+                        </button>
+                        <button type="button" id="apply-filters" class="btn btn-primary" style="margin-top: 25px; margin-left: 10px;">
+                            <i class="icon-search"></i> {l s='Apply Filters' mod='multivendor'}
                         </button>
                     </div>
                 </div>
 
-                <!-- Rest of existing template... -->
                 <!-- Instructions -->
                 <div id="vendor-selection-message" class="alert alert-info">
                     <i class="icon-info-circle"></i> {l s='Please select a vendor above to view their pending transactions.' mod='multivendor'}
                 </div>
 
                 <!-- Loading indicator -->
-                <div id="loading-indicator" class="alert alert-info" style="display: none;">
-                    <i class="icon-refresh icon-spin"></i> {l s='Loading transactions...' mod='multivendor'}
+                <div id="transactions-loading" style="display: none; text-align: center; padding: 20px;">
+                    <i class="icon-spinner icon-spin"></i> {l s='Loading transactions...' mod='multivendor'}
                 </div>
 
-                <div id="no-transactions-message" class="alert alert-warning" style="display: none;">
-                    <i class="icon-warning"></i> {l s='No pending transactions found for this vendor.' mod='multivendor'}
-                </div>
-
-                <!-- Transactions container -->
+                <!-- Transactions table container -->
                 <div id="transactions-container" style="display: none;">
-                    <div class="row" style="margin-bottom: 15px;">
-                        <div class="col-md-6">
-                            <label class="control-label">
-                                <input type="checkbox" id="select-all" />
-                                {l s='Select All Transactions' mod='multivendor'}
-                            </label>
-                        </div>
-                        <div class="col-md-6 text-right">
-                            <strong>{l s='Selected' mod='multivendor'}: <span id="selected-count">0</span> | 
-                            {l s='Total' mod='multivendor'}: <span id="selected-total">0.00</span> {$currency_sign|escape:'htmlall':'UTF-8'}</strong>
-                        </div>
+                    <div class="alert alert-success">
+                        <strong>{l s='Pending Transactions' mod='multivendor'}</strong>
+                        <span id="transaction-count" class="badge badge-info pull-right">0</span>
                     </div>
-
+                    
                     <div class="table-responsive">
                         <table class="table table-striped table-bordered">
                             <thead>
                                 <tr>
-                                    <th width="50">{l s='Select' mod='multivendor'}</th>
+                                    <th>
+                                        <input type="checkbox" id="select-all-transactions" />
+                                        <label for="select-all-transactions" style="margin-left: 5px;">{l s='Select All' mod='multivendor'}</label>
+                                    </th>
                                     <th>{l s='Order' mod='multivendor'}</th>
                                     <th>{l s='Product' mod='multivendor'}</th>
-                                    <th>{l s='Quantity' mod='multivendor'}</th>
+                                    <th>{l s='Type' mod='multivendor'}</th>
                                     <th>{l s='Amount' mod='multivendor'}</th>
                                     <th>{l s='Status' mod='multivendor'}</th>
-                                    <th>{l s='Order Date' mod='multivendor'}</th>
+                                    <th>{l s='Date' mod='multivendor'}</th>
                                 </tr>
                             </thead>
                             <tbody id="transactions-tbody">
-                                <!-- Transaction rows will be loaded here via AJAX -->
+                                <!-- Transactions will be loaded here via AJAX -->
                             </tbody>
                         </table>
+                    </div>
+
+                    <!-- Transaction selection actions -->
+                    <div class="row" style="margin-top: 15px;">
+                        <div class="col-md-12">
+                            <div class="alert alert-warning">
+                                <strong>{l s='Selected Transactions Total: ' mod='multivendor'}</strong>
+                                <span id="selected-total" class="badge badge-warning">0.00</span>
+                                <span>{$currency_sign}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- No transactions message -->
+                <div id="no-transactions-message" style="display: none;">
+                    <div class="alert alert-warning">
+                        <i class="icon-warning"></i> {l s='No pending transactions found for the selected filters.' mod='multivendor'}
                     </div>
                 </div>
             </div>
@@ -100,188 +124,126 @@
 </div>
 
 <script type="text/javascript">
-$(document).ready(function() {
-    var currentVendorId = null;
-    var transactionsByVendor = {literal}{}{/literal};
+    $(document).ready(function() {
+        var currentVendorId = null;
 
-    // Select all checkbox handler
-    $('#select-all').on('change', function() {
-        var isChecked = $(this).is(':checked');
-        $('input[name="selected_order_details[]"]').prop('checked', isChecked);
-        calculateTotals();
-    });
+        function loadTransactions(vendorId, statusFilter, dateFrom, dateTo, includeRefunds) {
+            if (!vendorId) {
+                $('#vendor-selection-message').show();
+                $('#transactions-container').hide();
+                $('#no-transactions-message').hide();
+                return;
+            }
 
-    // Individual checkbox handler
-    $(document).on('change', 'input[name="selected_order_details[]"]', function() {
-        calculateTotals();
-        updateSelectAllState();
-    });
-
-    // Status filter handler
-    $('#status-filter').on('change', function() {
-        var statusFilter = $(this).val();
-        var dateFrom = $('#date-from-filter').val();
-        var dateTo = $('#date-to-filter').val();
-        loadTransactions(currentVendorId, statusFilter, dateFrom, dateTo);
-    });
-
-    // Date filter handlers
-    $('#date-from-filter, #date-to-filter').on('change', function() {
-        var statusFilter = $('#status-filter').val();
-        var dateFrom = $('#date-from-filter').val();
-        var dateTo = $('#date-to-filter').val();
-        loadTransactions(currentVendorId, statusFilter, dateFrom, dateTo);
-    });
-
-    // Clear all filters button
-    $('#clear-filters').on('click', function() {
-        $('#status-filter').val('');
-        $('#date-from-filter').val('');
-        $('#date-to-filter').val('');
-        loadTransactions(currentVendorId, null, null, null);
-    });
-
-    // Legacy clear status filter button
-    $('#clear-status-filter').on('click', function() {
-        $('#status-filter').val('');
-        var dateFrom = $('#date-from-filter').val();
-        var dateTo = $('#date-to-filter').val();
-        loadTransactions(currentVendorId, null, dateFrom, dateTo);
-    });
-
-    // Date validation
-    $('#date-from-filter, #date-to-filter').on('blur', function() {
-        var dateFrom = $('#date-from-filter').val();
-        var dateTo = $('#date-to-filter').val();
-        
-        if (dateFrom && dateTo && dateFrom > dateTo) {
-            alert('From date cannot be later than To date');
-            $(this).focus();
-        }
-    });
-
-    // Calculate totals
-    function calculateTotals() {
-        var selectedCount = 0;
-        var selectedTotal = 0;
-
-        $('input[name="selected_order_details[]"]:checked').each(function() {
-            selectedCount++;
-            selectedTotal += parseFloat($(this).data('amount')) || 0;
-        });
-
-        $('#selected-count').text(selectedCount);
-        $('#selected-total').text(selectedTotal.toFixed(2));
-        $('input[name="amount"]').val(selectedTotal.toFixed(2));
-
-        // Enable/disable submit button
-        var submitButton = $("button[name='submitAddvendor_payment'], input[name='submitAddvendor_payment']");
-        if (selectedCount > 0) {
-            submitButton.prop('disabled', false).removeClass('disabled');
-        } else {
-            submitButton.prop('disabled', true).addClass('disabled');
-        }
-    }
-
-    // Update select all checkbox state
-    function updateSelectAllState() {
-        var allCheckboxes = $('input[name="selected_order_details[]"]');
-        var checkedCheckboxes = $('input[name="selected_order_details[]"]:checked');
-
-        if (checkedCheckboxes.length === 0) {
-            $('#select-all').prop('checked', false).prop('indeterminate', false);
-        } else if (checkedCheckboxes.length === allCheckboxes.length) {
-            $('#select-all').prop('checked', true).prop('indeterminate', false);
-        } else {
-            $('#select-all').prop('checked', false).prop('indeterminate', true);
-        }
-    }
-
-    // Enhanced load transactions function with date filters
-    function loadTransactions(vendorId, statusFilter, dateFrom, dateTo) {
-        if (!vendorId) {
-            $('#vendor-selection-message').show();
+            $('#vendor-selection-message').hide();
+            $('#transactions-loading').show();
             $('#transactions-container').hide();
-            $('#loading-indicator').hide();
             $('#no-transactions-message').hide();
-            return;
-        }
 
-        $('#vendor-selection-message').hide();
-        $('#transactions-container').hide();
-        $('#no-transactions-message').hide();
-        $('#loading-indicator').show();
-
-        var ajaxData = {
-            ajax: 1,
-            action: "getFilteredTransactions",
-            id_vendor: vendorId,
-            token: "{$token|escape:'htmlall':'UTF-8'}"
-        };
-
-        // Add optional filters
-        if (statusFilter) {
-            ajaxData.status_filter = statusFilter;
-        }
-        if (dateFrom) {
-            ajaxData.date_from = dateFrom;
-        }
-        if (dateTo) {
-            ajaxData.date_to = dateTo;
-        }
-
-        $.ajax({
-            url: "{$current_index|escape:'htmlall':'UTF-8'}",
-            type: "POST",
-            data: ajaxData,
-            dataType: "json",
-            success: function(response) {
-                $('#loading-indicator').hide();
-                
-                if (response.success) {
-                    if (response.count > 0) {
+            $.ajax({
+                url: '{$ajax_url}',
+                type: 'POST',
+                data: {
+                    ajax: true,
+                    action: 'getFilteredTransactions',
+                    id_vendor: vendorId,
+                    status_filter: statusFilter,
+                    date_from: dateFrom,
+                    date_to: dateTo,
+                    include_refunds: includeRefunds ? 1 : 0
+                },
+                dataType: 'json',
+                success: function(response) {
+                    $('#transactions-loading').hide();
+                    
+                    if (response.success && response.count > 0) {
                         $('#transactions-tbody').html(response.html);
+                        $('#transaction-count').text(response.count);
                         $('#transactions-container').show();
-                        $('#status-filter-section, #filters-section').show();
+                        $('#no-transactions-message').hide();
+                        
+                        // Reset selection
+                        $('#select-all-transactions').prop('checked', false);
+                        updateSelectedTotal();
                     } else {
+                        $('#transactions-container').hide();
                         $('#no-transactions-message').show();
                     }
-                    
-                    // Reset totals and checkbox states
-                    resetTransactionSelection();
-                } else {
+                },
+                error: function() {
+                    $('#transactions-loading').hide();
+                    $('#transactions-container').hide();
                     $('#no-transactions-message').show();
-                    console.error('Error loading transactions:', response.message);
+                    alert('{l s='Error loading transactions' mod='multivendor'}');
                 }
-            },
-            error: function(xhr, status, error) {
-                $('#loading-indicator').hide();
-                $('#no-transactions-message').show();
-                console.error('AJAX error:', error);
+            });
+        }
+
+        function updateSelectedTotal() {
+            var total = 0;
+            $('#transactions-tbody input[type="checkbox"]:checked').each(function() {
+                var amount = parseFloat($(this).data('amount')) || 0;
+                total += amount;
+            });
+            $('#selected-total').text(total.toFixed(2));
+        }
+
+        // Apply filters button click
+        $('#apply-filters').click(function() {
+            if (currentVendorId) {
+                var statusFilter = $('#status-filter').val();
+                var dateFrom = $('#date-from-filter').val();
+                var dateTo = $('#date-to-filter').val();
+                var includeRefunds = $('#include-refunds-filter').is(':checked');
+                
+                loadTransactions(currentVendorId, statusFilter, dateFrom, dateTo, includeRefunds);
             }
         });
-    }
 
-    // Reset transaction selection state
-    function resetTransactionSelection() {
-        $('#selected-count').text('0');
-        $('#selected-total').text('0.00');
-        $('input[name="amount"]').val('0.00');
-        $('#select-all').prop('checked', false).prop('indeterminate', false);
-        
-        // Disable submit button until transactions are selected
-        var submitButton = $("button[name='submitAddvendor_payment'], input[name='submitAddvendor_payment']");
-        submitButton.prop('disabled', true).addClass('disabled');
-    }
+        // Clear filters button click
+        $('#clear-filters').click(function() {
+            $('#status-filter').val('');
+            $('#date-from-filter').val('');
+            $('#date-to-filter').val('');
+            $('#include-refunds-filter').prop('checked', false);
+            
+            if (currentVendorId) {
+                loadTransactions(currentVendorId, null, null, null, false);
+            }
+        });
 
-    // Global function for vendor selection change
-    window.onVendorSelectionChange = function(vendorId) {
-        currentVendorId = vendorId;
-        // Clear filters when vendor changes
-        $('#status-filter').val('');
-        $('#date-from-filter').val('');
-        $('#date-to-filter').val('');
-        loadTransactions(vendorId, null, null, null);
-    };
-});
+        // Select all checkbox
+        $(document).on('change', '#select-all-transactions', function() {
+            var isChecked = $(this).is(':checked');
+            $('#transactions-tbody input[type="checkbox"]').prop('checked', isChecked);
+            updateSelectedTotal();
+        });
+
+        // Individual transaction checkbox
+        $(document).on('change', '#transactions-tbody input[type="checkbox"]', function() {
+            updateSelectedTotal();
+            
+            // Update select all checkbox state
+            var totalCheckboxes = $('#transactions-tbody input[type="checkbox"]').length;
+            var checkedCheckboxes = $('#transactions-tbody input[type="checkbox"]:checked').length;
+            $('#select-all-transactions').prop('checked', totalCheckboxes === checkedCheckboxes);
+        });
+
+        // Global function for vendor selection change
+        window.onVendorSelectionChange = function(vendorId) {
+            currentVendorId = vendorId;
+            // Clear filters when vendor changes
+            $('#status-filter').val('');
+            $('#date-from-filter').val('');
+            $('#date-to-filter').val('');
+            $('#include-refunds-filter').prop('checked', false);
+            loadTransactions(vendorId, null, null, null, false);
+        };
+
+        // Initialize on page load
+        if (typeof initialVendorId !== 'undefined' && initialVendorId) {
+            currentVendorId = initialVendorId;
+            loadTransactions(initialVendorId, null, null, null, false);
+        }
+    });
 </script>

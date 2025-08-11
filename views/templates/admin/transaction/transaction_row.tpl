@@ -1,38 +1,64 @@
 {*
-* Admin Vendor Payments - Transaction Row Template
-* File: views/templates/admin/transaction_row.tpl
+* Transaction Row Template with Transaction Type
+* File: views/templates/admin/transaction/transaction_row.tpl
 *}
 
 <tr>
     <td>
         <input type="checkbox" name="selected_order_details[]" value="{$transaction.id_vendor_transaction|intval}"
-            data-amount="{$transaction.vendor_amount|floatval}" data-vendor="{$transaction.id_vendor|intval}"
-            class="transaction-checkbox" />
+            data-amount="{$transaction.vendor_amount|floatval}" class="transaction-checkbox" />
     </td>
     <td>
-        <i class="icon-eye"></i> #{$transaction.order_reference|escape:'htmlall':'UTF-8'}
-
-        <br><small class="text-muted">{$transaction.order_date|date_format:'%Y-%m-%d %H:%M'}</small>
+        <strong>#{$transaction.order_reference}</strong><br>
+        <small>Order #{$transaction.id_order}</small>
     </td>
     <td>
-        <strong>{$transaction.product_name|escape:'htmlall':'UTF-8'}</strong>
-        {if $transaction.product_reference}
-            <br><small class="text-muted">Ref: {$transaction.product_reference|escape:'htmlall':'UTF-8'}</small>
+        <strong>{$transaction.product_name|escape:'html':'UTF-8'}</strong><br>
+        <small>
+            {if $transaction.product_reference}
+                SKU: {$transaction.product_reference|escape:'html':'UTF-8'}<br>
+            {/if}
+            {if $transaction.product_quantity > 0}
+                Qty: {$transaction.product_quantity|intval}
+            {/if}
+        </small>
+    </td>
+    <td>
+        {if $transaction.transaction_type == 'refund'}
+            <span class="badge badge-warning">
+                <i class="icon-undo"></i> {l s='Refund' mod='multivendor'}
+            </span>
+        {elseif $transaction.transaction_type == 'commission'}
+            <span class="badge badge-success">
+                <i class="icon-money"></i> {l s='Commission' mod='multivendor'}
+            </span>
+        {elseif $transaction.transaction_type == 'adjustment'}
+            <span class="badge badge-info">
+                <i class="icon-edit"></i> {l s='Adjustment' mod='multivendor'}
+            </span>
+        {else}
+            <span class="badge badge-default">
+                {$transaction.transaction_type|escape:'html':'UTF-8'|capitalize}
+            </span>
         {/if}
     </td>
-    <td class="text-center">
-        <span class="badge badge-info">{$transaction.product_quantity|intval}</span>
+    <td>
+        {if $transaction.transaction_type == 'refund'}
+            <span class="text-danger">
+                <strong>{$transaction.vendor_amount|displayPrice}</strong>
+            </span>
+        {else}
+            <span class="text-success">
+                <strong>{$transaction.vendor_amount|displayPrice}</strong>
+            </span>
+        {/if}
     </td>
-    <td class="text-right">
-        <strong>{$transaction.vendor_amount|number_format:'2'}</strong>
-    </td>
-    <td class="text-center">
-        <span class="mv-status-badge"
-            style="background-color: {$transaction.status_color|escape:'htmlall':'UTF-8'}; color: white; padding: 4px 8px; border-radius: 3px;">
-            {$transaction.status_name|escape:'htmlall':'UTF-8'}
+    <td>
+        <span class="badge">
+            {$transaction.line_status|escape:'html':'UTF-8'}
         </span>
     </td>
-    <td class="text-center">
-        <small>{$transaction.order_date|date_format:'%Y-%m-%d'}</small>
+    <td>
+        <small>{$transaction.order_date|date_format:'Y-m-d H:i'}</small>
     </td>
 </tr>

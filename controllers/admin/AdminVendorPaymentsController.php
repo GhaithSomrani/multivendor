@@ -324,18 +324,17 @@ class AdminVendorPaymentsController extends ModuleAdminController
 
     protected function renderUnifiedTransactionTable()
     {
-        // Get all order line status types for filtering
-        $statusTypes = $this->getAllOrderLineStatusTypes();
+        $statusTypes = orderLineStatusType::getAllActiveStatusTypes();
 
-        // Assign variables to Smarty
         $this->context->smarty->assign([
             'status_types' => $statusTypes,
             'currency_sign' => $this->context->currency->sign,
             'current_index' => self::$currentIndex,
-            'token' => $this->token
+            'token' => $this->token,
+            'ajax_url' => self::$currentIndex . '&token=' . $this->token
+
         ]);
 
-        // Fetch and return the template content
         return $this->context->smarty->fetch(
             _PS_MODULE_DIR_ . 'multivendor/views/templates/admin/transaction/transaction_table.tpl'
         );
@@ -353,17 +352,17 @@ class AdminVendorPaymentsController extends ModuleAdminController
         }
 
         $transactionDetails = $this->getPaymentTransactionDetails($this->object->id);
-        $statusTypes = $this->getAllOrderLineStatusTypes();
+        $statusTypes = OrderLineStatusType::getAllActiveStatusTypes();
 
         // Assign variables to Smarty
         $this->context->smarty->assign([
-            'transaction_details' => $transactionDetails,
+            'current_transactions' => $transactionDetails,
             'status_types' => $statusTypes,
             'currency_sign' => $this->context->currency->sign,
             'vendor_id' => $this->object->id_vendor ?? 0,
             'payment_id' => $this->object->id,
-            'current_index' => self::$currentIndex,
-            'token' => $this->token
+     
+            'ajax_url' => self::$currentIndex . '&token=' . $this->token
         ]);
 
         // Fetch and return the template content
@@ -372,7 +371,7 @@ class AdminVendorPaymentsController extends ModuleAdminController
         );
     }
 
-   
+
 
     /**
      * AJAX: Remove transaction from payment
@@ -435,12 +434,14 @@ class AdminVendorPaymentsController extends ModuleAdminController
         $status_filter = Tools::getValue('status_filter') ? (int)Tools::getValue('status_filter') : null;
         $date_from = Tools::getValue('date_from') ? pSQL(Tools::getValue('date_from')) : null;
         $date_to = Tools::getValue('date_to') ? pSQL(Tools::getValue('date_to')) : null;
+        $include_refunds = Tools::getValue('include_refunds') ? (bool)Tools::getValue('include_refunds') : false;
+
         if (!$vendor_id) {
             die(json_encode(['success' => false, 'message' => $this->l('Invalid vendor ID')]));
         }
 
         try {
-            $transactions = $this->getAllPendingTransactions($vendor_id, $status_filter , $date_from, $date_to);
+            $transactions = $this->getAllPendingTransactions($vendor_id, $status_filter, $date_from, $date_to, $include_refunds);
 
             // Assign variables to Smarty
             $this->context->smarty->assign([
@@ -529,54 +530,44 @@ class AdminVendorPaymentsController extends ModuleAdminController
         }
     }
 
-    /**
-     * Get all order line status types for filtering
-     */
-    protected function getAllOrderLineStatusTypes()
-    {
-        $query = 'SELECT id_order_line_status_type, name, color 
-              FROM ' . _DB_PREFIX_ . 'mv_order_line_status_type 
-              WHERE active = 1 
-              ORDER BY position ASC';
-
-        return Db::getInstance()->executeS($query);
-    }
 
     /**
      * Get all pending transactions from mv_vendor_transaction with proper status filtering
      */
-    protected function getAllPendingTransactions($id_vendor = null, $status_filter = null, $date_from = null, $date_to = null)
+    public function getAllPendingTransactions($id_vendor = null, $status_filter = null, $date_from = null, $date_to = null, $include_refunds = false)
     {
-        // Get default status type information
-        $defaultStatusTypeId = OrderLineStatus::getDefaultStatusTypeId();
-        $defaultStatusType = new OrderLineStatusType($defaultStatusTypeId);
-
         $query = '
-        SELECT 
+    SELECT 
         vt.id_vendor_transaction,
-        vt.order_detail_id as id_order_detail,
         vt.vendor_amount,
+        vt.transaction_type,
+        vt.status,
         vt.date_add as transaction_date,
-        vod.id_vendor,
         vod.product_name,
         vod.product_reference,
         vod.product_quantity,
+        vod.id_order,
         o.reference as order_reference,
         o.date_add as order_date,
-        v.shop_name as vendor_name,
-        COALESCE(olst.id_order_line_status_type, ' . (int)$defaultStatusTypeId . ') as status_type_id,
-        COALESCE(olst.name, "' . pSQL($defaultStatusType->name) . '") as status_name,
-        COALESCE(olst.color, "' . pSQL($defaultStatusType->color) . '") as status_color
-        FROM ' . _DB_PREFIX_ . 'mv_vendor_transaction vt
-        INNER JOIN ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod ON vod.id_order_detail = vt.order_detail_id
-        INNER JOIN ' . _DB_PREFIX_ . 'orders o ON o.id_order = vod.id_order
-        INNER JOIN ' . _DB_PREFIX_ . 'mv_vendor v ON v.id_vendor = vod.id_vendor
-        LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status ols ON ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor
-        LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status_type olst ON olst.id_order_line_status_type = ols.id_order_line_status_type
-        WHERE vt.status = "pending"
-        AND vt.id_vendor_payment = 0 ';
-        // AND vt.transaction_type = "commission" 
-        // AND olst.commission_action = "add"';
+        v.shop_name,
+        COALESCE(olst.name, "Default") as line_status,
+        COALESCE(olst.color, "#28a745") as status_color,
+        COALESCE(ols.id_order_line_status_type, ' . (int)OrderLineStatus::getDefaultStatusTypeId() . ') as status_type_id
+    FROM ' . _DB_PREFIX_ . 'mv_vendor_transaction vt
+    INNER JOIN ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod ON vod.id_order_detail = vt.order_detail_id
+    INNER JOIN ' . _DB_PREFIX_ . 'orders o ON o.id_order = vod.id_order
+    INNER JOIN ' . _DB_PREFIX_ . 'mv_vendor v ON v.id_vendor = vod.id_vendor
+    LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status ols ON ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor
+    LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status_type olst ON olst.id_order_line_status_type = ols.id_order_line_status_type
+    WHERE vt.status = "pending"
+    AND vt.id_vendor_payment = 0 ';
+
+        // Transaction type filter - include refunds if requested
+        if ($include_refunds) {
+            $query .= ' AND vt.transaction_type IN ("commission", "refund") ';
+        } else {
+            $query .= ' AND vt.transaction_type = "commission" ';
+        }
 
         if ($id_vendor) {
             $query .= ' AND vod.id_vendor = ' . (int)$id_vendor;
@@ -593,7 +584,7 @@ class AdminVendorPaymentsController extends ModuleAdminController
             $query .= ' HAVING status_type_id = ' . (int)$status_filter;
         }
 
-        $query .= '  ORDER BY v.shop_name, o.date_add DESC  ';
+        $query .= ' ORDER BY v.shop_name, o.date_add DESC ';
 
         return Db::getInstance()->executeS($query);
     }
@@ -606,9 +597,10 @@ class AdminVendorPaymentsController extends ModuleAdminController
         $status_filter = Tools::getValue('status_filter') ? (int)Tools::getValue('status_filter') : null;
         $date_from = Tools::getValue('date_from') ? pSQL(Tools::getValue('date_from')) : null;
         $date_to = Tools::getValue('date_to') ? pSQL(Tools::getValue('date_to')) : null;
+        $include_refunds = Tools::getValue('include_refunds') ? (bool)Tools::getValue('include_refunds') : false;
 
         // Log the request for debugging
-        PrestaShopLogger::addLog('AJAX getFilteredTransactions called - Vendor: ' . $id_vendor . ', Status: ' . $status_filter . ', Date From: ' . $date_from . ', Date To: ' . $date_to, 1, null, 'AdminVendorPaymentsController');
+        PrestaShopLogger::addLog('AJAX getFilteredTransactions called - Vendor: ' . $id_vendor . ', Status: ' . $status_filter . ', Date From: ' . $date_from . ', Date To: ' . $date_to . ', Include Refunds: ' . ($include_refunds ? 'Yes' : 'No'), 1, null, 'AdminVendorPaymentsController');
 
         try {
             if (!$id_vendor) {
@@ -619,7 +611,7 @@ class AdminVendorPaymentsController extends ModuleAdminController
                 ]));
             }
 
-            $transactions = $this->getAllPendingTransactions($id_vendor, $status_filter, $date_from, $date_to);
+            $transactions = $this->getAllPendingTransactions($id_vendor, $status_filter, $date_from, $date_to, $include_refunds);
             $html = '';
 
             if ($transactions && count($transactions) > 0) {
@@ -637,6 +629,7 @@ class AdminVendorPaymentsController extends ModuleAdminController
                     'status_filter' => $status_filter,
                     'date_from' => $date_from,
                     'date_to' => $date_to,
+                    'include_refunds' => $include_refunds,
                     'transaction_count' => count($transactions)
                 ]
             ]));
@@ -648,19 +641,16 @@ class AdminVendorPaymentsController extends ModuleAdminController
             ]));
         }
     }
-
     /**
      * Render individual transaction row
      */
     protected function renderTransactionRow($transaction)
     {
-        // Assign transaction data to Smarty
         $this->context->smarty->assign([
             'transaction' => $transaction,
             'currency' => $this->context->currency
         ]);
 
-        // Fetch and return the transaction row template
         return $this->context->smarty->fetch(
             _PS_MODULE_DIR_ . 'multivendor/views/templates/admin/transaction/transaction_row.tpl'
         );
@@ -803,9 +793,14 @@ class AdminVendorPaymentsController extends ModuleAdminController
                 vod.id_vendor,
                 o.id_order,
                 o.reference as order_reference,
-                o.date_add as order_date
+                o.date_add as order_date,
+                COALESCE(olst.name, "Default") as line_status,
+                COALESCE(olst.color, "#28a745") as status_color,
+                COALESCE(ols.id_order_line_status_type, ' . (int)OrderLineStatus::getDefaultStatusTypeId() . ') as status_type_id
             FROM ' . _DB_PREFIX_ . 'mv_vendor_transaction vt
             LEFT JOIN ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod ON vod.id_order_detail = vt.order_detail_id
+            LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status ols ON ols.id_order_detail = vod.id_order_detail
+            LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status_type olst ON olst.id_order_line_status_type = ols.id_order_line_status_type
             LEFT JOIN ' . _DB_PREFIX_ . 'orders o ON o.id_order = vod.id_order
             WHERE vt.id_vendor_payment = ' . (int)$id_vendor_payment . '
             ORDER BY o.date_add DESC
