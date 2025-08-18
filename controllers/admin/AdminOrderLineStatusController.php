@@ -281,7 +281,7 @@ class AdminOrderLineStatusController  extends ModuleAdminController
         return Db::getInstance()->getValue(
             'SELECT COUNT(*) 
          FROM `' . _DB_PREFIX_ . 'mv_order_line_status_type` 
-         WHERE active = 1 and id_order_line_status_type = ' . (int)$id_status_type
+         WHERE id_order_line_status_type = ' . (int)$id_status_type
         );
     }
     protected function isDeletable($id_status_type)

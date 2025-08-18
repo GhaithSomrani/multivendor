@@ -45,16 +45,16 @@
     <td>
         {if $transaction.transaction_type == 'refund'}
             <span class="text-danger">
-                <strong>{$transaction.vendor_amount|displayPrice}</strong>
+                <strong>{$transaction.vendor_amount|number_format:2} TND</strong>
             </span>
         {else}
             <span class="text-success">
-                <strong>{$transaction.vendor_amount|displayPrice}</strong>
+                <strong>{$transaction.vendor_amount|number_format:2} TND</strong>
             </span>
         {/if}
     </td>
     <td>
-        <span class="badge">
+        <span class="badge" style="background-color: {$transaction.status_color};">
             {$transaction.line_status|escape:'html':'UTF-8'}
         </span>
     </td>

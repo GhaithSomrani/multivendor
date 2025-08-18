@@ -64,7 +64,7 @@ class MultivendorCommissionsModuleFrontController extends ModuleFrontController
         $totalPages = ceil($totalTransactions / $per_page);
 
         // Get payments
-        $payments = VendorPayment::getVendorPaymentsWithDetails($id_vendor, 5);
+        $payments = VendorPayment::getVendorPaymentsWithDetails($id_vendor);
         // Add CSS file
         $this->context->controller->addCSS($this->module->getPathUri() . 'views/css/dashboard.css');
         $this->context->controller->addCSS($this->module->getPathUri() . 'views/css/commissions.css');

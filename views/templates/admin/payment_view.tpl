@@ -33,7 +33,7 @@
                         </tr>
                         <tr>
                             <td><strong>{l s='Amount:' mod='multivendor'}</strong></td>
-                            <td class="text-success"><strong>{Tools::displayPrice($payment->amount, $currency)}</strong></td>
+                            <td class="text-success"><strong>{$payment->amount|number_format:2} TND</strong></td>
                         </tr>
                         <tr>
                             <td><strong>{l s='Status:' mod='multivendor'}</strong></td>
@@ -123,7 +123,7 @@
                                                     <br><small class="text-info">Qty: {$detail.product_quantity}</small>
                                                 {/if}
                                             </td>
-                                            <td class="text-info"><strong>{Tools::displayPrice($detail.vendor_amount, $currency)}</strong></td>
+                                            <td class="text-info"><strong>{$detail.vendor_amount|number_format:2} TND</strong></td>
                                             <td>{$detail.transaction_type|default:'commission'|ucfirst}</td>
                                             <td>{dateFormat date=$detail.order_date full=0}</td>
                                             <td>
@@ -137,7 +137,7 @@
                                 <tfoot>
                                     <tr class="info">
                                         <td colspan="3" class="text-right"><strong>{l s='Total Payment Amount:' mod='multivendor'}</strong></td>
-                                        <td><strong class="text-success">{Tools::displayPrice($payment->amount, $currency)}</strong></td>
+                                        <td><strong class="text-success">{$payment->amount|number_format:2} TND</strong></td>
                                         <td colspan="3"></td>
                                     </tr>
                                 </tfoot>

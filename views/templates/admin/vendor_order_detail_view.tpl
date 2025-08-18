@@ -42,7 +42,7 @@
                         </tr>
                         <tr>
                             <td><strong>{l s='Order Total:' mod='multivendor'}</strong></td>
-                            <td>{Tools::displayPrice($order->total_paid, $currency)}</td>
+                            <td>{$order->total_paid|number_format:2} TND</td>
                         </tr>
                     </table>
                 </div>
@@ -102,7 +102,7 @@
                         </tr>
                         <tr>
                             <td><strong>{l s='Unit Price:' mod='multivendor'}</strong></td>
-                            <td>{Tools::displayPrice($vendor_order_detail->product_price, $currency)}</td>
+                            <td>{$vendor_order_detail->product_price|number_format:2} TND</td>
                         </tr>
                         <tr>
                             <td><strong>{l s='Quantity:' mod='multivendor'}</strong></td>
@@ -122,18 +122,18 @@
                         <tr>
                             <td><strong>{l s='Commission Amount:' mod='multivendor'}</strong></td>
                             <td class="text-warning">
-                                {Tools::displayPrice($vendor_order_detail->commission_amount, $currency)}</td>
+                                {$vendor_order_detail->commission_amount|number_format:2} TND</td>
                         </tr>
                         <tr>
                             <td><strong>{l s='Vendor Amount:' mod='multivendor'}</strong></td>
-                            <td class="text-success">{Tools::displayPrice($vendor_order_detail->vendor_amount, $currency)}
+                            <td class="text-success">{$vendor_order_detail->vendor_amount|number_format:2}
                             </td>
                         </tr>
                         <tr>
                             <td><strong>{l s='Total Product Value:' mod='multivendor'}</strong></td>
                             <td class="text-info">
                                 {assign var="total_value" value=($vendor_order_detail->commission_amount + $vendor_order_detail->vendor_amount)}
-                                {Tools::displayPrice($total_value, $currency)}
+                                {$total_value|number_format:2}
                             </td>
                         </tr>
                     </table>

@@ -100,7 +100,7 @@
                                 <input type="checkbox" class="mv-mobile-checkbox" data-id="{$line.id_order_detail}"
                                     style="display: none;">
                                 <a href="#" class="mv-mobile-link">
-                                    #{$line.order_reference}#{$line.id_order_detail}
+                                    #{$line.id_order}#{$line.id_order_detail}
                                 </a>
                             </div>
                             <div class="mv-mobile-order-date">
@@ -110,9 +110,26 @@
 
                         <div class="mv-mobile-order-content">
                             <div class="mv-mobile-product-info">
-                                <h6 class="mv-mobile-product-name">{$line.product_name}</h6>
-                                <p class="mv-mobile-product-sku">SKU: {$line.product_reference}</p>
+                                {assign var="product_image" value=OrderHelper::getProductImageLink($line.product_id, $line.product_attribute_id)}
+                                <img src="{$product_image}" alt="{$line.product_name|escape:'html':'UTF-8'}"
+                                    class="mv-product-image">
+                                <span class="mv-mobile-product-name">{$line.product_name}
+                                    {assign var="product_link" value=VendorHelper::getProductPubliclink($line.product_id, $line.product_attribute_id)}
+                                    <i> <a href="{$product_link}">🔗</a></i>
+                                </span>
                             </div>
+                            <div class="mv-mobile-product-info">
+                                <p class="mv-mobile-product-sku">SKU: {$line.product_reference}</p>
+                                {if $line.product_mpn} <p class="mv-mobile-product-sku">MPN: {$line.product_mpn}</p> {/if}
+                                {assign var="brand" value=VendorOrderDetail::getBrandByProductId($line.product_id)}
+                                {if ($brand)}
+                                    <p class="mv-mobile-product-sku">Marque: {$brand}</p>
+                                {/if}
+                                <p class="mv-mobile-product-sku">Prix Public: {$line.product_price|number_format:2}</p>
+
+                            </div>
+
+
 
                             <div class="mv-mobile-order-details">
                                 <div class="mv-mobile-detail-row">
@@ -121,13 +138,13 @@
                                 </div>
                                 <div class="mv-mobile-detail-row">
                                     <span class="mv-mobile-label">{l s='Total' mod='multivendor'}</span>
-                                    <span class="mv-mobile-value mv-mobile-amount">{($line.vendor_amount)|displayPrice}</span>
+                                    <span class="mv-mobile-value mv-mobile-amount">{($line.vendor_amount)|number_format:2}
+                                        TND</span>
                                 </div>
                             </div>
 
                             <div class="mv-mobile-status-section">
                                 <div class="mv-mobile-current-status">
-                                    <span class="mv-mobile-label">{l s='Statut' mod='multivendor'}</span>
                                     <span class="mv-mobile-status-badge"
                                         style="background-color: {$status_colors[$line.line_status]|default:'#777'};">
                                         {$line.line_status|capitalize}

@@ -37,23 +37,33 @@
                 <div class="mv-commission-summary">
                     <div class="mv-summary-card mv-summary-card-add">
                         <h6 class="mv-stat-label">{l s='Chiffre d\'affaires total' mod='multivendor'}</h6>
-                        <h3 class="mv-stat-value">{$commission_summary.total_commission_added|number_format:2} TND</h3>
+                        <h3 class="mv-stat-value">{$commission_summary.total_commission_added.total|number_format:2} TND
+                        </h3>
                     </div>
                     <div class="mv-summary-card mv-summary-card-paid">
                         <h6 class="mv-stat-label">{l s='Total payé' mod='multivendor'}</h6>
-                        <h3 class="mv-stat-value">{$commission_summary.paid_commission|number_format:2} TND</h3>
+                        <h3 class="mv-stat-value">{$commission_summary.paid_commission.total|number_format:2} TND</h3>
+                        {* <p class="mv-stat-description">{$commission_summary.paid_commission.count_details}   commande(s)  </p> *}
+
                     </div>
                     <div class="mv-summary-card mv-summary-card-add">
                         <h6 class="mv-stat-label">{l s='Livré non payé' mod='multivendor'}</h6>
-                        <h3 class="mv-stat-value">{$commission_summary.total_commission_pending|number_format:2} TND</h3>
+                        <h3 class="mv-stat-value">{$commission_summary.total_commission_pending.total|number_format:2} TND
+                        </h3>
+                        <p class="mv-stat-description">{$commission_summary.total_commission_pending.count_details}
+                            commande(s) </p>
                     </div>
                     <div class="mv-summary-card mv-summary-card-pending">
                         <h6 class="mv-stat-label">{l s='Commandes en cours' mod='multivendor'}</h6>
-                        <h3 class="mv-stat-value">{$commission_summary.pending_amount|number_format:2} TND</h3>
+                        <h3 class="mv-stat-value">{$commission_summary.pending_amount.total|number_format:2} TND</h3>
+                        <p class="mv-stat-description">{$commission_summary.pending_amount.count_details} commande(s) </p>
                     </div>
                     <div class="mv-summary-card mv-summary-card-refund">
-                        <h6 class="mv-stat-label">{l s='Retours' mod='multivendor'}</h6>
-                        <h3 class="mv-stat-value">{$commission_summary.total_commission_refunded|number_format:2} TND</h3>
+                        <h6 class="mv-stat-label">{l s='Retours en cours' mod='multivendor'}</h6>
+                        <h3 class="mv-stat-value">{$commission_summary.total_commission_refunded.total|number_format:2} TND
+                        </h3>
+                        <p class="mv-stat-description">{$commission_summary.total_commission_refunded.count_details}
+                            commande(s) </p>
                     </div>
                 </div>
 

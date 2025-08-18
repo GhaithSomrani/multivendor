@@ -115,7 +115,7 @@
                                 </td>
                                 <td>
                                     <a href="#" class="mv-link">
-                                        #{$line.order_reference}#{$line.id_order_detail}
+                                        #{$line.id_order}#{$line.id_order_detail}
                                     </a>
                                 </td>
                                 <td class="mv-product-image">
@@ -124,11 +124,18 @@
                                         class="mv-product-image">
                                 </td>
                                 <td class="mv-product-name">
-                                    {$line.product_name}
-                                    <br> (SKU : {$line.product_reference})
+                                    {assign var="product_link" value=VendorHelper::getProductPubliclink($line.product_id, $line.product_attribute_id)}
+                                    <b>{$line.product_name}</b>
+
+                                    {assign var="brand" value=VendorOrderDetail::getBrandByProductId($line.product_id)}
+
+                                    <p class="mv-mobile-product-sku"> Marque: {$brand} </p>
+                                    <p class="mv-mobile-product-sku"> SKU: {$line.product_reference} </p>
+                                    <p class="mv-mobile-product-sku"> {if $line.product_mpn}MPN: {$line.product_mpn}{/if} </p>
+                                    <p class="mv-mobile-product-sku">Prix Public: {$line.product_price|number_format:2}</p>
                                 </td>
                                 <td class="mv-text-center">{$line.product_quantity}</td>
-                                <td>{($line.vendor_amount)|displayPrice}</td>
+                                <td>{($line.vendor_amount)|number_format:2} TND</td>
                                 <td>
                                     {if isset($all_statuses[$line.status_type_id]) && !isset($vendor_statuses[$line.status_type_id])}
                                         <span class="mv-status-badge"
@@ -167,6 +174,9 @@
                                         onclick='openStatusCommentModal({$line.id_order_detail}, "{$line.product_name}", "{$line.line_status}", "{$status_colors[$line.line_status]|default:'#777'}")'
                                         title="{l s='Add status comment' mod='multivendor'}">
                                         <i class="mv-icon">🔃</i>
+                                    </button>
+                                    <button class=" mv-btn-icon" title="{l s='Voir le produit' mod='multivendor'}">
+                                        <i class="mv-icon"><a href="{$product_link}" target="_blank">🔗</a></i>
                                     </button>
                                 </td>
                             </tr>

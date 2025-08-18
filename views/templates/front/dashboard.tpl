@@ -98,7 +98,7 @@
                     <div class="mv-stat-card">
                         <div class="mv-stat-content">
                             <h6 class="mv-stat-label">{l s='CA Total' mod='multivendor'}</h6>
-                            <h3 class="mv-stat-value">{Tools::displayPrice($indicators.total_ca)}</h3>
+                            <h3 class="mv-stat-value">{$indicators.total_ca|number_format:2} TND</h3>
                             <p class="mv-stat-description">{$filter_label}</p>
                         </div>
                     </div>

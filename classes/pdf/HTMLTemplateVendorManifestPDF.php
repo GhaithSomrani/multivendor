@@ -63,8 +63,13 @@ class HTMLTemplateVendorManifestPDF extends HTMLTemplate
         try {
 
             $manifestData = [];
-            $vendorObj = new Vendor($vendor['id_vendor']);
-            $supplierAddress = VendorHelper::getSupplierAddressByVendor($vendor['id_vendor']);
+            $vendorObj = null;
+            $supplierAddress = [];
+            if ($vendor) {
+                $vendorObj = new Vendor($vendor['id_vendor']);
+                $supplierAddress = VendorHelper::getSupplierAddressByVendor($vendor['id_vendor']);
+            }
+
 
             foreach ($orderDetailIds as $id_order_detail) {
 
@@ -76,10 +81,18 @@ class HTMLTemplateVendorManifestPDF extends HTMLTemplate
                 $currency = new Currency($order->id_currency);
                 $manifestItem = [
                     'vendor' => [
-                        'id' => $vendorObj->id,
-                        'name' => $vendorObj->shop_name,
+                        'id' => $vendorObj->id ?? null,
+                        'name' => $vendorObj->shop_name ?? '',
                     ],
-                    'supplier_address' => $supplierAddress,
+                    'supplier_address' => $supplierAddress ? [
+                        'name' => $supplierAddress['name'] ?? '',
+                        'address1' => $supplierAddress['address1'] ?? '',
+                        'address2' => $supplierAddress['address2'] ?? '',
+                        'city' => $supplierAddress['city'] ?? '',
+                        'postcode' => $supplierAddress['postcode'] ?? '',
+                        'country' => $supplierAddress['country'] ?? '',
+                        'phone' => $supplierAddress['phone'] ?? ''
+                    ] : [],
                     'order' => [
                         'id' => $order->id,
                         'reference' => $order->reference,
@@ -96,7 +109,7 @@ class HTMLTemplateVendorManifestPDF extends HTMLTemplate
                         'total_price_tax_incl' => (float)$orderDetail->total_price_tax_incl,
                         'product_weight' => (float)($orderDetail->product_weight ?: 0.5),
                         'product_mpn' => $orderDetail->product_mpn ?: '',
-                        'barcode' =>$orderDetail->product_mpn,
+                        'barcode' => $orderDetail->product_mpn,
                     ],
                     'vendor_amount' => $vendorOrderDetail,
                     'pickup_id' => 'PU-' . $order->reference . '-' . $id_order_detail,
@@ -133,7 +146,7 @@ class HTMLTemplateVendorManifestPDF extends HTMLTemplate
     //             return '';
     //         }
     //         $barcode = new TCPDFBarcode($mpn, 'C128');
-   
+
     //         return $barcode->getBarcodeHTML(200, 150, 'black');
     //     } catch (Exception $e) {
     //         error_log('Error generating barcode: ' . $e->getMessage());

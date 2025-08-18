@@ -42,9 +42,9 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
                 'align' => 'center',
                 'class' => 'fixed-width-xs'
             ],
-            'order_reference' => [
-                'title' => $this->l('Référence'),
-                'filter_key' => 'o!reference',
+            'id_order' => [
+                'title' => $this->l('ID Order'),
+                'filter_key' => 'o!id_order',
                 'havingFilter' => true,
                 'callback' => 'displayOrderReference',
             ],
@@ -75,7 +75,7 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
                 'class' => 'fixed-width-xs',
                 'filter_key' => 'a!product_quantity'
             ],
-           
+
             'vendor_amount' => [
                 'title' => $this->l('Montant vendeur'),
                 'type' => 'price',
@@ -178,6 +178,10 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
         return '<span class="badge" style="background-color: ' . $color . '; color: white; padding: 4px 8px; border-radius: 3px;">' .
             htmlspecialchars($status) . '</span>';
     }
+
+
+
+
 
     /**
      * Process bulk status update for selected checkboxes
@@ -547,18 +551,16 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
     {
         $id_vendor = (int)Tools::getValue('export_vendor');
         $id_status_type = (int)Tools::getValue('export_status_type');
-        $date_from = Tools::getValue('export_date_from');
-        $date_to = Tools::getValue('export_date_to');
         $export_type = Tools::getValue('export_type');
 
         // Validation
-        if (empty($id_vendor) || empty($id_status_type) || empty($date_from) || empty($date_to) || empty($export_type)) {
-            $this->errors[] = $this->l('All fields are required for export.');
-            return;
-        }
+        // if (empty($id_vendor) || empty($id_status_type) || empty($export_type)) {
+        //     $this->errors[] = $this->l('All fields are required for export.');
+        //     return;
+        // }
 
         // Get filtered order details using same logic as pickup manifest
-        $orderDetailIds = $this->getFilteredOrderDetails($id_vendor, $id_status_type, $date_from, $date_to, $export_type);
+        $orderDetailIds = $this->getFilteredOrderDetails($id_vendor, $id_status_type, $export_type);
 
         if (empty($orderDetailIds)) {
             $this->errors[] = $this->l('No order lines found with the specified criteria.');
@@ -568,22 +570,41 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
         // Generate PDF using same logic as pickup manifest
         $this->generateFilteredManifest($orderDetailIds, $id_vendor, $export_type);
     }
+    public function ajaxProcesseExportSelectedIds()
+    {
+
+        $ids = Tools::getValue('ids', []);
+        $id_vendor = Tools::getValue('vendor_id', 0) ?? null;
+        $export_type = Tools::getValue('export_type', 'default') ?? 'retour';
+        $orderDetailIds = [];
+        foreach ($ids as $id) {
+            $ordervendor =  new VendorOrderDetail((int)$id);
+            if (Validate::isLoadedObject($ordervendor)) {
+                $orderDetailIds[] = $ordervendor->id_order_detail;
+            }
+        }
+
+        $this->generateFilteredManifest($orderDetailIds, $id_vendor, $export_type);
+    }
+
 
     /**
      * Get filtered order details based on criteria
      */
-    protected function getFilteredOrderDetails($id_vendor, $id_status_type, $date_from, $date_to, $export_type)
+    protected function getFilteredOrderDetails($id_vendor, $id_status_type, $export_type)
     {
         $sql = 'SELECT DISTINCT vod.id_order_detail
             FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod
             INNER JOIN ' . _DB_PREFIX_ . 'mv_order_line_status ols ON (vod.id_order_detail = ols.id_order_detail AND vod.id_vendor = ols.id_vendor)
             INNER JOIN ' . _DB_PREFIX_ . 'order_detail od ON vod.id_order_detail = od.id_order_detail
             INNER JOIN ' . _DB_PREFIX_ . 'orders o ON od.id_order = o.id_order
-            WHERE vod.id_vendor = ' . (int)$id_vendor . '
-            AND ols.id_order_line_status_type = ' . (int)$id_status_type . '
-            AND DATE(o.date_add) >= "' . pSQL($date_from) . '"
-            AND DATE(o.date_add) <= "' . pSQL($date_to) . '"
-            ORDER BY o.date_add DESC';
+            WHERE ols.id_order_line_status_type = ' . (int)$id_status_type;
+        if ($id_vendor > 0) {
+            $sql .= ' AND vod.id_vendor = ' . (int)$id_vendor;
+        }
+        $sql .=  ' ORDER BY o.date_add DESC';
+
+
 
         $results = Db::getInstance()->executeS($sql);
 
@@ -602,21 +623,24 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
     /**
      * Generate filtered manifest PDF
      */
-    protected function generateFilteredManifest($orderDetailIds, $id_vendor, $export_type)
+    protected function generateFilteredManifest($orderDetailIds, $id_vendor = null, $export_type)
     {
         try {
-            // Get vendor info (same as pickup manifest)
-            $vendor = Vendor::getVendorById($id_vendor);
-
-            if (!$vendor) {
-                $this->errors[] = $this->l('Vendor not found.');
-                return;
+            if ($id_vendor) {
+                $vendor = Vendor::getVendorById($id_vendor);
+                if (!$vendor) {
+                    $this->errors[] = $this->l('Vendor not found.');
+                    return;
+                }
+                $pdfData = [
+                    'vendor' => $vendor
+                ];
             }
 
-            // Prepare PDF data (same structure as pickup manifest)
+
             $pdfData = [
+                'vendor' => $vendor ?? null,
                 'orderDetailIds' => $orderDetailIds,
-                'vendor' => $vendor,
                 'export_type' => $export_type,
                 'filename' => 'Export_' . $export_type . '_' . date('YmdHis') . '.pdf'
             ];
@@ -644,6 +668,8 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
             switch ($action) {
                 case 'ajaxMassUpdateStatus':
                     $this->ajaxProcessAjaxMassUpdateStatus();
+                case 'exportSelectedIds':
+                    $this->ajaxProcesseExportSelectedIds();
                     break;
             }
 
@@ -700,7 +726,7 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
             ]);
 
             return '<a href="' . $orderLink . '" target="_blank" class="order-reference-link" title="' .
-                $this->l('View Order Details') . '">' . htmlspecialchars($reference) . '</a>';
+                $this->l('View Order Details') . '">' . htmlspecialchars($row['id_order']) . '</a>';
         }
 
         return htmlspecialchars($reference);
@@ -800,7 +826,8 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
         );
 
         // Get order status information
-        $order_status_info = Db::getInstance()->getRow('
+        $order_status_info = Db::getInstance()->getRow(
+            '
             SELECT osl.name as order_status_name, os.color as order_status_color
             FROM ' . _DB_PREFIX_ . 'order_state_lang osl
             LEFT JOIN ' . _DB_PREFIX_ . 'order_state os ON os.id_order_state = osl.id_order_state

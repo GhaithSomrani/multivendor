@@ -44,12 +44,12 @@ class AdminVendorPaymentsController extends ModuleAdminController
                 'filter_key' => 'a!reference'
             ],
             'status' => [
-                'title' => $this->l('Status'),
+                'title' => $this->l('Statut'),
                 'type' => 'select',
                 'list' => [
-                    'pending' => $this->l('Pending'),
-                    'completed' => $this->l('Completed'),
-                    'cancelled' => $this->l('Cancelled')
+                    'pending' => $this->l('En cours'),
+                    'completed' => $this->l('Effectué'),
+                    'cancelled' => $this->l('Annulé')
                 ],
                 'filter_key' => 'a!status',
                 'badge_success' => ['completed'],
@@ -67,8 +67,12 @@ class AdminVendorPaymentsController extends ModuleAdminController
         $this->_join = 'LEFT JOIN `' . _DB_PREFIX_ . 'mv_vendor` vendor ON (vendor.id_vendor = a.id_vendor)';
 
         // Add both view and edit actions
+        $idtoskip = Db::getInstance()->executeS('SELECT id_vendor_payment FROM ' . _DB_PREFIX_ . 'mv_vendor_payment WHERE status = "completed"');
+        $idtoskip = array_column($idtoskip, 'id_vendor_payment');
         $this->addRowAction('view');
         $this->addRowAction('edit');
+        $this->addRowAction('delete');
+        $this->addRowActionSkipList('delete', $idtoskip);
 
         $this->bulk_actions = [
             'markCompleted' => [
@@ -77,6 +81,8 @@ class AdminVendorPaymentsController extends ModuleAdminController
             ]
         ];
     }
+
+
 
     /**
      * Initialize toolbar for view page with print button
@@ -110,6 +116,27 @@ class AdminVendorPaymentsController extends ModuleAdminController
         return parent::processPosition();
     }
 
+    function processDelete()
+    {
+        // Prevent deletion of completed payments
+        $id_payment = (int)Tools::getValue($this->identifier);
+        if (!$id_payment) {
+            $this->errors[] = $this->l('Invalid payment ID');
+            return false;
+        }
+
+        $resetTransaction = Db::getInstance()->execute('UPDATE ' . _DB_PREFIX_ . 'mv_vendor_transaction SET id_vendor_payment = 0  , status = "pending" WHERE id_vendor_payment = ' . (int)$id_payment);
+        if (!$resetTransaction) {
+            $this->errors[] = $this->l('Error resetting transactions for this payment.');
+            return false;
+        }
+        $payment = new VendorPayment($id_payment);
+        if ($payment->status === 'completed') {
+            $this->errors[] = $this->l('You cannot delete a completed payment.');
+            return false;
+        }
+        return parent::processDelete();
+    }
     /**
      * Override postProcess to catch print requests
      */
@@ -361,7 +388,7 @@ class AdminVendorPaymentsController extends ModuleAdminController
             'currency_sign' => $this->context->currency->sign,
             'vendor_id' => $this->object->id_vendor ?? 0,
             'payment_id' => $this->object->id,
-     
+
             'ajax_url' => self::$currentIndex . '&token=' . $this->token
         ]);
 
@@ -435,13 +462,13 @@ class AdminVendorPaymentsController extends ModuleAdminController
         $date_from = Tools::getValue('date_from') ? pSQL(Tools::getValue('date_from')) : null;
         $date_to = Tools::getValue('date_to') ? pSQL(Tools::getValue('date_to')) : null;
         $include_refunds = Tools::getValue('include_refunds') ? (bool)Tools::getValue('include_refunds') : false;
-
+        $advanced = Tools::getValue('advanced') ? (bool)Tools::getValue('advanced') : false;
         if (!$vendor_id) {
             die(json_encode(['success' => false, 'message' => $this->l('Invalid vendor ID')]));
         }
 
         try {
-            $transactions = $this->getAllPendingTransactions($vendor_id, $status_filter, $date_from, $date_to, $include_refunds);
+            $transactions = $this->getAllPendingTransactions($vendor_id, $status_filter, $date_from, $date_to, $include_refunds, $advanced);
 
             // Assign variables to Smarty
             $this->context->smarty->assign([
@@ -534,10 +561,10 @@ class AdminVendorPaymentsController extends ModuleAdminController
     /**
      * Get all pending transactions from mv_vendor_transaction with proper status filtering
      */
-    public function getAllPendingTransactions($id_vendor = null, $status_filter = null, $date_from = null, $date_to = null, $include_refunds = false)
+    public function getAllPendingTransactions($id_vendor = null, $status_filter = null, $date_from = null, $date_to = null, $include_refunds = false, $advanced = false)
     {
         $query = '
-    SELECT 
+        SELECT 
         vt.id_vendor_transaction,
         vt.vendor_amount,
         vt.transaction_type,
@@ -550,23 +577,32 @@ class AdminVendorPaymentsController extends ModuleAdminController
         o.reference as order_reference,
         o.date_add as order_date,
         v.shop_name,
-        COALESCE(olst.name, "Default") as line_status,
-        COALESCE(olst.color, "#28a745") as status_color,
-        COALESCE(ols.id_order_line_status_type, ' . (int)OrderLineStatus::getDefaultStatusTypeId() . ') as status_type_id
-    FROM ' . _DB_PREFIX_ . 'mv_vendor_transaction vt
-    INNER JOIN ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod ON vod.id_order_detail = vt.order_detail_id
-    INNER JOIN ' . _DB_PREFIX_ . 'orders o ON o.id_order = vod.id_order
-    INNER JOIN ' . _DB_PREFIX_ . 'mv_vendor v ON v.id_vendor = vod.id_vendor
-    LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status ols ON ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor
-    LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status_type olst ON olst.id_order_line_status_type = ols.id_order_line_status_type
-    WHERE vt.status = "pending"
-    AND vt.id_vendor_payment = 0 ';
+        olst.name as line_status,
+        olst.color as status_color,
+        ols.id_order_line_status_type as status_type_id,
+        olst.commission_action as commission_action
+        FROM ' . _DB_PREFIX_ . 'mv_vendor_transaction vt
+        INNER JOIN ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod ON vod.id_order_detail = vt.order_detail_id
+        INNER JOIN ' . _DB_PREFIX_ . 'orders o ON o.id_order = vod.id_order
+        INNER JOIN ' . _DB_PREFIX_ . 'mv_vendor v ON v.id_vendor = vod.id_vendor
+        LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status ols ON ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor
+        LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status_type olst ON olst.id_order_line_status_type = ols.id_order_line_status_type
+        WHERE vt.status = "pending"
+        AND vt.id_vendor_payment = 0 ';
 
-        // Transaction type filter - include refunds if requested
+
+
+
         if ($include_refunds) {
-            $query .= ' AND vt.transaction_type IN ("commission", "refund") ';
+            $query .= ' AND vt.transaction_type IN ("commission", "refund")';
+            if (!$advanced) {
+                $query .= 'AND olst.commission_action ="refund"';
+            }
         } else {
-            $query .= ' AND vt.transaction_type = "commission" ';
+            $query .= ' AND vt.transaction_type = "commission"';
+            if (!$advanced) {
+                $query .= 'AND olst.commission_action ="add"';
+            }
         }
 
         if ($id_vendor) {
@@ -598,6 +634,7 @@ class AdminVendorPaymentsController extends ModuleAdminController
         $date_from = Tools::getValue('date_from') ? pSQL(Tools::getValue('date_from')) : null;
         $date_to = Tools::getValue('date_to') ? pSQL(Tools::getValue('date_to')) : null;
         $include_refunds = Tools::getValue('include_refunds') ? (bool)Tools::getValue('include_refunds') : false;
+        $advanced = Tools::getValue('advanced') ? (bool)Tools::getValue('advanced') : false;
 
         // Log the request for debugging
         PrestaShopLogger::addLog('AJAX getFilteredTransactions called - Vendor: ' . $id_vendor . ', Status: ' . $status_filter . ', Date From: ' . $date_from . ', Date To: ' . $date_to . ', Include Refunds: ' . ($include_refunds ? 'Yes' : 'No'), 1, null, 'AdminVendorPaymentsController');
@@ -611,7 +648,7 @@ class AdminVendorPaymentsController extends ModuleAdminController
                 ]));
             }
 
-            $transactions = $this->getAllPendingTransactions($id_vendor, $status_filter, $date_from, $date_to, $include_refunds);
+            $transactions = $this->getAllPendingTransactions($id_vendor, $status_filter, $date_from, $date_to, $include_refunds, $advanced);
             $html = '';
 
             if ($transactions && count($transactions) > 0) {
@@ -794,9 +831,9 @@ class AdminVendorPaymentsController extends ModuleAdminController
                 o.id_order,
                 o.reference as order_reference,
                 o.date_add as order_date,
-                COALESCE(olst.name, "Default") as line_status,
-                COALESCE(olst.color, "#28a745") as status_color,
-                COALESCE(ols.id_order_line_status_type, ' . (int)OrderLineStatus::getDefaultStatusTypeId() . ') as status_type_id
+               olst.name as line_status,
+               olst.color as status_color,
+              ols.id_order_line_status_type as status_type_id
             FROM ' . _DB_PREFIX_ . 'mv_vendor_transaction vt
             LEFT JOIN ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod ON vod.id_order_detail = vt.order_detail_id
             LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status ols ON ols.id_order_detail = vod.id_order_detail

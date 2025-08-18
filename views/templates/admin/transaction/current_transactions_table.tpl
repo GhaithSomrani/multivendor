@@ -62,16 +62,16 @@
                                 <td>
                                     {if $transaction.transaction_type == 'refund'}
                                         <span class="text-danger">
-                                            <strong>-{$transaction.vendor_amount|displayPrice}</strong>
+                                            <strong>-{$transaction.vendor_amount|number_format:2} TND</strong>
                                         </span>
                                     {else}
                                         <span class="text-success">
-                                            <strong>{$transaction.vendor_amount|displayPrice}</strong>
+                                            <strong>{$transaction.vendor_amount|number_format:2} TND</strong>
                                         </span>
                                     {/if}
                                 </td>
                                 <td>
-                                    <span class="badge" >
+                                    <span class="badge">
                                         {$transaction.line_status|escape:'html':'UTF-8'}
                                     </span>
                                 </td>
@@ -105,7 +105,7 @@
             <!-- Filters for available transactions -->
             <div class="row" style="margin-bottom: 15px;">
                 <!-- Status Filter -->
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <label for="available-status-filter">{l s='Filter by Status' mod='multivendor'}:</label>
                     <select id="available-status-filter" class="form-control">
                         <option value="">{l s='All Statuses' mod='multivendor'}</option>
@@ -142,12 +142,27 @@
                     </div>
                 </div>
 
+                <!-- Advanced Filters Checkbox -->
+                <div class="col-md-2">
+                    <label for="available-advanced-filters" style="display: block; margin-bottom: 5px;">
+                        {l s='Advanced Filters' mod='multivendor'}:
+                    </label>
+                    <div class="checkbox" style="margin-top: 5px;">
+                        <label style="font-weight: normal;">
+                            <input type="checkbox" id="available-advanced-filters" value="1">
+                            {l s='Enable Advanced Filters' mod='multivendor'}
+                        </label>
+                    </div>
+                </div>
+
                 <!-- Action Buttons -->
-                <div class="col-md-3">
-                    <button type="button" id="load-available-transactions" class="btn btn-primary" style="margin-top: 25px;">
+                <div class="col-md-2">
+                    <button type="button" id="load-available-transactions" class="btn btn-primary"
+                        style="margin-top: 25px;">
                         <i class="icon-search"></i> {l s='Load Available' mod='multivendor'}
                     </button>
-                    <button type="button" id="clear-available-filters" class="btn btn-default" style="margin-top: 25px; margin-left: 10px;">
+                    <button type="button" id="clear-available-filters" class="btn btn-default"
+                        style="margin-top: 25px; margin-left: 10px;">
                         <i class="icon-remove"></i> {l s='Clear' mod='multivendor'}
                     </button>
                 </div>
@@ -172,7 +187,7 @@
             var dateFrom = $('#available-date-from-filter').val();
             var dateTo = $('#available-date-to-filter').val();
             var includeRefunds = $('#available-include-refunds-filter').is(':checked');
-
+            var advanced = $('#available-advanced-filters').is(':checked');
             $.ajax({
                 url: '{$ajax_url}',
                 type: 'POST',
@@ -185,6 +200,7 @@
                     date_from: dateFrom,
                     date_to: dateTo,
                     include_refunds: includeRefunds ? 1 : 0
+                    advanced: advanced ? 1 : 0
                 },
                 dataType: 'json',
                 success: function(response) {
@@ -192,15 +208,15 @@
                         $('#available-transactions-container').html(response.html);
                     } else {
                         $('#available-transactions-container').html(
-                            '<div class="alert alert-warning">' + 
-                            '<i class="icon-warning"></i> ' + response.message + 
+                            '<div class="alert alert-warning">' +
+                            '<i class="icon-warning"></i> ' + response.message +
                             '</div>'
                         );
                     }
                 },
                 error: function() {
                     $('#available-transactions-container').html(
-                        '<div class="alert alert-danger">' + 
+                        '<div class="alert alert-danger">' +
                         '<i class="icon-exclamation-triangle"></i> {l s="Error loading available transactions" mod="multivendor"}' + 
                         '</div>'
                     );
@@ -227,10 +243,10 @@
 
         // Remove transaction handler
         $(document).on('click', '.remove-transaction', function() {
-            var transactionId = $(this).data('transaction-id');
-            var amount = $(this).data('amount');
+                var transactionId = $(this).data('transaction-id');
+                var amount = $(this).data('amount');
 
-            if (confirm('{l s="Are you sure you want to remove this transaction from the payment?" mod="multivendor"}')) {
+                if (confirm('{l s="Are you sure you want to remove this transaction from the payment?" mod="multivendor"}')) {
                 $.ajax({
                     url: '{$ajax_url}',
                     type: 'POST',
@@ -256,32 +272,32 @@
             }
         });
 
-        // Add transaction handler
-        $(document).on('click', '.add-transaction', function() {
-            var transactionId = $(this).data('transaction-id');
+    // Add transaction handler
+    $(document).on('click', '.add-transaction', function() {
+        var transactionId = $(this).data('transaction-id');
 
-            $.ajax({
-                url: '{$ajax_url}',
-                type: 'POST',
-                data: {
-                    ajax: true,
-                    action: 'addTransactionToPayment',
-                    transaction_id: transactionId,
-                    payment_id: paymentId
-                },
-                dataType: 'json',
-                success: function(response) {
-                    if (response.success) {
-                        // Reload the page to refresh both tables
-                        location.reload();
-                    } else {
-                        alert(response.message);
-                    }
-                },
-                error: function() {
-                    alert('{l s="Error adding transaction" mod="multivendor"}');
+        $.ajax({
+            url: '{$ajax_url}',
+            type: 'POST',
+            data: {
+                ajax: true,
+                action: 'addTransactionToPayment',
+                transaction_id: transactionId,
+                payment_id: paymentId
+            },
+            dataType: 'json',
+            success: function(response) {
+                if (response.success) {
+                    // Reload the page to refresh both tables
+                    location.reload();
+                } else {
+                    alert(response.message);
                 }
-            });
+            },
+            error: function() {
+                alert('{l s="Error adding transaction" mod="multivendor"}');
+            }
         });
+    });
     });
 </script>

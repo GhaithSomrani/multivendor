@@ -534,7 +534,7 @@ function addToManifest(orderDetailId, itemData = null) {
 
     if (itemData) {
         // Data from AJAX
-        orderRef = itemData.order_reference + '#' + itemData.id_order_detail;
+        orderRef = '#' + itemData.id_order + '#' + itemData.id_order_detail;
         productName = itemData.product_name;
         productMpn = itemData.product_mpn;
         quantity = itemData.product_quantity;
@@ -563,7 +563,7 @@ function addToManifest(orderDetailId, itemData = null) {
 
     $('#manifest-count').text(verifiedOrderDetails.size);
     $('#pickup-manifest-block').show();
-    
+
     // Add to mobile manifest
     addToMobileManifest(orderDetailId, {
         order_reference: orderRef,
@@ -572,7 +572,7 @@ function addToManifest(orderDetailId, itemData = null) {
         product_quantity: quantity,
         timestamp: timestamp
     });
-    
+
     // Update mobile count and show mobile block
     const mobileManifestCount = document.getElementById('mobile-manifest-count');
     const mobileManifestBlock = document.getElementById('mobile-pickup-manifest-block');
@@ -640,7 +640,7 @@ function removeFromManifest(orderDetailId) {
     if (verifiedOrderDetails.size === 0) {
         $('#pickup-manifest-block').hide();
     }
-    
+
     // Remove from mobile manifest
     removeFromMobileManifest(orderDetailId);
 }
@@ -1515,12 +1515,12 @@ function syncMobileManifest() {
     const mobileManifestItems = document.getElementById('mobile-manifest-items');
     const mobileManifestCount = document.getElementById('mobile-manifest-count');
     const mobileManifestBlock = document.getElementById('mobile-pickup-manifest-block');
-    
+
     if (!mobileManifestItems) return;
-    
+
     // Clear existing mobile manifest
     mobileManifestItems.innerHTML = '';
-    
+
     // Sync with desktop manifest data
     if (verifiedOrderDetails && verifiedOrderDetails.size > 0) {
         verifiedOrderDetails.forEach(orderDetailId => {
@@ -1535,7 +1535,7 @@ function syncMobileManifest() {
                 });
             }
         });
-        
+
         // Update count and show block
         if (mobileManifestCount) {
             mobileManifestCount.textContent = verifiedOrderDetails.size;
@@ -1558,15 +1558,15 @@ function syncMobileManifest() {
 function addToMobileManifest(orderDetailId, itemData) {
     const mobileManifestItems = document.getElementById('mobile-manifest-items');
     if (!mobileManifestItems) return;
-    
+
     // Check if item already exists in mobile manifest
     const existingItem = mobileManifestItems.querySelector(`[data-order-detail-id="${orderDetailId}"]`);
     if (existingItem) return;
-    
+
     const manifestItem = document.createElement('div');
     manifestItem.className = 'mv-mobile-manifest-item';
     manifestItem.setAttribute('data-order-detail-id', orderDetailId);
-    
+
     manifestItem.innerHTML = `
         <div class="mv-mobile-manifest-header">
             <span class="mv-mobile-manifest-ref">${itemData.order_reference}</span>
@@ -1578,39 +1578,39 @@ function addToMobileManifest(orderDetailId, itemData) {
             Vérifié: ${itemData.timestamp}
         </div>
     `;
-    
+
     mobileManifestItems.appendChild(manifestItem);
 }
 
 function removeFromMobileManifest(orderDetailId) {
     const mobileManifestItems = document.getElementById('mobile-manifest-items');
     if (!mobileManifestItems) return;
-    
+
     const existingItem = mobileManifestItems.querySelector(`[data-order-detail-id="${orderDetailId}"]`);
     if (existingItem) {
         existingItem.remove();
     }
-    
+
     // Update count
     const mobileManifestCount = document.getElementById('mobile-manifest-count');
     if (mobileManifestCount && verifiedOrderDetails) {
         mobileManifestCount.textContent = verifiedOrderDetails.size;
     }
-    
+
     // Hide block if empty
     const mobileManifestBlock = document.getElementById('mobile-pickup-manifest-block');
     if (mobileManifestBlock && (!verifiedOrderDetails || verifiedOrderDetails.size === 0)) {
         mobileManifestBlock.style.display = 'none';
     }
 }
-$(document).ready(function() {
+$(document).ready(function () {
     if (window.innerWidth <= 768) {
         initializeMobileManifest();
     }
 });
 
 // Update mobile manifest when window is resized
-$(window).resize(function() {
+$(window).resize(function () {
     if (window.innerWidth <= 768) {
         syncMobileManifest();
     }

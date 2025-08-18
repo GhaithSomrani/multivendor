@@ -166,13 +166,11 @@ class MultivendorAjaxModuleFrontController extends ModuleFrontController
 
             $result = VendorHelper::exportVendorOrdersToCSV($id_customer, $this->module);
 
-            // If it's not a success response, display error
             if (is_array($result) && isset($result['success']) && !$result['success']) {
                 header('Content-Type: text/plain');
                 die('Error: ' . $result['message']);
             }
 
-            // If it reached here, the CSV has been sent
             exit;
         } catch (Exception $e) {
             error_log('MultivendorAjax: Error in processExportOrdersCSV: ' . $e->getMessage());
@@ -215,7 +213,7 @@ class MultivendorAjaxModuleFrontController extends ModuleFrontController
 
             // Get ALL order lines with this status (no pagination)
             $query = new DbQuery();
-            $query->select('vod.id_order_detail, vod.product_name, vod.product_mpn, vod.product_quantity, o.reference as order_reference');
+            $query->select('vod.id_order_detail, vod.product_name, vod.product_mpn, vod.product_quantity, o.reference as order_reference , o.id_order');
             $query->from('mv_vendor_order_detail', 'vod');
             $query->leftJoin('orders', 'o', 'o.id_order = vod.id_order');
             $query->leftJoin('mv_order_line_status', 'ols', 'ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor');

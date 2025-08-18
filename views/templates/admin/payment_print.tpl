@@ -301,7 +301,7 @@
                             <td>{$detail.product_reference|default:'-'}</td>
                             <td class="center">-</td>
                             <td class="center">{$detail.product_quantity|default:'1'}</td>
-                            <td class="right">{($detail.vendor_amount*0.81)|number_format:2}</td>
+                            <td class="right">{($detail.vendor_amount*0.81)|number_format:2} TND</td>
                         </tr>
                     {/foreach}
                 </tbody>
@@ -311,12 +311,12 @@
                         <td class="center">
                             <strong>{if $transaction_details}{$transaction_details|@count}{else}0{/if}</strong>
                         </td>
-                        <td class="right"><strong>{($payment->amount*0.81)|number_format:2}</strong></td>
+                        <td class="right"><strong>{($payment->amount*0.81)|number_format:2} TND</strong></td>
                     </tr>
                     <tr>
                         <td colspan="4"><strong>TVA :</strong></td>
                         <td class="center">19%</td>
-                        <td class="right">{($payment->amount*0.19)|number_format:2}</td>
+                        <td class="right">{($payment->amount*0.19)|number_format:2} TND</td>
                     </tr>
                     <tr class="totals-row">
                         <td colspan="4"><strong>Montant Total TTC :</strong></td>

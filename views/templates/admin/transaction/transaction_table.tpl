@@ -13,7 +13,7 @@
                 <!-- Filters Section -->
                 <div id="filters-section" class="row" style="margin-bottom: 15px">
                     <!-- Status Filter -->
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         <label for="status-filter">{l s='Filter by Status' mod='multivendor'}:</label>
                         <select id="status-filter" class="form-control">
                             <option value="">{l s='All Statuses' mod='multivendor'}</option>
@@ -24,19 +24,19 @@
                             {/foreach}
                         </select>
                     </div>
-                    
+
                     <!-- Date From Filter -->
                     <div class="col-md-2">
                         <label for="date-from-filter">{l s='From Date' mod='multivendor'}:</label>
                         <input type="date" id="date-from-filter" class="form-control" />
                     </div>
-                    
+
                     <!-- Date To Filter -->
                     <div class="col-md-2">
                         <label for="date-to-filter">{l s='To Date' mod='multivendor'}:</label>
                         <input type="date" id="date-to-filter" class="form-control" />
                     </div>
-                    
+
                     <!-- Refund Filter Checkbox -->
                     <div class="col-md-2">
                         <label for="include-refunds-filter" style="display: block; margin-bottom: 5px;">
@@ -49,13 +49,25 @@
                             </label>
                         </div>
                     </div>
-                    
+                    <!-- Advanced Filters Checkbox -->
+                    <div class="col-md-2">
+                        <label for="available-advanced-filters" style="display: block; margin-bottom: 5px;">
+                            {l s='Advanced Filters' mod='multivendor'}:
+                        </label>
+                        <div class="checkbox" style="margin-top: 5px;">
+                            <label style="font-weight: normal;">
+                                <input type="checkbox" id="available-advanced-filters" value="1">
+                                {l s='Enable Advanced Filters' mod='multivendor'}
+                            </label>
+                        </div>
+                    </div>
                     <!-- Clear Filters Button -->
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         <button type="button" id="clear-filters" class="btn btn-default" style="margin-top: 25px;">
                             <i class="icon-remove"></i> {l s='Clear All' mod='multivendor'}
                         </button>
-                        <button type="button" id="apply-filters" class="btn btn-primary" style="margin-top: 25px; margin-left: 10px;">
+                        <button type="button" id="apply-filters" class="btn btn-primary"
+                            style="margin-top: 25px; margin-left: 10px;">
                             <i class="icon-search"></i> {l s='Apply Filters' mod='multivendor'}
                         </button>
                     </div>
@@ -63,7 +75,8 @@
 
                 <!-- Instructions -->
                 <div id="vendor-selection-message" class="alert alert-info">
-                    <i class="icon-info-circle"></i> {l s='Please select a vendor above to view their pending transactions.' mod='multivendor'}
+                    <i class="icon-info-circle"></i>
+                    {l s='Please select a vendor above to view their pending transactions.' mod='multivendor'}
                 </div>
 
                 <!-- Loading indicator -->
@@ -77,14 +90,15 @@
                         <strong>{l s='Pending Transactions' mod='multivendor'}</strong>
                         <span id="transaction-count" class="badge badge-info pull-right">0</span>
                     </div>
-                    
+
                     <div class="table-responsive">
                         <table class="table table-striped table-bordered">
                             <thead>
                                 <tr>
                                     <th>
                                         <input type="checkbox" id="select-all-transactions" />
-                                        <label for="select-all-transactions" style="margin-left: 5px;">{l s='Select All' mod='multivendor'}</label>
+                                        <label for="select-all-transactions"
+                                            style="margin-left: 5px;">{l s='Select All' mod='multivendor'}</label>
                                     </th>
                                     <th>{l s='Order' mod='multivendor'}</th>
                                     <th>{l s='Product' mod='multivendor'}</th>
@@ -115,7 +129,8 @@
                 <!-- No transactions message -->
                 <div id="no-transactions-message" style="display: none;">
                     <div class="alert alert-warning">
-                        <i class="icon-warning"></i> {l s='No pending transactions found for the selected filters.' mod='multivendor'}
+                        <i class="icon-warning"></i>
+                        {l s='No pending transactions found for the selected filters.' mod='multivendor'}
                     </div>
                 </div>
             </div>
@@ -127,7 +142,7 @@
     $(document).ready(function() {
         var currentVendorId = null;
 
-        function loadTransactions(vendorId, statusFilter, dateFrom, dateTo, includeRefunds) {
+        function loadTransactions(vendorId, statusFilter, dateFrom, dateTo, includeRefunds, advanced) {
             if (!vendorId) {
                 $('#vendor-selection-message').show();
                 $('#transactions-container').hide();
@@ -150,18 +165,19 @@
                     status_filter: statusFilter,
                     date_from: dateFrom,
                     date_to: dateTo,
-                    include_refunds: includeRefunds ? 1 : 0
+                    include_refunds: includeRefunds ? 1 : 0,
+                    advanced: advanced ? 1 : 0
                 },
                 dataType: 'json',
                 success: function(response) {
                     $('#transactions-loading').hide();
-                    
+
                     if (response.success && response.count > 0) {
                         $('#transactions-tbody').html(response.html);
                         $('#transaction-count').text(response.count);
                         $('#transactions-container').show();
                         $('#no-transactions-message').hide();
-                        
+
                         // Reset selection
                         $('#select-all-transactions').prop('checked', false);
                         updateSelectedTotal();
@@ -195,8 +211,10 @@
                 var dateFrom = $('#date-from-filter').val();
                 var dateTo = $('#date-to-filter').val();
                 var includeRefunds = $('#include-refunds-filter').is(':checked');
-                
-                loadTransactions(currentVendorId, statusFilter, dateFrom, dateTo, includeRefunds);
+                var advanced = $('#available-advanced-filters').is(':checked');
+
+                loadTransactions(currentVendorId, statusFilter, dateFrom, dateTo, includeRefunds,
+                    advanced);
             }
         });
 
@@ -206,9 +224,10 @@
             $('#date-from-filter').val('');
             $('#date-to-filter').val('');
             $('#include-refunds-filter').prop('checked', false);
-            
+            $('#available-advanced-filters').prop('checked', false);
+
             if (currentVendorId) {
-                loadTransactions(currentVendorId, null, null, null, false);
+                loadTransactions(currentVendorId, null, null, null, false, false);
             }
         });
 
@@ -222,7 +241,7 @@
         // Individual transaction checkbox
         $(document).on('change', '#transactions-tbody input[type="checkbox"]', function() {
             updateSelectedTotal();
-            
+
             // Update select all checkbox state
             var totalCheckboxes = $('#transactions-tbody input[type="checkbox"]').length;
             var checkedCheckboxes = $('#transactions-tbody input[type="checkbox"]:checked').length;
@@ -237,13 +256,14 @@
             $('#date-from-filter').val('');
             $('#date-to-filter').val('');
             $('#include-refunds-filter').prop('checked', false);
-            loadTransactions(vendorId, null, null, null, false);
+            $('#available-advanced-filters').prop('checked', false);
+            loadTransactions(vendorId, null, null, null, false, false);
         };
 
         // Initialize on page load
         if (typeof initialVendorId !== 'undefined' && initialVendorId) {
             currentVendorId = initialVendorId;
-            loadTransactions(initialVendorId, null, null, null, false);
+            loadTransactions(initialVendorId, null, null, null, false, false);
         }
     });
 </script>

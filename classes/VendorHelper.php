@@ -770,12 +770,17 @@ class VendorHelper
             o.id_order,
             vod.commission_amount,
             vod.vendor_amount,
-            olst.name as line_status
+            olst.name as line_status,
+            vp.reference as payment_reference,
+            vp.date_add as payment_date,
+            vp.status as payment_status
         ');
         $query->from('mv_vendor_order_detail', 'vod');
         $query->leftJoin('orders', 'o', 'o.id_order = vod.id_order');
         $query->leftJoin('mv_order_line_status', 'ols', 'ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor');
         $query->leftJoin('mv_order_line_status_type', 'olst', 'olst.id_order_line_status_type = ols.id_order_line_status_type');
+        $query->leftJoin('mv_vendor_transaction', 'vt', 'vt.order_detail_id = vod.id_order_detail');
+        $query->leftJoin('mv_vendor_payment', 'vp', 'vp.id_vendor_payment = vt.id_vendor_payment ');
         $query->where('vod.id_vendor = ' . (int)$id_vendor);
         $query->where('ols.id_order_line_status_type NOT IN (' . $hiddenIdsString . ')');
 
@@ -804,7 +809,11 @@ class VendorHelper
             $module->l('Quantity'),
             $module->l('Vendor Amount'),
             $module->l('Status'),
-            $module->l('Order Date')
+            $module->l('Order Date'),
+            $module->l('Payment Reference'),
+            $module->l('Payment Status'),
+            $module->l('Payment Date')
+
         ]);
 
         foreach ($orderLines as $line) {
@@ -815,7 +824,10 @@ class VendorHelper
                 $line['product_quantity'],
                 $line['vendor_amount'],
                 $line['line_status'],
-                date('Y-m-d H:i:s', strtotime($line['order_date']))
+                date('Y-m-d H:i:s', strtotime($line['order_date'])),
+                $line['payment_reference'] ?: '-',
+                $line['payment_status'] ?: '-',
+                $line['payment_date'] ? date('Y-m-d H:i:s', strtotime($line['payment_date'])) : '-'
             ]);
         }
 
@@ -1156,5 +1168,20 @@ class VendorHelper
         $query->groupBy('v.id_vendor');
 
         return Db::getInstance()->getRow($query);
+    }
+
+    public static function getProductPubliclink($id_product, $id_product_attribute = null)
+    {
+        $product = new Product($id_product, true, Context::getContext()->language->id);
+        if (!$product->active) {
+            return '';
+        }
+
+        $link = new Link();
+        if ($id_product_attribute) {
+            return $link->getProductLink($product, null, null, null, null, null, $id_product_attribute);
+        } else {
+            return $link->getProductLink($product);
+        }
     }
 }

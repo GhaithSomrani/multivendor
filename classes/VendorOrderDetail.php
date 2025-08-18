@@ -67,7 +67,7 @@ class VendorOrderDetail extends ObjectModel
             'id_order' => ['type' => self::TYPE_INT, 'validate' => 'isUnsignedId', 'required' => true],
             'product_id' => ['type' => self::TYPE_INT, 'validate' => 'isUnsignedId', 'required' => true],
             'product_name' => ['type' => self::TYPE_STRING, 'validate' => 'isGenericName', 'required' => true, 'size' => 255],
-            'product_reference' => ['type' => self::TYPE_STRING, 'validate' => 'isReference', 'size' => 128], // NEW FIELD
+            'product_reference' => ['type' => self::TYPE_STRING, 'validate' => 'isReference', 'size' => 128],
             'product_mpn' => ['type' => self::TYPE_STRING, 'validate' => 'isGenericName', 'size' => 128],
             'product_price' => ['type' => self::TYPE_FLOAT, 'validate' => 'isFloat', 'required' => true],
             'product_quantity' => ['type' => self::TYPE_INT, 'validate' => 'isUnsignedInt', 'required' => true],
@@ -94,9 +94,21 @@ class VendorOrderDetail extends ObjectModel
         return Db::getInstance()->executeS($query);
     }
 
+    /**
+     * Get brand name by product ID      
+     * 
+     * @param int $id_product Product ID
+     * @return string Brand name or empty string if not found
+     */
 
-
-
-
-  
+    public static function getBrandByProductId($id_product)
+    {
+        try {
+            $brand_name = Manufacturer::getNameById((int)(new Product($id_product))->id_manufacturer);
+        } catch (PrestaShopException $e) {
+            PrestaShopLogger::addLog('Error fetching brand for product ID ' . (int)$id_product . ': ' . $e->getMessage(), 3);
+            return '';
+        }
+        return $brand_name;
+    }
 }

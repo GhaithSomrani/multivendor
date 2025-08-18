@@ -132,13 +132,14 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
 
         $query = new DbQuery();
         $query->select('vod.id_order_detail, vod.product_name, vod.product_reference, vod.product_quantity, vod.vendor_amount,
-          o.reference as order_reference, o.date_add as order_date, vod.product_mpn,
+          o.reference as order_reference, o.date_add as order_date, vod.product_mpn, od.unit_price_tax_incl as product_price,
           vod.id_vendor, vod.commission_amount, vod.vendor_amount, vod.id_order, vod.product_id, vod.product_attribute_id,
           COALESCE(ols.id_order_line_status_type, ' . (int)$defaultStatusTypeId . ') as status_type_id,
           COALESCE(olst.name, "Pending") as line_status');
         $query->from('mv_vendor_order_detail', 'vod');
         $query->innerJoin('orders', 'o', 'o.id_order = vod.id_order');
         $query->leftJoin('mv_order_line_status', 'ols', 'ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = ' . (int)$id_vendor);
+        $query->leftJoin('order_detail', 'od', 'od.id_order_detail = vod.id_order_detail');
         $query->leftJoin('mv_order_line_status_type', 'olst', 'olst.id_order_line_status_type = ols.id_order_line_status_type');
         $query->where('vod.id_vendor = ' . (int)$id_vendor);
 
