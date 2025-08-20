@@ -48,7 +48,6 @@ class VendorCommission extends ObjectModel
     public static function getCommissionRate($id_vendor)
     {
         $query = new DbQuery();
-        dump($id_vendor);
         $query->select('commission_rate');
         $query->from('mv_vendor_commission');
         $query->where('id_vendor = ' . (int)$id_vendor);

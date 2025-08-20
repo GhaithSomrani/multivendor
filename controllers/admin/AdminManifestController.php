@@ -185,13 +185,7 @@ class AdminManifestController extends ModuleAdminController
             ]
         ];
 
-        if (!$this->object->id) {
-            $this->fields_form['input'][] = [
-                'type' => 'html',
-                'name' => 'vendor_order_details_table',
-                'html_content' => $this->renderVendorOrderDetailsTable()
-            ];
-        }
+
 
         // Auto-generate reference if creating new manifest
         if (!$this->object->id) {
@@ -199,7 +193,10 @@ class AdminManifestController extends ModuleAdminController
             $this->fields_value['id_manifest_status'] = 1;
         }
 
-        return parent::renderForm();
+
+        $form = parent::renderForm();
+        $form .=$this->renderVendorOrderDetailsTable();        
+        return $form ;
     }
 
 
@@ -259,6 +256,7 @@ class AdminManifestController extends ModuleAdminController
 
         return parent::processSave();
     }
+
 
     /**
      * Render view page
