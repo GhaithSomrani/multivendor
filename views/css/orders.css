@@ -316,6 +316,9 @@ textarea.mv-form-control {
     margin-top: 24px;
     display: flex;
     justify-content: center;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
 }
 
 .mv-pagination-list {
@@ -516,7 +519,8 @@ textarea.mv-form-control {
     background-color: #f3f4f6;
 }
 
-#bulk-status-select {
+#bulk-status-select,
+#per_page {
     color: #000;
 }
 
@@ -1151,6 +1155,7 @@ tr.mv-mpn-found {
     display: flex;
     flex-wrap: wrap;
     gap: 4px;
+    justify-content: center;
 }
 
 .mv-mobile-product-name {
@@ -1272,7 +1277,6 @@ tr.mv-mpn-found {
     justify-content: center;
     gap: 6px;
     background: #fff;
-    color: #333;
 }
 
 .mv-mobile-btn:hover {
@@ -1436,4 +1440,21 @@ tr.mv-mpn-found {
 .mv-product-image {
 
     border-radius: 8px;
+}
+
+.flash-fast {
+    font-weight: bold;
+    animation: flash-fast 0.5s infinite;
+}
+
+@keyframes flash-fast {
+
+    0%,
+    100% {
+        color: red;
+    }
+
+    50% {
+        color: black;
+    }
 }

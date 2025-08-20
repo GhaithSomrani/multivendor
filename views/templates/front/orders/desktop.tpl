@@ -115,7 +115,7 @@
                                 </td>
                                 <td>
                                     <a href="#" class="mv-link">
-                                        #{$line.id_order}#{$line.id_order_detail}
+                                        {$line.id_order} #{$line.id_order_detail}
                                     </a>
                                 </td>
                                 <td class="mv-product-image">
@@ -134,7 +134,8 @@
                                     <p class="mv-mobile-product-sku"> {if $line.product_mpn}MPN: {$line.product_mpn}{/if} </p>
                                     <p class="mv-mobile-product-sku">Prix Public: {$line.product_price|number_format:2}</p>
                                 </td>
-                                <td class="mv-text-center">{$line.product_quantity}</td>
+                                <td class="mv-text-center {if $line.product_quantity > 1 } flash-fast {/if}">
+                                    {$line.product_quantity}</td>
                                 <td>{($line.vendor_amount)|number_format:2} TND</td>
                                 <td>
                                     {if isset($all_statuses[$line.status_type_id]) && !isset($vendor_statuses[$line.status_type_id])}
@@ -186,7 +187,7 @@
             </div>
 
             {* Pagination *}
-            {if $pages_nb > 1}
+            {if $pages_nb >= 1}
                 <nav class="mv-pagination">
                     <ul class="mv-pagination-list">
                         {if $current_page < $pages_nb}
@@ -210,25 +211,37 @@
                         {for $page_num=$p_start to $p_end}
                             <li class="mv-pagination-item {if $page_num == $current_page}mv-pagination-active{/if}">
                                 <a class="mv-pagination-link"
-                                    href="{$link->getModuleLink('multivendor', 'orders', ['page' => $page_num, 'status' => $filter_status])}">{$page_num}</a>
+                                    href="{$link->getModuleLink('multivendor', 'orders', ['page' => $page_num, 'status' => $filter_status , 'per_page' => $per_page])}">{$page_num}</a>
                             </li>
                         {/for}
 
                         {if $current_page < $pages_nb}
                             <li class="mv-pagination-item">
                                 <a class="mv-pagination-link"
-                                    href="{$link->getModuleLink('multivendor', 'orders', ['page' => $current_page+1])}">
+                                    href="{$link->getModuleLink('multivendor', 'orders', ['page' => $current_page+1 , 'per_page' => $per_page ])}">
                                     <span>›</span>
                                 </a>
                             </li>
                             <li class="mv-pagination-item">
                                 <a class="mv-pagination-link"
-                                    href="{$link->getModuleLink('multivendor', 'orders', ['page' => $pages_nb])}">
+                                    href="{$link->getModuleLink('multivendor', 'orders', ['page' => $pages_nb , 'per_page' => $per_page])}">
                                     <span>»</span>
                                 </a>
                             </li>
                         {/if}
                     </ul>
+                    {* per page selection*}
+                    <div class="mv-per-page-select">
+                        <label for="per_page">{l s='Lignes par page' mod='multivendor'}:</label>
+                        <select id="per_page" class="mv-status-select" onchange="changePerPage(this.value)">
+                            <option value="10" {if $per_page == 10}selected{/if}>10</option>
+                            <option value="20" {if $per_page == 20}selected{/if}>20</option>
+                            <option value="50" {if $per_page == 50}selected{/if}>50</option>
+                            <option value="100" {if $per_page == 100}selected{/if}>100</option>
+                            <option value="100" {if $per_page == 200}selected{/if}>200</option>
+
+                        </select>
+                    </div>
                 </nav>
             {/if}
         {else}
@@ -270,3 +283,7 @@
         </div>
     </div>
 </div>
+
+<script>
+    // Function to change the number of items per page
+</script>

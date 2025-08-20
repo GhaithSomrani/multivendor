@@ -78,8 +78,8 @@
             e.preventDefault();
             var selectedStatus = [];
             var exportType = $('#export_type').val();
-            var vendorId = $('#export_vendor').val() ?? '';
-
+            var vendorId = $('#export_vendor').val();
+                console.log(exportType, vendorId);
             $('input[name="vendor_order_detailsBox[]"]:checked').each(function() {
                 selectedStatus.push($(this).val());
             });

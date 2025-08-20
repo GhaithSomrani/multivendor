@@ -105,6 +105,27 @@ class Vendor extends ObjectModel
 
 
 
+
+    /**
+     * Get vendor's address from the their supplier id or customer id
+     *  
+     * @return array|false
+     */
+    public function getVendorAddress()
+    {
+        if (!$this->id_supplier && !$this->id_customer) {
+            return false;
+        }
+        $query = new DbQuery();
+        $query->select('*');
+        $query->from('address');
+        $query->where('id_customer = ' . (int)$this->id_customer . ' OR id_supplier = ' . (int)$this->id_supplier);
+
+        return Db::getInstance()->getRow($query);
+    }
+
+
+
     /**
      * Get vendor's commission summary
      * 

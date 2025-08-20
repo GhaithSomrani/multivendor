@@ -32,8 +32,14 @@ class HTMLTemplateVendorManifestPDF extends HTMLTemplate
             $export_type = isset($this->data['export_type']) ? $this->data['export_type'] : 'pickup';
             $pdf_title = ($export_type === 'retour') ? 'BON DE RETOUR' : 'BON DE RAMASSAGE';
             $pdf_subtitle = ($export_type === 'retour') ? 'Document de Retour Multi-Articles' : 'Document de Collecte Multi-Articles';
+            if (empty($this->data['vendor']['id_vendor'])) {
+                $commissionRate = (float)VendorCommission::getCommissionRate($this->data['vendor']) / 100;
+            } else {
+                $commissionRate = (float)VendorCommission::getCommissionRate($this->data['vendor']['id_vendor']) / 100;
+            }
 
             $this->smarty->assign([
+                'commissionRate' => $commissionRate,
                 'manifests'    => $manifestData['manifests'],
                 'current_date' => date('Y-m-d'),
                 'current_time' => date('H:i:s'),

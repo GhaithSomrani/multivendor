@@ -626,20 +626,10 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
     protected function generateFilteredManifest($orderDetailIds, $id_vendor = null, $export_type)
     {
         try {
-            if ($id_vendor) {
-                $vendor = Vendor::getVendorById($id_vendor);
-                if (!$vendor) {
-                    $this->errors[] = $this->l('Vendor not found.');
-                    return;
-                }
-                $pdfData = [
-                    'vendor' => $vendor
-                ];
-            }
 
 
             $pdfData = [
-                'vendor' => $vendor ?? null,
+                'vendor' => $id_vendor,
                 'orderDetailIds' => $orderDetailIds,
                 'export_type' => $export_type,
                 'filename' => 'Export_' . $export_type . '_' . date('YmdHis') . '.pdf'

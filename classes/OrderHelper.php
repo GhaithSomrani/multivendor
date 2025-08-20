@@ -97,6 +97,42 @@ class OrderHelper
         }
     }
 
+    public static function getVendorOrderDetails($id_vendor)
+    {
+        $defaultStatusTypeId = OrderLineStatus::getDefaultStatusTypeId();
+        $defaultStatusType = new OrderLineStatusType($defaultStatusTypeId);
+
+        $sql = 'SELECT 
+                    vod.id_order_detail,
+                    vod.id_order,
+                    vod.product_name,
+                    vod.product_reference,
+                    vod.product_mpn,
+                    vod.product_quantity,
+                    vod.product_price,
+                    vod.commission_amount,
+                    vod.vendor_amount,
+                    vod.date_add as order_date,
+                    v.shop_name as vendor_name,
+                    o.reference as order_reference,
+                    o.current_state as order_state_id,
+                    vt.status as payment_status,
+                    olst.name as line_status,
+                    olst.color as status_color
+                FROM `' . _DB_PREFIX_ . 'mv_vendor_order_detail` vod
+                LEFT JOIN `' . _DB_PREFIX_ . 'mv_vendor` v ON (vod.id_vendor = v.id_vendor)
+                LEFT JOIN `' . _DB_PREFIX_ . 'orders` o ON (vod.id_order = o.id_order)
+                LEFT JOIN `' . _DB_PREFIX_ . 'mv_order_line_status` ols ON (ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor)
+                LEFT JOIN `' . _DB_PREFIX_ . 'mv_order_line_status_type` olst ON (olst.id_order_line_status_type = ols.id_order_line_status_type)
+                LEFT JOIN `' . _DB_PREFIX_ . 'mv_vendor_transaction` vt ON (vt.order_detail_id = vod.id_order_detail AND vt.transaction_type = "commission")
+                WHERE vod.id_vendor = ' . (int)$id_vendor . '
+                ORDER BY vod.date_add DESC';
+
+        $results = Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS($sql);
+        return $results;
+    }
+
+
     /**
      * Update vendor order detail when order detail is modified
      *
@@ -516,7 +552,7 @@ class OrderHelper
             // Check if combination has specific images
             if ($id_product_attribute) {
                 $Product = new Product($id_product, false, $context->language->id);
-                $images = $Product->getCombinationImages($context->language->id) ;
+                $images = $Product->getCombinationImages($context->language->id);
                 if (!empty($images[$id_product_attribute])) {
                     $id_image = $images[$id_product_attribute][0]['id_image'];
                     return $link->getImageLink($product->link_rewrite, $id_product . '-' . $id_image, $image_type, null, null, null, $force_https);

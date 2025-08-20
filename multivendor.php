@@ -24,6 +24,7 @@ require_once(dirname(__FILE__) . '/classes/VendorHelper.php');
 require_once(dirname(__FILE__) . '/classes/pdf/HTMLTemplateVendorManifestPDF.php');
 require_once(dirname(__FILE__) . '/classes/OrderHelper.php');
 require_once(dirname(__FILE__) . '/classes/TransactionHelper.php');
+require_once(dirname(__FILE__) . '/classes/Manifest.php');
 
 
 class multivendor extends Module
@@ -138,6 +139,10 @@ class multivendor extends Module
                 'name' => 'Commissions'
             ],
             [
+                'class_name' => 'AdminManifest',
+                'name' => 'Manifests'
+            ],
+            [
                 'class_name' => 'AdminVendorPayments',
                 'name' => 'Payments'
             ],
@@ -153,6 +158,7 @@ class multivendor extends Module
                 'class_name' => 'AdminVendorOrderDetails',
                 'name' => 'Order Details'
             ],
+
         ];
 
         foreach ($tabs as $t) {
@@ -185,7 +191,8 @@ class multivendor extends Module
             'AdminVendorSettings',
             'AdminVendor',
             'AdminOrderLineStatus',
-            'AdminVendorOrderDetails'
+            'AdminVendorOrderDetails',
+            'AdminManifest'
         ];
 
         foreach ($tabs as $className) {
@@ -651,7 +658,6 @@ class multivendor extends Module
     {
         if (isset($params['object'])) {
             OrderHelper::processOrderDetailForVendor($params['object']);
- 
         }
     }
 
@@ -662,7 +668,6 @@ class multivendor extends Module
     {
         if (isset($params['object'])) {
             OrderHelper::updateOrderDetailForVendor($params['object']);
-  
         }
     }
 
@@ -673,7 +678,6 @@ class multivendor extends Module
     {
         if (isset($params['object'])) {
             OrderHelper::deleteOrderDetailForVendor($params['object']);
-        
         }
     }
 
@@ -762,6 +766,7 @@ class multivendor extends Module
             'AdminVendorPayments',
             'AdminOrderLineStatus',
             'AdminVendorOrderDetails',
+
         ];
 
         if (in_array($controller, $allowedControllers)) {

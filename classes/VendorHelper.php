@@ -1142,7 +1142,7 @@ class VendorHelper
     public static function getSupplierAddressByVendor($id_vendor)
     {
         $query = new DbQuery();
-        $query->select('s.name, a.address1 as address, a.address2, a.postcode, a.city, a.phone, co.name as country');
+        $query->select('a.id_address, s.name, a.address1 as address, a.address2, a.postcode, a.city, a.phone, co.name as country');
         $query->from('mv_vendor', 'v');
         $query->leftJoin('supplier', 's', 's.id_supplier = v.id_supplier');
         $query->leftJoin('address', 'a', 'a.id_supplier = s.id_supplier');

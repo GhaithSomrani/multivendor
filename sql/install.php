@@ -151,12 +151,12 @@ $sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'mv_vendor_order_detail`
 
 
 // Add default configuration values
-$sql[] = 'INSERT INTO `' . _DB_PREFIX_ . 'configuration` (`name`, `value`, `date_add`, `date_upd`) 
-          VALUES 
-          ("MV_DEFAULT_COMMISSION", "10", NOW(), NOW()),
-          ("MV_AUTO_APPROVE_VENDORS", "0", NOW(), NOW()),
-          ("MV_HIDE_FROM_VENDOR", "", NOW(), NOW())
-          ON DUPLICATE KEY UPDATE `value` = VALUES(`value`), `date_upd` = VALUES(`date_upd`)';
+// $sql[] = 'INSERT INTO `' . _DB_PREFIX_ . 'configuration` (`name`, `value`, `date_add`, `date_upd`) 
+//           VALUES 
+//           ("MV_DEFAULT_COMMISSION", "10", NOW(), NOW()),
+//           ("MV_AUTO_APPROVE_VENDORS", "0", NOW(), NOW()),
+//           ("MV_HIDE_FROM_VENDOR", "", NOW(), NOW())
+//           ON DUPLICATE KEY UPDATE `value` = VALUES(`value`), `date_upd` = VALUES(`date_upd`)';
 
 $sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'mv_order_line_status_type` (
             `id_order_line_status_type` int(10) unsigned NOT NULL AUTO_INCREMENT,
@@ -173,6 +173,34 @@ $sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'mv_order_line_status_ty
             `date_upd` datetime NOT NULL,
             PRIMARY KEY (`id_order_line_status_type`)
         ) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8;';
+
+$sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'mv_manifest` (
+    `id_manifest` int(10) unsigned NOT NULL AUTO_INCREMENT,
+    `reference` varchar(128) NOT NULL,
+    `id_vendor` int(10) unsigned NOT NULL,
+    `id_address` int(10) unsigned NULL,
+    `id_manifest_status` int(10) unsigned NOT NULL DEFAULT "1",
+    `add_date` datetime NOT NULL,
+    `update_date` datetime NOT NULL,
+    `type` varchar(32) NOT NULL DEFAULT "pickup",
+    PRIMARY KEY (`id_manifest`),
+    UNIQUE KEY `reference` (`reference`),
+    KEY `id_address` (`id_address`),
+    KEY `id_manifest_status` (`id_manifest_status`)
+) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8;';
+
+// Create Manifest Details table
+$sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'mv_manifest_details` (
+    `id_manifest_details` int(10) unsigned NOT NULL AUTO_INCREMENT,
+    `id_manifest` int(10) unsigned NOT NULL,
+    `id_order_details` int(10) unsigned NOT NULL,
+    `add_date` datetime NOT NULL,
+    `update_date` datetime NOT NULL,
+    PRIMARY KEY (`id_manifest_details`),
+    UNIQUE KEY `id_manifest_order_details` (`id_manifest`, `id_order_details`),
+    KEY `id_manifest` (`id_manifest`),
+    KEY `id_order_details` (`id_order_details`)
+) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8;';
 
 // $sql[] = 'INSERT INTO `' . _DB_PREFIX_ . 'mv_order_line_status_type` 
 //     (`id_order_line_status_type`, `name`, `is_admin_allowed`, `is_vendor_allowed`, `color`, `affects_commission`, `commission_action`, `position`, `active`, `available_status`, `date_add`, `date_upd`) 

@@ -101,8 +101,13 @@
                                     style="display: none;">
                                 <a href="#" class="mv-mobile-link">
                                     #{$line.id_order}#{$line.id_order_detail}
+                                    <span class="view-status-history" data-order-detail-id="{$line.id_order_detail}"
+                                        title="{l s='Voir l\'historique' mod='multivendor'}">
+                                        <i class="mv-icon">📜</i>
+                                    </span>
                                 </a>
                             </div>
+
                             <div class="mv-mobile-order-date">
                                 {$line.order_date|date_format:'%d/%m/%Y'}
                             </div>
@@ -125,16 +130,18 @@
                                 {if ($brand)}
                                     <p class="mv-mobile-product-sku">Marque: {$brand}</p>
                                 {/if}
-                                <p class="mv-mobile-product-sku">Prix Public: {$line.product_price|number_format:2}</p>
+                                <p class="mv-mobile-product-sku mv-mobile-value mv-mobile-amount">Prix Public: {$line.product_price|number_format:2}</p>
 
                             </div>
 
 
 
                             <div class="mv-mobile-order-details">
-                                <div class="mv-mobile-detail-row">
-                                    <span class="mv-mobile-label">{l s='Quantité' mod='multivendor'}</span>
-                                    <span class="mv-mobile-value">{$line.product_quantity}</span>
+                                <div class="mv-mobile-detail-row ">
+                                    <span
+                                        class="mv-mobile-label {if $line.product_quantity > 1 } flash-fast {/if}">{l s='Quantité' mod='multivendor'}</span>
+                                    <span
+                                        class="mv-mobile-value {if $line.product_quantity > 1 } flash-fast {/if}">{$line.product_quantity}</span>
                                 </div>
                                 <div class="mv-mobile-detail-row">
                                     <span class="mv-mobile-label">{l s='Total' mod='multivendor'}</span>
@@ -145,28 +152,18 @@
 
                             <div class="mv-mobile-status-section">
                                 <div class="mv-mobile-current-status">
-                                    <span class="mv-mobile-status-badge"
+                                    <button class="mv-mobile-status-badge mv-mobile-btn"
+                                        onclick='openStatusCommentModal({$line.id_order_detail}, "{$line.product_name}", "{$line.line_status}", "{$status_colors[$line.line_status]|default:'#777'}")'
                                         style="background-color: {$status_colors[$line.line_status]|default:'#777'};">
-                                        {$line.line_status|capitalize}
-                                    </span>
+
+                                        <i class="mv-icon">🔃</i>
+                                        <span>{$line.line_status|capitalize}</span>
+                                    </button>
                                 </div>
                             </div>
 
-                            <div class="mv-mobile-actions">
-                                <button class="mv-mobile-btn mv-mobile-btn-comment"
-                                    onclick='openStatusCommentModal({$line.id_order_detail}, "{$line.product_name}", "{$line.line_status}", "{$status_colors[$line.line_status]|default:'#777'}")'
-                                    title="{l s='Ajouter commentaire' mod='multivendor'}">
-                                    <i class="mv-icon">🔃</i>
-                                    {l s='Modifier le statut' mod='multivendor'}
-                                </button>
-                                <button class="mv-mobile-btn mv-mobile-btn-history view-status-history"
-                                    data-order-detail-id="{$line.id_order_detail}"
-                                    title="{l s='Voir l\'historique' mod='multivendor'}">
-                                    <i class="mv-icon">📜</i>
-                                    {l s='Historique' mod='multivendor'}
-                                </button>
 
-                            </div>
+
                         </div>
                     </div>
                 {/foreach}

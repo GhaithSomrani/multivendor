@@ -263,15 +263,15 @@
                 {* Commission row - assuming 20% commission rate *}
                 <tr class="total-row">
                     <td colspan="4" class="text-left"><strong>Commission</strong></td>
-                    <td class="text-center"><strong>20%</strong></td>
-                    <td colspan="2" class="text-right"><strong>{($calculated_total_value_ttc * 0.20)|string_format:"%.3f"}</strong></td>
+                    <td class="text-center"><strong>{$commissionRate * 100}%</strong></td>
+                    <td colspan="2" class="text-right"><strong>{($calculated_total_value_ttc * $commissionRate)|string_format:"%.3f"}</strong></td>
                 </tr>
 
                 {* Net to pay row *}
                 <tr class="total-row">
                     <td colspan="4" class="text-left"><strong>Net à payer</strong></td>
                     <td class="text-center"><strong></strong></td>
-                    <td colspan="2" class="text-right"><strong>{($calculated_total_value_ttc * 0.80)|string_format:"%.3f"}</strong></td>
+                    <td colspan="2" class="text-right"><strong>{($calculated_total_value_ttc*(1-$commissionRate))|string_format:"%.3f"}</strong></td>
                 </tr>
             </tbody>
         </table>

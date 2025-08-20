@@ -49,7 +49,8 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
 
         // Pagination
         $page = (int)Tools::getValue('page', 1);
-        $per_page = 20;
+
+        $per_page = (int)Tools::getValue('per_page', 20);
         $offset = ($page - 1) * $per_page;
 
         // Get order lines specific to this vendor's supplier ID
@@ -94,7 +95,9 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
         ]);
 
         // Assign data to template
+
         $this->context->smarty->assign([
+            'per_page' => $per_page,
             'filter_status' => $filter_status,
             'order_lines' => $orderLines,
             'order_summary' => $orderSummary,

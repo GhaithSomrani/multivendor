@@ -194,7 +194,6 @@ function processMpnInput() {
     $statusMessage.text('Searching for MPN: ' + mpnValue + '...')
         .removeClass('success error')
         .addClass('searching');
-
     // Find the matching row
     let found = false;
     let $matchingRow = null;
@@ -203,7 +202,7 @@ function processMpnInput() {
     $('.mv-table tbody tr').each(function () {
         const rowMpn = $(this).data('product-mpn');
 
-        if (rowMpn === mpnValue) {
+        if (rowMpn == mpnValue) {
             found = true;
             $matchingRow = $(this);
             orderDetailId = $(this).data('id');
@@ -429,7 +428,7 @@ function updateOrderLineStatus(orderDetailId) {
                         if (updateResponse.success) {
                             showNotification('success', 'MPN verified and status updated');
 
-                            // Update the status in UI
+
                             updateStatusInUI(orderDetailId, response.status.name, response.status.color);
 
                             // Add to manifest
@@ -442,6 +441,8 @@ function updateOrderLineStatus(orderDetailId) {
                             $('#mpn-status-message').text('Order line verified successfully. Ready for next scan.')
                                 .removeClass('searching error')
                                 .addClass('success');
+
+                            location.reload(); // Reload the page to reflect changes
                         } else {
                             showNotification('error', updateResponse.message || 'Failed to update status');
 
@@ -1617,6 +1618,7 @@ $(window).resize(function () {
 });
 
 
+
 // Add mobile initialization to existing DOMContentLoaded
 $(document).ready(function () {
     // Your existing initialization code here...
@@ -1627,3 +1629,11 @@ $(document).ready(function () {
     // Make functions globally available
     window.toggleSelectAll = toggleSelectAll;
 });
+
+function changePerPage(value) {
+
+    const url = new URL(window.location.href);
+    url.searchParams.delete('page');
+    url.searchParams.set('per_page', value);
+    window.location.href = url.toString();
+}
