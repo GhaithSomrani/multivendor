@@ -352,3 +352,7 @@
         transform: translateX(100%);
     }
 }
+
+#mv_manifest_form .fixed-width-xl {
+    width: 100%!important;
+}

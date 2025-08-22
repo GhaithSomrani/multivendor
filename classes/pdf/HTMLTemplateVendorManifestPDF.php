@@ -25,18 +25,22 @@ class HTMLTemplateVendorManifestPDF extends HTMLTemplate
     public function getContent()
     {
         try {
+            if (empty($this->data['vendor']['id_vendor'])) {
+                $id_vendor = $this->data['vendor'];
+            } else {
+                $id_vendor = $this->data['vendor']['id_vendor'];
+            }
+
+
+
             $manifestData = $this->getPdfData($this->data['orderDetailIds'], $this->data['vendor']);
             $shop_address = $this->getShopAddress();
 
-            // Handle export type for different PDF headers
             $export_type = isset($this->data['export_type']) ? $this->data['export_type'] : 'pickup';
             $pdf_title = ($export_type === 'retour') ? 'BON DE RETOUR' : 'BON DE RAMASSAGE';
             $pdf_subtitle = ($export_type === 'retour') ? 'Document de Retour Multi-Articles' : 'Document de Collecte Multi-Articles';
-            if (empty($this->data['vendor']['id_vendor'])) {
-                $commissionRate = (float)VendorCommission::getCommissionRate($this->data['vendor']) / 100;
-            } else {
-                $commissionRate = (float)VendorCommission::getCommissionRate($this->data['vendor']['id_vendor']) / 100;
-            }
+            $commissionRate = (float)VendorCommission::getCommissionRate($id_vendor) / 100;
+
 
             $this->smarty->assign([
                 'commissionRate' => $commissionRate,
@@ -67,7 +71,8 @@ class HTMLTemplateVendorManifestPDF extends HTMLTemplate
     protected function getPdfData($orderDetailIds, $vendor)
     {
         try {
-
+            dump($orderDetailIds, $vendor);
+            die;
             $manifestData = [];
             $vendorObj = null;
             $supplierAddress = [];
@@ -116,8 +121,9 @@ class HTMLTemplateVendorManifestPDF extends HTMLTemplate
                         'product_weight' => (float)($orderDetail->product_weight ?: 0.5),
                         'product_mpn' => $orderDetail->product_mpn ?: '',
                         'barcode' => $orderDetail->product_mpn,
+                        'vendor_amount' => $vendorOrderDetail,
+
                     ],
-                    'vendor_amount' => $vendorOrderDetail,
                     'pickup_id' => 'PU-' . $order->reference . '-' . $id_order_detail,
                     'date' => date('Y-m-d'),
                     'time' => date('H:i'),

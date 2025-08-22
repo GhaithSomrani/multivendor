@@ -118,42 +118,31 @@ class AdminManifestController extends ModuleAdminController
      */
     public function renderForm()
     {
-        // add 1st option for vendor select
-        $this->fields_value['vendor'] = 0;
-        $this->fields_value['id_address'] = 0;
-        $this->fields_value['reference'] = '';
-        $this->fields_value['id_manifest_status'] = 1;
-        $this->fields_value['type'] = Manifest::TYPE_PICKUP;
+
         $this->fields_form = [
             'legend' => [
                 'title' => $this->l('Manifest'),
                 'icon' => 'icon-list'
             ],
             'input' => [
-                [
-                    'type' => 'text',
-                    'label' => $this->l('Reference'),
-                    'name' => 'reference',
-                    'required' => true,
-                    'maxlength' => 128,
-                    'hint' => $this->l('Manifest reference (leave empty to auto-generate)')
-                ],
+
                 [
                     'type' => 'select',
                     'label' => $this->l('vendor'),
-                    'name' => 'vendor',
+                    'name' => 'id_vendor',
                     'required' => true,
                     'options' => [
                         'query' => $this->getVendors(),
                         'id' => 'id_vendor',
                         'name' => 'shop_name',
+                        'value' => (int)Tools::getValue('vendor'),
                         'default' => [
                             'value' => '',
                             'label' => $this->l('Select vendor')
                         ],
                     ],
-                    'onchange' =>  'updateAddresses()',
                 ],
+
                 [
                     'type' => 'select',
                     'label' => $this->l('Type'),
@@ -168,6 +157,7 @@ class AdminManifestController extends ModuleAdminController
                         'name' => 'name'
                     ]
                 ],
+
                 [
                     'type' => 'select',
                     'label' => $this->l('Pick up Address'),
@@ -179,6 +169,7 @@ class AdminManifestController extends ModuleAdminController
                         'name' => 'address_display'
                     ]
                 ],
+
             ],
             'submit' => [
                 'title' => $this->l('Save'),
@@ -195,8 +186,8 @@ class AdminManifestController extends ModuleAdminController
 
 
         $form = parent::renderForm();
-        $form .=$this->renderVendorOrderDetailsTable();        
-        return $form ;
+        $form .= $this->renderVendorOrderDetailsTable();
+        return $form;
     }
 
 
@@ -205,21 +196,88 @@ class AdminManifestController extends ModuleAdminController
 
     protected function renderVendorOrderDetailsTable()
     {
+        $selected_ids = [];
 
-        $details = OrderHelper::getVendorOrderDetails(1);
-        if (empty($details)) {
-            $this->errors[] = $this->l('No order details found for this vendor.');
-            return false;
+        // Get vendor ID from form data or URL parameter
+        $vendorId = (int)Tools::getValue('vendor');
+
+        // Check if we're in edit mode (object exists)
+        $isEditMode = $this->object->id > 0;
+
+        if ($isEditMode) {
+            // In edit mode, get the vendor from the manifest object
+            $manifest = new Manifest($this->object->id);
+            if (Validate::isLoadedObject($manifest)) {
+                $vendorId = $manifest->id_vendor;
+
+                // Get selected order details for this manifest
+                $selected_ids = Manifest::getOrderdetailsIDs($this->object->id);
+                // Convert to simple array of IDs if needed
+                if (!empty($selected_ids)) {
+                    $selected_ids = array_column($selected_ids, 'id_order_detail');
+                }
+            }
+
+            // If no vendor found in manifest, show error
+            if (!$vendorId) {
+                $this->context->smarty->assign([
+                    'selected_ids' => [],
+                    'order_details' => [],
+                    'vendor_id' => 0,
+                    'manifest_id' => $this->object->id,
+                    'is_edit_mode' => true,
+                    'show_vendor_selection_message' => false,
+                    'show_no_orders_message' => true,
+                    'manifestAjaxUrl' => $this->context->link->getAdminLink('AdminManifest'),
+                ]);
+                return $this->context->smarty->fetch($this->getTemplatePath() . '/vendor_order_details_table.tpl');
+            }
+        } else {
+            // New manifest - if no vendor selected, show message
+            if (!$vendorId) {
+                $this->context->smarty->assign([
+                    'selected_ids' => [],
+                    'order_details' => [],
+                    'vendor_id' => 0,
+                    'manifest_id' => 0,
+                    'is_edit_mode' => false,
+                    'show_vendor_selection_message' => true,
+                    'show_no_orders_message' => false,
+                    'manifestAjaxUrl' => $this->context->link->getAdminLink('AdminManifest'),
+                ]);
+                return $this->context->smarty->fetch($this->getTemplatePath() . '/vendor_order_details_table.tpl');
+            }
         }
-        $this->context->smarty->assign([
-            'order_details' => $details,
-            'vendor_id' => (int)Tools::getValue('id_vendor'),
-            'manifest_id' => (int)Tools::getValue('id_manifest'),
 
-        ]);
+        // Load order details for selected vendor
+        $details = OrderHelper::getVendorOrderDetails($vendorId);
+
+        if (empty($details)) {
+            $this->context->smarty->assign([
+                'selected_ids' => $selected_ids,
+                'order_details' => [],
+                'vendor_id' => $vendorId,
+                'manifest_id' => $isEditMode ? $this->object->id : (int)Tools::getValue('id_manifest'),
+                'is_edit_mode' => $isEditMode,
+                'show_vendor_selection_message' => false,
+                'show_no_orders_message' => true,
+                'manifestAjaxUrl' => $this->context->link->getAdminLink('AdminManifest'),
+            ]);
+        } else {
+            $this->context->smarty->assign([
+                'selected_ids' => $selected_ids,
+                'order_details' => $details,
+                'vendor_id' => $vendorId,
+                'manifest_id' => $isEditMode ? $this->object->id : (int)Tools::getValue('id_manifest'),
+                'is_edit_mode' => $isEditMode,
+                'show_vendor_selection_message' => false,
+                'show_no_orders_message' => false,
+                'manifestAjaxUrl' => $this->context->link->getAdminLink('AdminManifest'),
+            ]);
+        }
+
         return $this->context->smarty->fetch($this->getTemplatePath() . '/vendor_order_details_table.tpl');
     }
-
     /**
      * Get vendor for dropdown
      */
@@ -254,10 +312,26 @@ class AdminManifestController extends ModuleAdminController
             $_POST['reference'] = Manifest::generateReference();
         }
 
-        return parent::processSave();
+        if (Tools::getValue('selected_order_details')) {
+
+            $orderDetailIds =   array_map('intval', explode(',', Tools::getValue('selected_order_details')));
+        }
+
+        $result = parent::processSave();
+
+        foreach ($orderDetailIds as $id_order_detail) {
+            $this->addOrderDetailToManifest($result->id, $id_order_detail);
+        }
     }
 
-
+    /**
+     * Add order detail to manifest
+     */
+    private function addOrderDetailToManifest($id_manifest, $id_order_detail)
+    {
+        $manifest = new Manifest($id_manifest);
+        return $manifest->addOrderDetail($id_order_detail);
+    }
     /**
      * Render view page
      */
@@ -269,7 +343,6 @@ class AdminManifestController extends ModuleAdminController
             $this->errors[] = $this->l('The manifest cannot be found.');
             return false;
         }
-
         // Get manifest details
         $details = $this->getManifestDetails($manifest->id);
         $address = new Address($manifest->id_address);
@@ -326,7 +399,18 @@ class AdminManifestController extends ModuleAdminController
         parent::setMedia($isNewTheme);
 
         $this->addCSS($this->module->getPathUri() . 'views/css/admin.css');
-        $this->addJS($this->module->getPathUri() . 'views/js/admin.js');
+
+        $this->addJS($this->module->getPathUri() . 'views/js/manifest_admin.js');
+
+        $this->context->smarty->assign([
+            'manifestAjaxUrl' => $this->context->link->getAdminLink('AdminManifest'),
+            'manifestToken' => Tools::getAdminTokenLite('AdminManifest')
+        ]);
+
+        Media::addJsDef([
+            'manifestAjaxUrl' => $this->context->link->getAdminLink('AdminManifest'),
+            'manifestToken' => Tools::getAdminTokenLite('AdminManifest')
+        ]);
     }
 
     /**
@@ -345,46 +429,140 @@ class AdminManifestController extends ModuleAdminController
         parent::initPageHeaderToolbar();
     }
 
+
     /**
      * Post process - handle additional actions
      */
     public function postProcess()
     {
-        // Handle manifest details management
-        if (Tools::isSubmit('addOrderDetail')) {
-            $this->processAddOrderDetail();
-        } elseif (Tools::isSubmit('removeOrderDetail')) {
+
+        if (Tools::isSubmit('removeOrderDetail')) {
             $this->processRemoveOrderDetail();
         }
 
         return parent::postProcess();
     }
 
-    /**
-     * Process add order detail to manifest
-     */
-    private function processAddOrderDetail()
+    public function ajaxProcessLoadVendorAddress()
+    {
+        $vendorId = (int)Tools::getValue('vendor_id');
+
+        if (!$vendorId) {
+            die(json_encode([
+                'success' => false,
+                'message' => 'Vendor ID is required'
+            ]));
+        }
+
+        $vendor = new Vendor($vendorId);
+        if (!Validate::isLoadedObject($vendor)) {
+            die(json_encode([
+                'success' => false,
+                'message' => 'Vendor not found'
+            ]));
+        }
+
+        $address = $vendor->getVendorAddress();
+        $formatAddress = [];
+        if ($address) {
+            foreach ($address as $addr) {
+                $addressObj = new Address($addr['id_address']);
+                $formatted = AddressFormat::generateAddress($addressObj, [], ' - ', ' ');
+                $formatAddress[] = [
+                    'id_address' => $addr['id_address'],
+                    'address_display' => $formatted
+                ];
+            }
+        }
+        if (!$address) {
+            die(json_encode([
+                'success' => false,
+                'message' => 'No address found for this vendor'
+            ]));
+        }
+
+        die(json_encode([
+            'success' => true,
+            'address' => $formatAddress
+        ]));
+    }
+
+    public function ajaxProcessLoadVendorOrderDetails()
+    {
+        $vendorId = (int)Tools::getValue('vendor_id');
+
+        if (!$vendorId) {
+            die(json_encode([
+                'success' => false,
+                'message' => 'Vendor ID is required'
+            ]));
+        }
+
+        $details = OrderHelper::getVendorOrderDetails($vendorId);
+
+        $this->context->smarty->assign([
+            'order_details' => $details,
+            'vendor_id' => $vendorId,
+            'manifest_id' => (int)Tools::getValue('id_manifest'),
+            'show_vendor_selection_message' => empty($details),
+            'show_no_orders_message' => empty($details),
+        ]);
+
+        $html = $this->context->smarty->fetch($this->getTemplatePath() . '/vendor_order_details_table.tpl');
+
+        die(json_encode([
+            'success' => true,
+            'html' => $html,
+            'count' => count($details)
+        ]));
+    }
+    protected function ajaxProcessRemoveOrderDetail()
     {
         $id_manifest = (int)Tools::getValue('id_manifest');
         $id_order_detail = (int)Tools::getValue('id_order_detail');
 
         if (!$id_manifest || !$id_order_detail) {
-            $this->errors[] = $this->l('Invalid parameters');
-            return;
+            $this->ajaxDie(json_encode([
+                'success' => false,
+                'message' => $this->l('Invalid parameters')
+            ]));
         }
 
-        $manifest = new Manifest($id_manifest);
-        if (!Validate::isLoadedObject($manifest)) {
-            $this->errors[] = $this->l('Manifest not found');
-            return;
-        }
+        try {
+            $manifest = new Manifest($id_manifest);
+            if (!Validate::isLoadedObject($manifest)) {
+                $this->ajaxDie(json_encode([
+                    'success' => false,
+                    'message' => $this->l('Manifest not found')
+                ]));
+            }
 
-        if ($manifest->addOrderDetail($id_order_detail)) {
-            $this->confirmations[] = $this->l('Order detail added to manifest successfully');
-        } else {
-            $this->errors[] = $this->l('Error adding order detail to manifest');
+            if ($manifest->removeOrderDetail($id_order_detail)) {
+                $this->ajaxDie(json_encode([
+                    'success' => true,
+                    'message' => $this->l('Order detail removed from manifest successfully')
+                ]));
+            } else {
+                $this->ajaxDie(json_encode([
+                    'success' => false,
+                    'message' => $this->l('Error removing order detail from manifest')
+                ]));
+            }
+        } catch (Exception $e) {
+            PrestaShopLogger::addLog(
+                'Error removing order detail from manifest: ' . $e->getMessage(),
+                3,
+                null,
+                'AdminManifest'
+            );
+
+            $this->ajaxDie(json_encode([
+                'success' => false,
+                'message' => $this->l('Error removing order detail. Please try again.')
+            ]));
         }
     }
+
 
     /**
      * Process remove order detail from manifest

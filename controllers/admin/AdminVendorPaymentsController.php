@@ -564,46 +564,45 @@ class AdminVendorPaymentsController extends ModuleAdminController
     public function getAllPendingTransactions($id_vendor = null, $status_filter = null, $date_from = null, $date_to = null, $include_refunds = false, $advanced = false)
     {
         $query = '
-        SELECT 
-        vt.id_vendor_transaction,
-        vt.vendor_amount,
-        vt.transaction_type,
-        vt.status,
-        vt.date_add as transaction_date,
-        vod.product_name,
-        vod.product_reference,
-        vod.product_quantity,
-        vod.id_order,
-        o.reference as order_reference,
-        o.date_add as order_date,
-        v.shop_name,
-        olst.name as line_status,
-        olst.color as status_color,
-        ols.id_order_line_status_type as status_type_id,
+    SELECT 
+        vt.id_vendor_transaction, 
+        vt.vendor_amount, 
+        vt.transaction_type, 
+        vt.status, 
+        vt.date_add as transaction_date, 
+        vod.product_name, 
+        vod.product_reference, 
+        vod.product_quantity, 
+        vod.id_order, 
+        o.reference as order_reference, 
+        o.date_add as order_date, 
+        v.shop_name, 
+        olst.name as line_status, 
+        olst.color as status_color, 
+        ols.id_order_line_status_type as status_type_id, 
         olst.commission_action as commission_action
-        FROM ' . _DB_PREFIX_ . 'mv_vendor_transaction vt
-        INNER JOIN ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod ON vod.id_order_detail = vt.order_detail_id
-        INNER JOIN ' . _DB_PREFIX_ . 'orders o ON o.id_order = vod.id_order
-        INNER JOIN ' . _DB_PREFIX_ . 'mv_vendor v ON v.id_vendor = vod.id_vendor
-        LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status ols ON ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor
-        LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status_type olst ON olst.id_order_line_status_type = ols.id_order_line_status_type
-        WHERE vt.status = "pending"
-        AND vt.id_vendor_payment = 0 ';
-
-
-
+    FROM ' . _DB_PREFIX_ . 'mv_vendor_transaction vt
+    INNER JOIN ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod ON vod.id_order_detail = vt.order_detail_id
+    INNER JOIN ' . _DB_PREFIX_ . 'orders o ON o.id_order = vod.id_order
+    INNER JOIN ' . _DB_PREFIX_ . 'mv_vendor v ON v.id_vendor = vod.id_vendor
+    LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status ols ON ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor
+    LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status_type olst ON olst.id_order_line_status_type = ols.id_order_line_status_type
+    WHERE vt.status = "pending" 
+    AND vt.id_vendor_payment = 0
+';
 
         if ($include_refunds) {
-            $query .= ' AND vt.transaction_type IN ("commission", "refund")';
+            $query .= ' AND (vt.transaction_type = "commission" OR vt.transaction_type = "refund")';
+            $query .= ' AND (olst.commission_action = "add" OR olst.commission_action = "refund")';
             if (!$advanced) {
-                $query .= 'AND olst.commission_action ="refund"';
+                $query .= 'AND NOT (olst.commission_action = "add" AND vt.transaction_type = "refund") ';
+                $query .= 'AND NOT (olst.commission_action = "refund" AND vt.transaction_type = "commission")';
             }
         } else {
             $query .= ' AND vt.transaction_type = "commission"';
-            if (!$advanced) {
-                $query .= 'AND olst.commission_action ="add"';
-            }
+            $query .= ' AND olst.commission_action = "add"';
         }
+
 
         if ($id_vendor) {
             $query .= ' AND vod.id_vendor = ' . (int)$id_vendor;

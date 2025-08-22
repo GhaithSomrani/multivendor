@@ -196,19 +196,21 @@ class Manifest extends ObjectModel
         return Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS($sql);
     }
 
+
     /**
      * Generate unique reference
      * 
      * @param string $prefix Prefix for reference
      * @return string
      */
-    public static function generateReference($prefix = 'MAN' , $vendor = null , $type = self::TYPE_PICKUP)
+    public static function generateReference($prefix = 'MAN', $vendor = null, $type = self::TYPE_PICKUP)
     {
-        $date = date('Ymd');
         $counter = 1;
 
+
+        $timestamp = strtotime(date('Y-m-d H:i:s'));
         do {
-            $reference = $prefix . '-' . $date . '-' . str_pad($counter, 4, '0', STR_PAD_LEFT);
+            $reference = $prefix . '-' . $timestamp . '-' . str_pad($counter, 4, '0', STR_PAD_LEFT);
 
             $sql = 'SELECT COUNT(*) FROM `' . _DB_PREFIX_ . 'mv_manifest` 
                     WHERE reference = "' . pSQL($reference) . '"';
@@ -320,5 +322,13 @@ class Manifest extends ObjectModel
         $pdf = new PDF([$pdfData], 'VendorManifestPDF', Context::getContext()->smarty);
         $pdf->render(true);
         exit;
+    }
+
+    public static function getOrderdetailsIDs($id_manifest)
+    {
+        $sql = 'SELECT md.id_order_details FROM `' . _DB_PREFIX_ . 'mv_manifest_details` md
+            WHERE md.id_manifest = ' . $id_manifest;
+
+        return Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS($sql);
     }
 }

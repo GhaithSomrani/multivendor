@@ -55,7 +55,7 @@
 
         th,
         td {
-            font-size: 8px;
+            font-size: 6px;
             padding: 8px;
             text-align: left;
             vertical-align: top;
@@ -97,7 +97,7 @@
             font-weight: bold;
         }
 
-        .barcode-container {
+        .barcode-container , th > td {
             text-align: center;
             padding: 5px;
         }
@@ -144,7 +144,7 @@
             <tr>
                 <td width="50%">
                     <div class="pickup-box">
-                        <strong>{$first_manifest.supplier_address.name|default:"Plusieurs fournisseurs"}</strong><br>
+                        <strong>{$first_manifest.vendor.name}</strong><br>
                         {if isset($first_manifest.supplier_address.address) && $first_manifest.supplier_address.address}
                             {$first_manifest.supplier_address.address}<br>
                         {/if}
@@ -191,87 +191,86 @@
         <table style="margin-top: 20px;" class="details">
             <thead>
                 <tr>
-                    <th width="15%"><strong>Ref. Commandes</strong></th>
-                    <th width="25%"><strong>Produit(s)</strong></th>
-                    <th width="12%"><strong>SKU</strong></th>
-                    <th width="15%"><strong>MPN (Code-barres)</strong></th>
-                    <th width="8%"><strong>Qté</strong></th>
-                    <th width="12%"><strong>Prix Unit Public TTC</strong></th>
-                    <th width="13%"><strong>Montant HT</strong></th>
+                    <th width="12.5%"  align="center"><strong>N° Commandes</strong></th>
+                    <th width="30%"  align="center"><strong>Désignation</strong></th>
+                    <th width="15%"  align="center"><strong>Référence</strong></th>
+                    <th width="12.5%"  align="center"><strong>Code-barres</strong></th>
+                    <th width="7.5%" align="center"><strong>Prix Unit Public</strong></th>
+                    <th width="5%" align="center"><strong>Qté</strong></th>
+                    <th width="7.5%" align="center"><strong>Prix Vendeur HT</strong></th>
+                    <th width="10%" align="center"><strong>TOTAL TTC</strong></th>
                 </tr>
             </thead>
             <tbody>
-                {assign var=item_counter value=1}
+                {assign var=item_counter value=0}
                 {assign var=total_qty value=0}
                 {assign var=calculated_total_value_ht value=0}
                 {assign var=calculated_total_value_ttc value=0}
 
                 {foreach from=$manifests item=manifest}
                     <tr>
-                        <td width="15%" class="text-center" valign="center">
+                        <td width="12.5%" class="text-center" valign="center">
                             <strong>{$manifest.order.id}#{$manifest.orderDetail.id}</strong>
                         </td>
-                        <td width="25%" valign="center">
+                        <td width="30%" valign="center"  align="center">
                             {$manifest.orderDetail.product_name|default:"Produit sans nom"|escape:'html':'UTF-8'}
                         </td>
-                        <td width="12%" class="text-center" valign="center">
+                        <td width="15%" class="text-center" valign="center">
                             {$manifest.orderDetail.product_reference|default:"SKU-"|cat:$manifest.orderDetail.id}
                         </td>
-                        <td width="15%" class="text-center" valign="center">
+                        <td width="12.5%" class="text-center" valign="center">
                             {$manifest.orderDetail.barcode|default:""|escape:'html':'UTF-8'}
                         </td>
-                        <td width="8%" class="text-center" valign="center">
+                        <td width="7.5%" class="text-right" valign="center">
+                            {$manifest.orderDetail.unit_price_tax_incl|default:0|string_format:"%.1f"}
+                        </td>
+                        <td width="5%" class="text-center" valign="center">
                             {$manifest.orderDetail.product_quantity|default:0}
                             {assign var=total_qty value=$total_qty + ($manifest.orderDetail.product_quantity|default:0)}
                         </td>
-                        <td width="12%" class="text-right" valign="center">
-                            {$manifest.orderDetail.unit_price_tax_incl|default:0|string_format:"%.1f"}
+
+                        <td width="7.5%" class="text-right" valign="center">
+                            {assign var=vendor_amount_HT value=(($manifest.orderDetail.vendor_amount / $manifest.orderDetail.product_quantity ) / 1.19)}
+                            {$vendor_amount_HT|string_format:"%.2f"}
+
                         </td>
-                        <td width="13%" class="text-right" valign="center">
+                        <td width="10%" class="text-right" valign="center">
                             {* Calculate HT amount (assuming 19% VAT) *}
                             {assign var=line_total_ht value=(($manifest.orderDetail.product_quantity * $manifest.orderDetail.unit_price_tax_incl) / 1.19)}
-                            {$line_total_ht|string_format:"%.2f"}
                             {assign var=calculated_total_value_ht value=$calculated_total_value_ht + $line_total_ht}
-                            
+                            {* Vendor amount is already calculated in the manifest *}
+                            {$manifest.orderDetail.vendor_amount|string_format:"%.2f"}
+
+                            {* Calculate TTC amount *}
                             {* Calculate TTC amount for commission calculation *}
-                            {assign var=line_total_ttc value=($manifest.orderDetail.product_quantity * $manifest.orderDetail.unit_price_tax_incl)}
-                            {assign var=calculated_total_value_ttc value=$calculated_total_value_ttc + $line_total_ttc}
+                            {assign var=calculated_total_value_ttc value=$calculated_total_value_ttc + $manifest.orderDetail.vendor_amount}
                         </td>
+
                     </tr>
                     {assign var=item_counter value=$item_counter + 1}
                 {/foreach}
 
                 {* Summary rows *}
                 <tr class="total-row">
-                    <td colspan="4" class="text-left"><strong>Montant Total HT</strong></td>
+                    <td colspan="5" class="text-left"><strong>TOTAL HT</strong></td>
                     <td class="text-center"><strong>{$total_qty}</strong></td>
-                    <td colspan="2" class="text-right"><strong>{$calculated_total_value_ht|string_format:"%.2f"}</strong></td>
+                    <td colspan="2" class="text-right"><strong>{$calculated_total_value_ht|string_format:"%.2f"}</strong>
+                    </td>
                 </tr>
 
                 <tr class="total-row">
-                    <td colspan="4" class="text-left"><strong>TVA</strong></td>
+                    <td colspan="5" class="text-left"><strong>TVA (19%)</strong></td>
                     <td class="text-center"><strong>19%</strong></td>
-                    <td colspan="2" class="text-right"><strong>{($calculated_total_value_ht * 0.19)|string_format:"%.4f"}</strong></td>
+                    <td colspan="2" class="text-right">
+                        <strong>{($calculated_total_value_ht * 0.19)|string_format:"%.4f"}</strong>
+                    </td>
                 </tr>
 
                 <tr class="total-row">
-                    <td colspan="4" class="text-left"><strong>Montant Total TTC</strong></td>
+                    <td colspan="5" class="text-left"><strong>Montant Total TTC</strong></td>
                     <td class="text-center"><strong>{$total_qty}</strong></td>
-                    <td colspan="2" class="text-right"><strong>{$calculated_total_value_ttc|string_format:"%.2f"}</strong></td>
-                </tr>
-
-                {* Commission row - assuming 20% commission rate *}
-                <tr class="total-row">
-                    <td colspan="4" class="text-left"><strong>Commission</strong></td>
-                    <td class="text-center"><strong>{$commissionRate * 100}%</strong></td>
-                    <td colspan="2" class="text-right"><strong>{($calculated_total_value_ttc * $commissionRate)|string_format:"%.3f"}</strong></td>
-                </tr>
-
-                {* Net to pay row *}
-                <tr class="total-row">
-                    <td colspan="4" class="text-left"><strong>Net à payer</strong></td>
-                    <td class="text-center"><strong></strong></td>
-                    <td colspan="2" class="text-right"><strong>{($calculated_total_value_ttc*(1-$commissionRate))|string_format:"%.3f"}</strong></td>
+                    <td colspan="2" class="text-right"><strong>{$calculated_total_value_ttc|string_format:"%.2f"}</strong>
+                    </td>
                 </tr>
             </tbody>
         </table>

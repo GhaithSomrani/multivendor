@@ -120,8 +120,9 @@ class Vendor extends ObjectModel
         $query->select('*');
         $query->from('address');
         $query->where('id_customer = ' . (int)$this->id_customer . ' OR id_supplier = ' . (int)$this->id_supplier);
+        
 
-        return Db::getInstance()->getRow($query);
+        return Db::getInstance()->executeS($query);
     }
 
 
