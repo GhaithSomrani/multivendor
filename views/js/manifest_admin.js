@@ -73,6 +73,9 @@ function loadVendorOrderDetails(vendorId) {
 }
 
 function loadVendorAddress(vendorId) {
+    // Get current selected address if in edit mode
+    var currentAddressId = $('select[name="id_address"]').val() || 0;
+
     $.ajax({
         url: manifestAjaxUrl,
         type: 'POST',
@@ -80,20 +83,26 @@ function loadVendorAddress(vendorId) {
             ajax: true,
             action: 'LoadVendorAddress',
             vendor_id: vendorId,
+            current_address_id: currentAddressId,
             token: manifestToken
         },
         dataType: 'json',
         success: function (response) {
-            console.log('Vendor address response:', response);
             if (response.success) {
                 var addressSelect = $('select[name="id_address"]');
                 addressSelect.empty();
 
-                if (response.address && response.address.length > 0) {
-                    $.each(response.address, function (index, addr) {
+                if (response.addresses && response.addresses.length > 0) {
+                    $.each(response.addresses, function (index, addr) {
                         var option = $('<option></option>')
                             .attr('value', addr.id_address)
                             .html(addr.address_display);
+
+                        // Select if this was the previously selected address or marked as selected
+                        if (addr.selected || addr.id_address == response.current_address_id) {
+                            option.prop('selected', true);
+                        }
+
                         addressSelect.append(option);
                     });
                 } else {
@@ -104,12 +113,10 @@ function loadVendorAddress(vendorId) {
                     );
                 }
             } else {
-                console.error('Error loading vendor address:', response.message);
                 alert(response.message || 'Error loading vendor address.');
             }
         },
         error: function () {
-            console.error('Error loading vendor address');
             alert('Error loading vendor address. Please try again.');
         }
     });

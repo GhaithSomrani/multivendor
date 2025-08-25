@@ -2,12 +2,21 @@
 {if $order_details && count($order_details) > 0}
     {foreach $order_details as $detail}
         <tr data-order-detail-id="{$detail.id_order_detail}">
-            <td class="center">
+            <td class="text-center">
+                {assign var="hasManifest" value=Manifest::hasOrderDetail($detail.id_order_detail)}
+                {assign var="manifestId" value=Manifest::getManifestIdByOrderDetail($detail.id_order_detail)}
+                {assign var="isCurrentManifest" value=($manifestId == $detail.id_manifest)}
+                {assign var="shouldDisable" value=($hasManifest && $isCurrentManifest && !$is_edit_mode)}
+
                 <input type="checkbox" class="order-detail-checkbox" name="selected_order_details[]"
                     value="{$detail.id_order_detail}" data-order-id="{$detail.id_order}"
                     data-product-name="{$detail.product_name|escape:'html':'UTF-8'}"
-                    data-product-reference="{$detail.product_reference|escape:'html':'UTF-8'}"
-                    data-quantity="{$detail.product_quantity}" />
+                    {if in_array($detail.id_order_detail, $selected_ids)}checked="checked" {/if}
+                    {if $shouldDisable}disabled="disabled" {/if} />
+
+                {if $hasManifest && !$isCurrentManifest && !$is_edit_mode}
+                    <br><small class="text-muted">{l s='In Manifest #' mod='multivendor'}{$manifestId}</small>
+                {/if}
             </td>
             <td class="center">{$detail.id_manifest|default:'-'}</td>
             <td>{$detail.id_order}</td>

@@ -331,4 +331,36 @@ class Manifest extends ObjectModel
 
         return Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS($sql);
     }
+    /**
+     * Check if an order detail exists in the manifest
+     *
+     * @param int $id_order_detail Order detail ID
+     * @return bool
+     */
+    public static function hasOrderDetail($id_order_detail)
+    {
+        
+        $sql = 'SELECT COUNT(*) FROM `' . _DB_PREFIX_ . 'mv_manifest_details`
+                WHERE id_order_details = ' . (int)$id_order_detail;
+
+        return (bool)Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue($sql);
+    }
+    /**
+     * Get manifest ID by order detail ID
+     *
+     * @param int $id_order_detail Order detail ID
+     * @return int|false Manifest ID or false if not found
+     */
+    public static function getManifestIdByOrderDetail($id_order_detail)
+    {
+        if (!Validate::isUnsignedId($id_order_detail)) {
+            return false;
+        }
+
+        $sql = 'SELECT id_manifest FROM `' . _DB_PREFIX_ . 'mv_manifest_details`
+                WHERE id_order_details = ' . (int)$id_order_detail;
+
+        return Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue($sql);
+    }
+    
 }

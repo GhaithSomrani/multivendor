@@ -131,6 +131,8 @@ class AdminManifestController extends ModuleAdminController
                     'label' => $this->l('vendor'),
                     'name' => 'id_vendor',
                     'required' => true,
+                    'disabled' => (bool)$this->object->id,
+
                     'options' => [
                         'query' => $this->getVendors(),
                         'id' => 'id_vendor',
@@ -204,7 +206,7 @@ class AdminManifestController extends ModuleAdminController
             if (Validate::isLoadedObject($manifest)) {
                 $vendorId = (int)$manifest->id_vendor;
                 $selected_data = Manifest::getOrderdetailsIDs($manifest->id);
-                $selected_ids = !empty($selected_data) ? array_column($selected_data, 'id_order_detail') : [];
+                $selected_ids = !empty($selected_data) ? array_column($selected_data, 'id_order_details') : [];
             }
         }
 
@@ -231,19 +233,35 @@ class AdminManifestController extends ModuleAdminController
         return Vendor::getAllVendors();
     }
 
-
-
-    /**
-     * Get addresses for dropdown
-     */
-
     private function getAddresses()
     {
-        $vendor = new Vendor((int)Tools::getValue('vendor'));
+        // In edit mode, use vendor from manifest object
+        $vendorId = $this->object->id ? $this->object->id_vendor : (int)Tools::getValue('vendor');
+
+        if (!$vendorId) {
+            return [];
+        }
+
+        $vendor = new Vendor($vendorId);
         if (!Validate::isLoadedObject($vendor)) {
             return [];
         }
+
         $addresses = $vendor->getVendorAddress();
+        $formatAddresses = [];
+
+        if ($addresses) {
+            foreach ($addresses as $addr) {
+                $addressObj = new Address($addr['id_address']);
+                $formatted = AddressFormat::generateAddress($addressObj, [], ' - ', ' ');
+                $formatAddresses[] = [
+                    'id_address' => $addr['id_address'],
+                    'address_display' => $formatted
+                ];
+            }
+        }
+
+        return $formatAddresses;
     }
 
     /**
@@ -392,7 +410,8 @@ class AdminManifestController extends ModuleAdminController
     public function ajaxProcessLoadVendorAddress()
     {
         $vendorId = (int)Tools::getValue('vendor_id');
-
+        $currentAddressId = (int)Tools::getValue('current_address_id', 0);
+        // Boolean test of isEditMode
         if (!$vendorId) {
             die(json_encode([
                 'success' => false,
@@ -408,19 +427,22 @@ class AdminManifestController extends ModuleAdminController
             ]));
         }
 
-        $address = $vendor->getVendorAddress();
-        $formatAddress = [];
-        if ($address) {
-            foreach ($address as $addr) {
+        $addresses = $vendor->getVendorAddress();
+        $formatAddresses = [];
+
+        if ($addresses) {
+            foreach ($addresses as $addr) {
                 $addressObj = new Address($addr['id_address']);
                 $formatted = AddressFormat::generateAddress($addressObj, [], ' - ', ' ');
-                $formatAddress[] = [
+                $formatAddresses[] = [
                     'id_address' => $addr['id_address'],
-                    'address_display' => $formatted
+                    'address_display' => $formatted,
+                    'selected' => ($addr['id_address'] == $currentAddressId)
                 ];
             }
         }
-        if (!$address) {
+
+        if (empty($addresses)) {
             die(json_encode([
                 'success' => false,
                 'message' => 'No address found for this vendor'
@@ -429,10 +451,10 @@ class AdminManifestController extends ModuleAdminController
 
         die(json_encode([
             'success' => true,
-            'address' => $formatAddress
+            'addresses' => $formatAddresses,
+            'current_address_id' => $currentAddressId
         ]));
     }
-
     protected function ajaxProcessLoadVendorOrderDetailsBody()
     {
         $vendorId = (int)Tools::getValue('vendor_id');
@@ -450,17 +472,25 @@ class AdminManifestController extends ModuleAdminController
         $details = OrderHelper::getVendorOrderDetails($vendorId, $filters);
 
         $manifestId = (int)Tools::getValue('manifest_id', 0);
-        $selected_ids = [];
+        $isEditMode = $manifestId > 0 ? true : false;
 
+        $selected_ids = [];
+        if ($isEditMode) {
+            $selectedDetails = Manifest::getOrderdetailsIDs($manifestId);
+            if (!empty($selectedDetails)) {
+                $selected_ids = array_column($selectedDetails, 'id_order_details');
+            }
+        }
         if ($manifestId > 0) {
             $manifest = new Manifest($manifestId);
             if (Validate::isLoadedObject($manifest)) {
                 $selected_data = Manifest::getOrderdetailsIDs($manifest->id);
-                $selected_ids = !empty($selected_data) ? array_column($selected_data, 'id_order_detail') : [];
+                $selected_ids = !empty($selected_data) ? array_column($selected_data, 'id_order_details') : [];
             }
         }
 
         $this->context->smarty->assign([
+            'is_edit_mode' => $isEditMode,
             'order_details' => $details,
             'selected_ids' => $selected_ids,
         ]);

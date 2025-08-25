@@ -71,8 +71,7 @@ class HTMLTemplateVendorManifestPDF extends HTMLTemplate
     protected function getPdfData($orderDetailIds, $vendor)
     {
         try {
-            dump($orderDetailIds, $vendor);
-            die;
+       
             $manifestData = [];
             $vendorObj = null;
             $supplierAddress = [];
