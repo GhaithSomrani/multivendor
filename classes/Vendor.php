@@ -113,13 +113,13 @@ class Vendor extends ObjectModel
      */
     public function getVendorAddress()
     {
-        if (!$this->id_supplier && !$this->id_customer) {
+        if (!$this->id_customer) {
             return false;
         }
         $query = new DbQuery();
         $query->select('*');
         $query->from('address');
-        $query->where('id_customer = ' . (int)$this->id_customer . ' OR id_supplier = ' . (int)$this->id_supplier);
+        $query->where('id_customer = ' . (int)$this->id_customer );
         
 
         return Db::getInstance()->executeS($query);

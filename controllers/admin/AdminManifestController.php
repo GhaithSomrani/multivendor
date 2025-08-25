@@ -190,94 +190,38 @@ class AdminManifestController extends ModuleAdminController
         return $form;
     }
 
-
-
-
-
     protected function renderVendorOrderDetailsTable()
     {
-        $selected_ids = [];
-
-        // Get vendor ID from form data or URL parameter
+        $statuses = OrderLineStatusType::getAllActiveStatusTypes();
+        $orderStatuses = OrderState::getOrderStates($this->context->language->id);
         $vendorId = (int)Tools::getValue('vendor');
-
-        // Check if we're in edit mode (object exists)
         $isEditMode = $this->object->id > 0;
+        $manifestId = $isEditMode ? $this->object->id : (int)Tools::getValue('id_manifest');
 
-        if ($isEditMode) {
-            // In edit mode, get the vendor from the manifest object
+        $selected_ids = [];
+        if ($isEditMode && $this->object->id) {
             $manifest = new Manifest($this->object->id);
             if (Validate::isLoadedObject($manifest)) {
-                $vendorId = $manifest->id_vendor;
-
-                // Get selected order details for this manifest
-                $selected_ids = Manifest::getOrderdetailsIDs($this->object->id);
-                // Convert to simple array of IDs if needed
-                if (!empty($selected_ids)) {
-                    $selected_ids = array_column($selected_ids, 'id_order_detail');
-                }
-            }
-
-            // If no vendor found in manifest, show error
-            if (!$vendorId) {
-                $this->context->smarty->assign([
-                    'selected_ids' => [],
-                    'order_details' => [],
-                    'vendor_id' => 0,
-                    'manifest_id' => $this->object->id,
-                    'is_edit_mode' => true,
-                    'show_vendor_selection_message' => false,
-                    'show_no_orders_message' => true,
-                    'manifestAjaxUrl' => $this->context->link->getAdminLink('AdminManifest'),
-                ]);
-                return $this->context->smarty->fetch($this->getTemplatePath() . '/vendor_order_details_table.tpl');
-            }
-        } else {
-            // New manifest - if no vendor selected, show message
-            if (!$vendorId) {
-                $this->context->smarty->assign([
-                    'selected_ids' => [],
-                    'order_details' => [],
-                    'vendor_id' => 0,
-                    'manifest_id' => 0,
-                    'is_edit_mode' => false,
-                    'show_vendor_selection_message' => true,
-                    'show_no_orders_message' => false,
-                    'manifestAjaxUrl' => $this->context->link->getAdminLink('AdminManifest'),
-                ]);
-                return $this->context->smarty->fetch($this->getTemplatePath() . '/vendor_order_details_table.tpl');
+                $vendorId = (int)$manifest->id_vendor;
+                $selected_data = Manifest::getOrderdetailsIDs($manifest->id);
+                $selected_ids = !empty($selected_data) ? array_column($selected_data, 'id_order_detail') : [];
             }
         }
 
-        // Load order details for selected vendor
-        $details = OrderHelper::getVendorOrderDetails($vendorId);
-
-        if (empty($details)) {
-            $this->context->smarty->assign([
-                'selected_ids' => $selected_ids,
-                'order_details' => [],
-                'vendor_id' => $vendorId,
-                'manifest_id' => $isEditMode ? $this->object->id : (int)Tools::getValue('id_manifest'),
-                'is_edit_mode' => $isEditMode,
-                'show_vendor_selection_message' => false,
-                'show_no_orders_message' => true,
-                'manifestAjaxUrl' => $this->context->link->getAdminLink('AdminManifest'),
-            ]);
-        } else {
-            $this->context->smarty->assign([
-                'selected_ids' => $selected_ids,
-                'order_details' => $details,
-                'vendor_id' => $vendorId,
-                'manifest_id' => $isEditMode ? $this->object->id : (int)Tools::getValue('id_manifest'),
-                'is_edit_mode' => $isEditMode,
-                'show_vendor_selection_message' => false,
-                'show_no_orders_message' => false,
-                'manifestAjaxUrl' => $this->context->link->getAdminLink('AdminManifest'),
-            ]);
-        }
+        $this->context->smarty->assign([
+            'orderStatuses' => $orderStatuses,
+            'selected_ids' => $selected_ids,
+            'order_details' => [],
+            'vendor_id' => $vendorId,
+            'manifest_id' => $manifestId,
+            'is_edit_mode' => $isEditMode,
+            'statuses' => $statuses,
+            'manifestAjaxUrl' => $this->context->link->getAdminLink('AdminManifest'),
+        ]);
 
         return $this->context->smarty->fetch($this->getTemplatePath() . '/vendor_order_details_table.tpl');
     }
+
     /**
      * Get vendor for dropdown
      */
@@ -346,7 +290,9 @@ class AdminManifestController extends ModuleAdminController
         // Get manifest details
         $details = $this->getManifestDetails($manifest->id);
         $address = new Address($manifest->id_address);
+
         $this->context->smarty->assign([
+
             'vendor_name' =>  $vendor['shop_name'],
             'manifest' => $manifest,
             'manifest_details' => $details,
@@ -487,7 +433,7 @@ class AdminManifestController extends ModuleAdminController
         ]));
     }
 
-    public function ajaxProcessLoadVendorOrderDetails()
+    protected function ajaxProcessLoadVendorOrderDetailsBody()
     {
         $vendorId = (int)Tools::getValue('vendor_id');
 
@@ -498,17 +444,28 @@ class AdminManifestController extends ModuleAdminController
             ]));
         }
 
-        $details = OrderHelper::getVendorOrderDetails($vendorId);
+        // Collect filters
+        $filters = Tools::getValue('filters', []);
+
+        $details = OrderHelper::getVendorOrderDetails($vendorId, $filters);
+
+        $manifestId = (int)Tools::getValue('manifest_id', 0);
+        $selected_ids = [];
+
+        if ($manifestId > 0) {
+            $manifest = new Manifest($manifestId);
+            if (Validate::isLoadedObject($manifest)) {
+                $selected_data = Manifest::getOrderdetailsIDs($manifest->id);
+                $selected_ids = !empty($selected_data) ? array_column($selected_data, 'id_order_detail') : [];
+            }
+        }
 
         $this->context->smarty->assign([
             'order_details' => $details,
-            'vendor_id' => $vendorId,
-            'manifest_id' => (int)Tools::getValue('id_manifest'),
-            'show_vendor_selection_message' => empty($details),
-            'show_no_orders_message' => empty($details),
+            'selected_ids' => $selected_ids,
         ]);
 
-        $html = $this->context->smarty->fetch($this->getTemplatePath() . '/vendor_order_details_table.tpl');
+        $html = $this->context->smarty->fetch($this->getTemplatePath() . '/vendor_order_details_table_body.tpl');
 
         die(json_encode([
             'success' => true,
@@ -516,6 +473,7 @@ class AdminManifestController extends ModuleAdminController
             'count' => count($details)
         ]));
     }
+
     protected function ajaxProcessRemoveOrderDetail()
     {
         $id_manifest = (int)Tools::getValue('id_manifest');

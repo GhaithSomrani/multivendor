@@ -97,41 +97,192 @@ class OrderHelper
         }
     }
 
-    public static function getVendorOrderDetails($id_vendor)
+
+    public static function getVendorOrderDetails($id_vendor, $filters = [], $limit = null, $offset = 0)
     {
         $defaultStatusTypeId = OrderLineStatus::getDefaultStatusTypeId();
         $defaultStatusType = new OrderLineStatusType($defaultStatusTypeId);
 
-        $sql = 'SELECT 
-                    vod.id_order_detail,
-                    vod.id_order,
-                    vod.product_name,
-                    vod.product_reference,
-                    vod.product_mpn,
-                    vod.product_quantity,
-                    vod.product_price,
-                    vod.commission_amount,
-                    vod.vendor_amount,
-                    vod.date_add as order_date,
-                    v.shop_name as vendor_name,
-                    o.reference as order_reference,
-                    o.current_state as order_state_id,
-                    vt.status as payment_status,
-                    olst.name as line_status,
-                    olst.color as status_color
-                FROM `' . _DB_PREFIX_ . 'mv_vendor_order_detail` vod
-                LEFT JOIN `' . _DB_PREFIX_ . 'mv_vendor` v ON (vod.id_vendor = v.id_vendor)
-                LEFT JOIN `' . _DB_PREFIX_ . 'orders` o ON (vod.id_order = o.id_order)
-                LEFT JOIN `' . _DB_PREFIX_ . 'mv_order_line_status` ols ON (ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor)
-                LEFT JOIN `' . _DB_PREFIX_ . 'mv_order_line_status_type` olst ON (olst.id_order_line_status_type = ols.id_order_line_status_type)
-                LEFT JOIN `' . _DB_PREFIX_ . 'mv_vendor_transaction` vt ON (vt.order_detail_id = vod.id_order_detail AND vt.transaction_type = "commission")
-                WHERE vod.id_vendor = ' . (int)$id_vendor . '
-                ORDER BY vod.date_add DESC';
+        $sql = 'SELECT ' . ($limit ? 'SQL_CALC_FOUND_ROWS ' : '') . '
+            vod.id_order_detail,
+            vod.id_order,
+            vod.product_name,
+            vod.product_reference,
+            vod.product_mpn,
+            vod.product_quantity,
+            vod.product_price,
+            vod.commission_amount,
+            vod.vendor_amount,
+            vod.date_add as order_date,
+            v.shop_name as vendor_name,
+            o.reference as order_reference,
+            o.current_state as order_state_id,
+            osl.name as order_state_name,
+            o.date_add as order_created_date,
+            vt.status as payment_status,
+            COALESCE(olst.name, "' . pSQL($defaultStatusType->name) . '") as line_status,
+            COALESCE(olst.color, "#6c757d") as status_color,
+            COALESCE(ols.id_order_line_status_type, ' . (int)$defaultStatusTypeId . ') as status_type_id,
+            od.unit_price_tax_incl as unit_price , 
+            md.id_manifest 
+        FROM `' . _DB_PREFIX_ . 'mv_vendor_order_detail` vod
+        LEFT JOIN `' . _DB_PREFIX_ . 'mv_vendor` v ON (vod.id_vendor = v.id_vendor)
+        LEFT JOIN `' . _DB_PREFIX_ . 'orders` o ON (vod.id_order = o.id_order)
+        LEFT JOIN `' . _DB_PREFIX_ . 'order_detail` od ON (od.id_order_detail = vod.id_order_detail)
+        LEFT JOIN `' . _DB_PREFIX_ . 'order_state_lang` osl ON (osl.id_order_state = o.current_state)
+        LEFT JOIN `' . _DB_PREFIX_ . 'order_state` os ON (os.id_order_state = o.current_state)
+        LEFT JOIN `' . _DB_PREFIX_ . 'mv_order_line_status` ols ON (ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor)
+        LEFT JOIN `' . _DB_PREFIX_ . 'mv_order_line_status_type` olst ON (olst.id_order_line_status_type = ols.id_order_line_status_type)
+        LEFT JOIN `' . _DB_PREFIX_ . 'mv_vendor_transaction` vt ON (vt.order_detail_id = vod.id_order_detail )
+        LEFT JOIN `' . _DB_PREFIX_ . 'mv_manifest_details` md ON (md.id_order_details = vod.id_order_detail ) 
+        WHERE vod.id_vendor = ' . (int)$id_vendor;
+
+        // Order ID filter
+        if (!empty($filters['order_id'])) {
+            $order_id = (int)$filters['order_id'];
+            if ($order_id > 0) {
+                $sql .= ' AND vod.id_order = ' . $order_id;
+            }
+        }
+
+        // Order Detail ID filter
+        if (!empty($filters['id_order_detail'])) {
+            $id_order_detail = (int)$filters['id_order_detail'];
+            if ($id_order_detail > 0) {
+                $sql .= ' AND vod.id_order_detail = ' . $id_order_detail;
+            }
+        }
+
+        // Product name filter
+        if (!empty($filters['product_name'])) {
+            $product_name = pSQL($filters['product_name']);
+            $sql .= ' AND vod.product_name LIKE "%' . $product_name . '%"';
+        }
+
+        // Order current state filter
+        if (!empty($filters['order_status']) && is_numeric($filters['order_status'])) {
+            $current_state = (int)$filters['order_status'];
+            $sql .= ' AND o.current_state = ' . $current_state;
+        }
+
+        // Product reference filter
+        if (!empty($filters['reference'])) {
+            $reference = pSQL($filters['reference']);
+            $sql .= ' AND vod.product_reference LIKE "%' . $reference . '%"';
+        }
+
+        // Status filter
+        if (!empty($filters['status']) && is_numeric($filters['status'])) {
+            $status_id = (int)$filters['status'];
+            $sql .= ' AND COALESCE(ols.id_order_line_status_type, ' . (int)$defaultStatusTypeId . ') = ' . $status_id;
+        }
+
+        // Quantity filters
+        if (!empty($filters['quantity']) && is_numeric($filters['quantity'])) {
+            $sql .= ' AND vod.product_quantity = ' . (int)$filters['quantity'];
+        }
+
+        if (!empty($filters['quantity_min']) && is_numeric($filters['quantity_min'])) {
+            $sql .= ' AND vod.product_quantity >= ' . (int)$filters['quantity_min'];
+        }
+
+        if (!empty($filters['quantity_max']) && is_numeric($filters['quantity_max'])) {
+            $sql .= ' AND vod.product_quantity <= ' . (int)$filters['quantity_max'];
+        }
+
+        // Price filters
+        if (!empty($filters['price_min']) && is_numeric($filters['price_min'])) {
+            $sql .= ' AND od.unit_price_tax_incl >= ' . (float)$filters['price_min'];
+        }
+
+        if (!empty($filters['price_max']) && is_numeric($filters['price_max'])) {
+            $sql .= ' AND od.unit_price_tax_incl <= ' . (float)$filters['price_max'];
+        }
+
+        // Date filters
+        if (!empty($filters['date_from'])) {
+            $date_from = pSQL($filters['date_from']);
+            $sql .= ' AND DATE(o.date_add) >= "' . $date_from . '"';
+        }
+
+        if (!empty($filters['date_to'])) {
+            $date_to = pSQL($filters['date_to']);
+            $sql .= ' AND DATE(o.date_add) <= "' . $date_to . '"';
+        }
+
+        // MPN filter
+        if (!empty($filters['mpn'])) {
+            $mpn = pSQL($filters['mpn']);
+            $sql .= ' AND vod.product_mpn LIKE "%' . $mpn . '%"';
+        }
+
+        // Order reference filter
+        if (!empty($filters['order_reference'])) {
+            $order_ref = pSQL($filters['order_reference']);
+            $sql .= ' AND o.reference LIKE "%' . $order_ref . '%"';
+        }
+
+        // Payment status filter
+        if (!empty($filters['payment_status'])) {
+            $payment_status = pSQL($filters['payment_status']);
+            $sql .= ' AND vt.status = "' . $payment_status . '"';
+        }
+
+        // Commission amount filters
+        if (!empty($filters['commission_min']) && is_numeric($filters['commission_min'])) {
+            $sql .= ' AND vod.commission_amount >= ' . (float)$filters['commission_min'];
+        }
+
+        if (!empty($filters['commission_max']) && is_numeric($filters['commission_max'])) {
+            $sql .= ' AND vod.commission_amount <= ' . (float)$filters['commission_max'];
+        }
+
+        // Vendor amount filters
+        if (!empty($filters['vendor_amount_min']) && is_numeric($filters['vendor_amount_min'])) {
+            $sql .= ' AND vod.vendor_amount >= ' . (float)$filters['vendor_amount_min'];
+        }
+
+        if (!empty($filters['vendor_amount_max']) && is_numeric($filters['vendor_amount_max'])) {
+            $sql .= ' AND vod.vendor_amount <= ' . (float)$filters['vendor_amount_max'];
+        }
+
+        // Manifest filter
+        if (!empty($filters['manifest'])) {
+            $manifest_id = (int)$filters['manifest'];
+            if ($manifest_id > 0) {
+                $sql .= ' AND md.id_manifest = ' . $manifest_id;
+            } else {
+                $sql .= ' AND md.id_manifest IS NULL';
+            }
+        }
+
+        // Group by 
+        $sql .= ' GROUP BY vod.id_order_detail';
+
+        // Order by
+        $orderBy = !empty($filters['order_by']) ? pSQL($filters['order_by']) : 'vod.date_add';
+        $orderWay = !empty($filters['order_way']) && strtoupper($filters['order_way']) === 'ASC' ? 'ASC' : 'DESC';
+        $sql .= ' ORDER BY ' . $orderBy . ' ' . $orderWay;
+
+        // Apply pagination if specified
+        if ($limit !== null) {
+            $sql .= ' LIMIT ' . (int)$offset . ', ' . (int)$limit;
+        }
 
         $results = Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS($sql);
+
+        // If using pagination, also return total count
+        if ($limit !== null) {
+            $totalQuery = 'SELECT FOUND_ROWS() as total';
+            $totalResult = Db::getInstance()->getRow($totalQuery);
+            return [
+                'data' => $results,
+                'total' => (int)$totalResult['total']
+            ];
+        }
+
         return $results;
     }
-
 
     /**
      * Update vendor order detail when order detail is modified

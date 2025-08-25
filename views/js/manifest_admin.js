@@ -4,57 +4,72 @@
  */
 
 // Global function for vendor order details loading
-function loadVendorOrderDetails(vendorId) {
+function loadVendorOrderDetailsBody(vendorId) {
+    console.log('test')
     if (!vendorId || vendorId == '0') {
-        $('#vendor-order-details-panel .panel-body').html(
-            '<div class="alert alert-info">' +
-            '<i class="icon-info-circle"></i> ' +
-            'Please select a vendor to view order details.' +
-            '</div>'
+        $('#order-details-tbody').html(
+            '<tr><td colspan="13" class="text-center text-muted">Please select a vendor to view order details.</td></tr>'
         );
         return;
     }
 
-    $('#vendor-order-details-panel .panel-body').html(
-        '<div class="alert alert-info">' +
-        '<i class="icon-spinner icon-spin"></i> ' +
-        'Loading order details...' +
-        '</div>'
+    $('#order-details-tbody').html(
+        '<tr><td colspan="13" class="text-center"><i class="icon-spinner icon-spin"></i> Loading...</td></tr>'
     );
 
+    var filters = {};
+    $('.filter-input').each(function () {
+        var val = $(this).val();
+        if (val !== '') {
+            filters[$(this).attr('name')] = val;
+        }
+    });
+
+    // Get id_manifest from URL if not present in the form
+    if (!manifestId || manifestId == 0) {
+        var urlParams = new URLSearchParams(window.location.search);
+        var manifestId = urlParams.get('id_manifest') || 0;
+    }
+    console.log(manifestId)
     $.ajax({
         url: manifestAjaxUrl,
         type: 'POST',
         data: {
             ajax: true,
-            action: 'LoadVendorOrderDetails',
+            action: 'LoadVendorOrderDetailsBody',
             vendor_id: vendorId,
+            manifest_id: manifestId,
+            filters: filters,
             token: manifestToken
         },
         dataType: 'json',
         success: function (response) {
+            console.log($('#order-details-tbody'));
             if (response.success) {
-                $('#vendor-order-details-panel').replaceWith(response.html);
-                // Reinitialize event handlers after content replacement
+                $('#order-details-tbody').html(response.html);
                 initializeOrderDetailsHandlers();
+                updateItemCount(response.count);
             } else {
-                $('#vendor-order-details-panel .panel-body').html(
-                    '<div class="alert alert-danger">' +
-                    '<i class="icon-warning"></i> ' +
+                $('#order-details-tbody').html(
+                    '<tr><td colspan="13" class="text-center text-danger">' +
                     (response.message || 'Error loading order details.') +
-                    '</div>'
+                    '</td></tr>'
                 );
             }
         },
         error: function () {
-            $('#vendor-order-details-panel .panel-body').html(
-                '<div class="alert alert-danger">' +
-                '<i class="icon-warning"></i> ' +
-                'Error loading order details. Please try again.' +
-                '</div>'
+            $('#order-details-tbody').html(
+                '<tr><td colspan="13" class="text-center text-danger">Error loading order details. Please try again.</td></tr>'
             );
         }
     });
+}
+function updateItemCount(count) {
+    $('#items-count').text(count + ' items');
+}
+
+function loadVendorOrderDetails(vendorId) {
+    loadVendorOrderDetailsBody(vendorId);
 }
 
 function loadVendorAddress(vendorId) {
@@ -133,20 +148,22 @@ function initializeOrderDetailsHandlers() {
 
 // Document ready initialization
 $(document).ready(function () {
-    // Initialize handlers for existing content
     initializeOrderDetailsHandlers();
 
-    // Handle manifest form vendor dropdown change (if not using inline onchange)
     $('select[name="id_vendor"]').on('change', function () {
-        loadVendorOrderDetails($(this).val());
-        loadVendorAddress($(this).val());
+        var vendorId = $(this).val();
+        loadVendorOrderDetailsBody(vendorId);
+        loadVendorAddress(vendorId);
     });
 
-    // Handle manifest view page actions
-    if (typeof manifestViewHandlers !== 'undefined') {
-        manifestViewHandlers();
-    }
+    $(document).on('change keyup', '.filter-input', function () {
+        var vendorId = $('select[name="id_vendor"]').val();
+        if (vendorId) {
+            loadVendorOrderDetailsBody(vendorId);
+        }
+    });
 });
+
 
 // Manifest view page specific handlers
 function manifestViewHandlers() {
