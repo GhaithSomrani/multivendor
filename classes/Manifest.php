@@ -122,6 +122,7 @@ class Manifest extends ObjectModel
         return Db::getInstance()->execute($sql);
     }
 
+
     /**
      * Remove order detail from manifest
      * 
@@ -140,6 +141,15 @@ class Manifest extends ObjectModel
 
         return Db::getInstance()->execute($sql);
     }
+
+    public function clearOrderDetails()
+    {
+        return Db::getInstance()->delete(
+            'mv_manifest_details',
+            'id_manifest = ' . (int)$this->id
+        );
+    }
+
 
     /**
      * Get manifest status name
@@ -324,6 +334,30 @@ class Manifest extends ObjectModel
         exit;
     }
 
+
+    public static function generatePrintablePDF($id_manifest)
+    {
+        $manifest = new Manifest($id_manifest);
+        if (!Validate::isLoadedObject($manifest)) {
+            throw new Exception('Manifest not found');
+        }
+
+        $orderDetailIds = array_column(self::getOrderdetailsIDs($id_manifest), 'id_order_details');
+
+        $pdfData = [
+            
+            'vendor' => (int)$manifest->id_vendor,
+            'orderDetailIds' => $orderDetailIds,
+            'export_type' => $manifest->type,
+            'filename' => 'Manifest_' . $manifest->reference . '_' . date('YmdHis') . '.pdf'
+        ];
+
+        $pdf = new PDF([$pdfData], 'VendorManifestPDF', Context::getContext()->smarty);
+        $pdf->render(true);
+        exit;
+    }
+
+
     public static function getOrderdetailsIDs($id_manifest)
     {
         $sql = 'SELECT md.id_order_details FROM `' . _DB_PREFIX_ . 'mv_manifest_details` md
@@ -339,7 +373,7 @@ class Manifest extends ObjectModel
      */
     public static function hasOrderDetail($id_order_detail)
     {
-        
+
         $sql = 'SELECT COUNT(*) FROM `' . _DB_PREFIX_ . 'mv_manifest_details`
                 WHERE id_order_details = ' . (int)$id_order_detail;
 
@@ -362,5 +396,4 @@ class Manifest extends ObjectModel
 
         return Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue($sql);
     }
-    
 }

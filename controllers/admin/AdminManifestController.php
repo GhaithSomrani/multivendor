@@ -150,6 +150,7 @@ class AdminManifestController extends ModuleAdminController
                     'label' => $this->l('Type'),
                     'name' => 'type',
                     'required' => true,
+                    'disabled' => (bool)$this->object->id,
                     'options' => [
                         'query' => [
                             ['id' => Manifest::TYPE_PICKUP, 'name' => $this->l('Pickup')],
@@ -269,22 +270,29 @@ class AdminManifestController extends ModuleAdminController
      */
     public function processSave()
     {
-        // Auto-generate reference if empty
         if (!Tools::getValue('reference')) {
             $_POST['reference'] = Manifest::generateReference();
         }
 
-        if (Tools::getValue('selected_order_details')) {
-
-            $orderDetailIds =   array_map('intval', explode(',', Tools::getValue('selected_order_details')));
-        }
-
         $result = parent::processSave();
 
-        foreach ($orderDetailIds as $id_order_detail) {
-            $this->addOrderDetailToManifest($result->id, $id_order_detail);
+        if ($this->object->id) {
+            $manifest = new Manifest($this->object->id);
+            $manifest->clearOrderDetails();
         }
+
+        // Add selected order details
+        $selectedOrderDetails = Tools::getValue('selected_order_details');
+        if ($selectedOrderDetails) {
+            $orderDetailIds = array_map('intval', explode(',', $selectedOrderDetails));
+            foreach ($orderDetailIds as $id_order_detail) {
+                $this->addOrderDetailToManifest($result->id, $id_order_detail);
+            }
+        }
+
+        return $result;
     }
+
 
     /**
      * Add order detail to manifest
@@ -300,13 +308,16 @@ class AdminManifestController extends ModuleAdminController
     public function renderView()
     {
         $manifest = new Manifest($this->object->id);
+
         $vendor = $manifest->getVendorByManifest();
+        $filters['manifest'] = $this->object->id;
+        $details = OrderHelper::getVendorOrderDetails($vendor, $filters);
+
         if (!Validate::isLoadedObject($manifest)) {
             $this->errors[] = $this->l('The manifest cannot be found.');
             return false;
         }
-        // Get manifest details
-        $details = $this->getManifestDetails($manifest->id);
+        $details = OrderHelper::getVendorOrderDetails($vendor, $filters);
         $address = new Address($manifest->id_address);
 
         $this->context->smarty->assign([
@@ -322,29 +333,6 @@ class AdminManifestController extends ModuleAdminController
         return $this->context->smarty->fetch($this->getTemplatePath() . 'view.tpl');
     }
 
-    /**
-     * Get manifest details with order information
-     */
-    private function getManifestDetails($id_manifest)
-    {
-        $sql = 'SELECT md.*, 
-                       vod.product_name, 
-                       vod.product_reference, 
-                       vod.product_quantity,
-                       vod.product_price,
-                       o.reference as order_reference,
-                       o.id_order,
-                         v.shop_name as name
-                FROM `' . _DB_PREFIX_ . 'mv_manifest_details` md
-                LEFT JOIN `' . _DB_PREFIX_ . 'mv_vendor_order_detail` vod ON (vod.id_order_detail = md.id_order_details)
-                LEFT JOIN `' . _DB_PREFIX_ . 'orders` o ON (vod.id_order = o.id_order)
-                LEFT JOIN `' . _DB_PREFIX_ . 'mv_manifest` m ON (m.id_manifest =' . (int)$id_manifest . ')
-                LEFT JOIN `' . _DB_PREFIX_ . 'mv_vendor` v ON (m.id_vendor = v.id_vendor)
-                WHERE md.id_manifest = ' . (int)$id_manifest . '
-                ORDER BY md.add_date ASC';
-
-        return Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS($sql);
-    }
 
 
     /**
@@ -399,9 +387,17 @@ class AdminManifestController extends ModuleAdminController
      */
     public function postProcess()
     {
+        if (Tools::isSubmit('printManifest')) {
+            $id_manifest = (int)Tools::getValue('id_manifest');
 
-        if (Tools::isSubmit('removeOrderDetail')) {
-            $this->processRemoveOrderDetail();
+            if ($id_manifest) {
+                try {
+                    Manifest::generatePrintablePDF($id_manifest);
+                } catch (Exception $e) {
+                    $this->errors[] = $e->getMessage();
+                }
+            }
+            return;
         }
 
         return parent::postProcess();
@@ -504,50 +500,18 @@ class AdminManifestController extends ModuleAdminController
         ]));
     }
 
-    protected function ajaxProcessRemoveOrderDetail()
+    public function ajaxProcessPrintManifest()
     {
         $id_manifest = (int)Tools::getValue('id_manifest');
-        $id_order_detail = (int)Tools::getValue('id_order_detail');
 
-        if (!$id_manifest || !$id_order_detail) {
-            $this->ajaxDie(json_encode([
-                'success' => false,
-                'message' => $this->l('Invalid parameters')
-            ]));
+        if (!$id_manifest) {
+            die(json_encode(['success' => false, 'message' => 'Invalid manifest ID']));
         }
 
         try {
-            $manifest = new Manifest($id_manifest);
-            if (!Validate::isLoadedObject($manifest)) {
-                $this->ajaxDie(json_encode([
-                    'success' => false,
-                    'message' => $this->l('Manifest not found')
-                ]));
-            }
-
-            if ($manifest->removeOrderDetail($id_order_detail)) {
-                $this->ajaxDie(json_encode([
-                    'success' => true,
-                    'message' => $this->l('Order detail removed from manifest successfully')
-                ]));
-            } else {
-                $this->ajaxDie(json_encode([
-                    'success' => false,
-                    'message' => $this->l('Error removing order detail from manifest')
-                ]));
-            }
+            Manifest::generatePrintablePDF($id_manifest);
         } catch (Exception $e) {
-            PrestaShopLogger::addLog(
-                'Error removing order detail from manifest: ' . $e->getMessage(),
-                3,
-                null,
-                'AdminManifest'
-            );
-
-            $this->ajaxDie(json_encode([
-                'success' => false,
-                'message' => $this->l('Error removing order detail. Please try again.')
-            ]));
+            die(json_encode(['success' => false, 'message' => $e->getMessage()]));
         }
     }
 

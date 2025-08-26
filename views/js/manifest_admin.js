@@ -174,43 +174,6 @@ $(document).ready(function () {
 
 // Manifest view page specific handlers
 function manifestViewHandlers() {
-    // Handle remove order detail from manifest
-    $('.remove-order-detail').on('click', function (e) {
-        e.preventDefault();
-
-        var idManifest = $(this).data('id-manifest');
-        var idOrderDetail = $(this).data('id-order-detail');
-        var row = $(this).closest('tr');
-
-        if (confirm('Are you sure you want to remove this item from the manifest?')) {
-            $.ajax({
-                url: manifestAjaxUrl,
-                type: 'POST',
-                data: {
-                    ajax: true,
-                    action: 'removeOrderDetail',
-                    id_manifest: idManifest,
-                    id_order_detail: idOrderDetail,
-                    token: manifestToken
-                },
-                dataType: 'json',
-                success: function (response) {
-                    if (response.success) {
-                        row.fadeOut(function () {
-                            $(this).remove();
-                            updateManifestCount();
-                        });
-                        showSuccessMessage(response.message || 'Item removed successfully');
-                    } else {
-                        showErrorMessage(response.message || 'Error removing item');
-                    }
-                },
-                error: function () {
-                    showErrorMessage('Connection error. Please try again.');
-                }
-            });
-        }
-    });
 
     // Handle print manifest
     $('#print-manifest').on('click', function () {

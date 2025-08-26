@@ -18,7 +18,16 @@
                     <br><small class="text-muted">{l s='In Manifest #' mod='multivendor'}{$manifestId}</small>
                 {/if}
             </td>
-            <td class="center">{$detail.id_manifest|default:'-'}</td>
+            <td class="center">
+                {if $detail.id_manifest } 
+                    <a href="{Context::getContext()->link->getAdminLink('AdminManifest')}&viewmv_manifest=&id_manifest={$detail.id_manifest}&token={Tools::getAdminTokenLite('AdminManifest')}"
+                        class="order-reference-link" target="_blank">
+                        {$detail.id_manifest}
+                    </a>
+                {else}
+                    -
+                {/if}
+            </td>
             <td>{$detail.id_order}</td>
             <td class="center">{$detail.id_order_detail}</td>
             <td>{$detail.vendor_name|escape:'html':'UTF-8'}</td>
