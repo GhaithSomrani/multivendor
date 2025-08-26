@@ -202,6 +202,25 @@ $sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'mv_manifest_details` (
     KEY `id_order_details` (`id_order_details`)
 ) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8;';
 
+$sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'mv_manifest_status_type` (
+        `id_manifest_status_type` INT(11) NOT NULL AUTO_INCREMENT,
+        `name` VARCHAR(255) NOT NULL,
+        `allowed_manifest_status_type_ids` TEXT,
+        `allowed_order_line_status_type_ids` TEXT,
+        `next_order_line_status_type_ids` TEXT,
+        `allowed_manifest_type` ENUM("pickup","returns") NOT NULL,
+        `allowed_modification` TINYINT(1) DEFAULT 0,
+        `allowed_delete` TINYINT(1) DEFAULT 0,
+        `position` INT(11) DEFAULT 1,
+        `active` TINYINT(1) DEFAULT 1,
+        `date_add` DATETIME NOT NULL,
+        `date_upd` DATETIME NOT NULL,
+        PRIMARY KEY (`id_manifest_status_type`),
+        INDEX `idx_active` (`active`),
+        INDEX `idx_position` (`position`),
+        INDEX `idx_manifest_type` (`allowed_manifest_type`)
+    ) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8;';
+
 // $sql[] = 'INSERT INTO `' . _DB_PREFIX_ . 'mv_order_line_status_type` 
 //     (`id_order_line_status_type`, `name`, `is_admin_allowed`, `is_vendor_allowed`, `color`, `affects_commission`, `commission_action`, `position`, `active`, `available_status`, `date_add`, `date_upd`) 
 //     VALUES 

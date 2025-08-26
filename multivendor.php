@@ -25,7 +25,7 @@ require_once(dirname(__FILE__) . '/classes/pdf/HTMLTemplateVendorManifestPDF.php
 require_once(dirname(__FILE__) . '/classes/OrderHelper.php');
 require_once(dirname(__FILE__) . '/classes/TransactionHelper.php');
 require_once(dirname(__FILE__) . '/classes/Manifest.php');
-
+require_once(dirname(__FILE__) . '/classes/ManifestStatusType.php');
 
 class multivendor extends Module
 {
@@ -147,12 +147,12 @@ class multivendor extends Module
                 'name' => 'Payments'
             ],
             [
-                'class_name' => 'AdminVendorSettings',
-                'name' => 'Settings',
-            ],
-            [
                 'class_name' => 'AdminOrderLineStatus',
                 'name' => 'Order Line Statuses'
+            ],
+            [
+                'class_name' => 'AdminManifestStatusType',
+                'name' => 'Manifest Status Setting'
             ],
             [
                 'class_name' => 'AdminVendorOrderDetails',
