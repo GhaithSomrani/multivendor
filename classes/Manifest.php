@@ -29,10 +29,10 @@ class Manifest extends ObjectModel
     public $type;
 
     /** @var string Creation date */
-    public $add_date;
+    public $date_add;
 
     /** @var string Update date */
-    public $update_date;
+    public $date_upd;
 
     /**
      * @see ObjectModel::$definition
@@ -45,9 +45,9 @@ class Manifest extends ObjectModel
             'id_vendor' => ['type' => self::TYPE_INT, 'validate' => 'isUnsignedId', 'required' => true],
             'id_address' => ['type' => self::TYPE_INT, 'validate' => 'isUnsignedId', 'required' => false, 'default' => null],
             'id_manifest_status' => ['type' => self::TYPE_INT, 'validate' => 'isUnsignedId', 'required' => false, 'default' => 1],
-            'type' => ['type' => self::TYPE_STRING, 'validate' => 'isGenericName', 'required' => false, 'default' => 'pickup'],
-            'add_date' => ['type' => self::TYPE_DATE, 'validate' => 'isDate', 'required' => true],
-            'update_date' => ['type' => self::TYPE_DATE, 'validate' => 'isDate', 'required' => true],
+            'type' => ['type' => self::TYPE_STRING, 'validate' => 'isGenericName', 'required' => false, 'default' => self::TYPE_PICKUP],
+            'date_add' => ['type' => self::TYPE_DATE, 'validate' => 'isDate', 'required' => true],
+            'date_upd' => ['type' => self::TYPE_DATE, 'validate' => 'isDate', 'required' => true],
         ],
     ];
 
@@ -65,43 +65,43 @@ class Manifest extends ObjectModel
 
         // Set default dates if creating new manifest
         if (!$this->id) {
-            $this->add_date = date('Y-m-d H:i:s');
-            $this->update_date = date('Y-m-d H:i:s');
-            $this->id_manifest_status = 1; // Default to "En préparation"
+            $this->id_manifest_status = ManifestStatusType::getDefaultManifestStatusType(self::TYPE_PICKUP);
+            $this->type = self::TYPE_PICKUP;
         }
     }
 
     /**
-     * Update the update_date before saving
+     * Update the date_upd before saving
      * 
      * @param bool $null_values Allow null values
      * @return bool
      */
     public function update($null_values = false)
     {
-        $this->update_date = date('Y-m-d H:i:s');
+        $nextOrderlineStatus = ManifestStatusType::getTheNextOrderlineStatus($this->id_manifest_status);
+        $orderDetailIds = Manifest::getOrderdetailsIDs($this->id);
+
+        foreach ($orderDetailIds as $id_order_detail) {
+            try {
+                // to do remove the vendor id 
+                OrderLineStatus::updateStatus(
+                    $id_order_detail['id_order_details'],
+                    (int)$this->id_vendor,
+                    $nextOrderlineStatus,
+                    Context::getContext()->employee->id,
+                    'Status modifié depuis l\'administration',
+                    true
+                );
+            } catch (Exception $e) {
+                PrestaShopLogger::addLog($e->getMessage(), 3, 'error in status change', 'Manifest', $this->id, (int)$this->id_vendor);
+            }
+        }
+
+
         return parent::update($null_values);
     }
 
-    /**
-     * Get manifest details
-     * 
-     * @return array|false
-     */
-    public function getManifestDetails()
-    {
-        if (!$this->id) {
-            return false;
-        }
 
-        $sql = 'SELECT md.*, od.product_name, od.product_reference, od.product_quantity
-                FROM `' . _DB_PREFIX_ . 'mv_manifest_details` md
-                LEFT JOIN `' . _DB_PREFIX_ . 'order_detail` od ON (md.id_order_details = od.id_order_detail)
-                WHERE md.id_manifest = ' . (int)$this->id . '
-                ORDER BY md.add_date ASC';
-
-        return Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS($sql);
-    }
 
     /**
      * Add order detail to manifest
@@ -116,7 +116,7 @@ class Manifest extends ObjectModel
         }
 
         $sql = 'INSERT INTO `' . _DB_PREFIX_ . 'mv_manifest_details` 
-                (id_manifest, id_order_details, add_date, update_date)
+                (id_manifest, id_order_details, date_add, date_upd)
                 VALUES (' . (int)$this->id . ', ' . (int)$id_order_detail . ', NOW(), NOW())';
 
         return Db::getInstance()->execute($sql);
@@ -169,20 +169,6 @@ class Manifest extends ObjectModel
     }
 
     /**
-     * Get all manifest statuses
-     * 
-     * @return array|false
-     */
-    public static function getStatuses()
-    {
-        $sql = 'SELECT * FROM `' . _DB_PREFIX_ . 'mv_manifest_status` 
-                WHERE active = 1 
-                ORDER BY position ASC';
-
-        return Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS($sql);
-    }
-
-    /**
      * Get manifests by status
      * 
      * @param int $id_manifest_status Status ID
@@ -197,7 +183,7 @@ class Manifest extends ObjectModel
                 LEFT JOIN `' . _DB_PREFIX_ . 'mv_manifest_status` ms ON (m.id_manifest_status = ms.id_manifest_status)
                 LEFT JOIN `' . _DB_PREFIX_ . 'address` a ON (m.id_address = a.id_address)
                 WHERE m.id_manifest_status = ' . (int)$id_manifest_status . '
-                ORDER BY m.add_date DESC';
+                ORDER BY m.date_add DESC';
 
         if ($limit) {
             $sql .= ' LIMIT ' . (int)$offset . ', ' . (int)$limit;
@@ -249,57 +235,50 @@ class Manifest extends ObjectModel
         return Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue($sql);
     }
 
-    /**
-     * Get address information
-     * 
-     * @return array|false
-     */
-    public function getAddress()
-    {
-        if (!$this->id_address) {
-            return false;
-        }
-
-        return new Address($this->id_address);
-    }
 
     /**
-     * add new manifest
-     * @param string $orderdetails order details array of int
+     * Add new manifest or update existing modifiable one
+     * @param array $orderdetails order details array of int
      * @param int $id_vendor vendor id
      * @param string $type manifest type (pickup or returns)
      * @param int|null $id_address address id 
-     * @param int|null $id_manifest_status manifest status id default 1
+     * @param int|null $id_manifest_status manifest status id
      */
-    public static function addNewManifest($orderdetails, $id_vendor, $type = self::TYPE_PICKUP, $id_address = null, $id_manifest_status = 1)
+    public static function addNewManifest($orderdetails, $id_vendor, $type = self::TYPE_PICKUP, $id_address = null, $id_manifest_status = null)
     {
-        if (empty($orderdetails) || !is_array($orderdetails) || !Validate::isUnsignedId($id_vendor)) {
-            return false;
-        }
-        if (!Validate::isGenericName($type) || !in_array($type, [self::TYPE_PICKUP, self::TYPE_RETURNS])) {
-            return false;
-        }
-        $manifest = new Manifest();
-        $manifest->reference = self::generateReference();
-        $manifest->id_vendor = (int)$id_vendor;
-        $manifest->id_address = $id_address;
-        $manifest->id_manifest_status = $id_manifest_status;
-        $manifest->type = $type;
-        $manifest->add_date = date('Y-m-d H:i:s');
-        $manifest->update_date = date('Y-m-d H:i:s');
+        try {
 
-        if (!$manifest->add()) {
-            return false;
-        }
+            $existingManifest = self::getModifiableManifest($id_vendor, $type);
 
-        foreach ($orderdetails as $id_order_detail) {
-            if (!Validate::isUnsignedId($id_order_detail)) {
-                continue;
+            if ($existingManifest) {
+                $manifest = new Manifest($existingManifest['id_manifest']);
+                $manifest->clearOrderDetails();
+                $manifest->update();
+            } else {
+                $manifest = new Manifest();
+                $manifest->reference = self::generateReference();
+                $manifest->id_vendor = (int)$id_vendor;
+                $manifest->id_address = $id_address;
+                $manifest->id_manifest_status = $id_manifest_status;
+                $manifest->type = $type;
+
+
+                if (!$manifest->add()) {
+                    return false;
+                }
             }
-            $manifest->addOrderDetail($id_order_detail);
-        }
 
-        return $manifest;
+            foreach ($orderdetails as $id_order_detail) {
+                if (!Validate::isUnsignedId($id_order_detail)) {
+                    continue;
+                }
+                $manifest->addOrderDetail($id_order_detail);
+            }
+
+            return $manifest;
+        } catch (Exception $e) {
+            PrestaShopLogger::addLog($e->getMessage(), 3, null, 'AdminVendorOrderDetails');
+        }
     }
 
     public function getVendorByManifest()
@@ -320,8 +299,11 @@ class Manifest extends ObjectModel
      * @param int|null $id_manifest_status manifest status id default 1
      */
 
-    public static function generateNewManifestPDF($orderdetails, $id_vendor, $type = self::TYPE_PICKUP, $id_address = null, $id_manifest_status = 1)
+    public static function generateNewManifestPDF($orderdetails, $id_vendor, $type = self::TYPE_PICKUP, $id_address = null, $id_manifest_status = null)
     {
+        if ($id_manifest_status == null) {
+            $id_manifest_status = ManifestStatusType::getDefaultManifestStatusType($type);
+        }
         $manifest = self::addNewManifest($orderdetails, $id_vendor, $type, $id_address, $id_manifest_status);
 
         $pdfData = [
@@ -337,24 +319,35 @@ class Manifest extends ObjectModel
 
     public static function generatePrintablePDF($id_manifest)
     {
-        $manifest = new Manifest($id_manifest);
-        if (!Validate::isLoadedObject($manifest)) {
-            throw new Exception('Manifest not found');
+        try {
+            $manifest = new Manifest($id_manifest);
+            $orderDetailIds = array_column(self::getOrderdetailsIDs($id_manifest), 'id_order_details');
+            $pdfData = [
+
+                'vendor' => (int)$manifest->id_vendor,
+                'orderDetailIds' => $orderDetailIds,
+                'export_type' => $manifest->type,
+                'filename' => 'Manifest_' . $manifest->reference . '_' . date('YmdHis') . '.pdf'
+            ];
+
+            $pdf = new PDF([$pdfData], 'VendorManifestPDF', Context::getContext()->smarty);
+            $pdf->render(true);
+            exit;
+        } catch (Exception $e) {
+            PrestaShopLogger::addLog('Export PDF Error: ' . $e->getMessage(), 3, null, 'AdminVendorOrderDetails');
         }
+    }
+    public static function getModifiableManifest($id_vendor, $type)
+    {
+        $sql = 'SELECT m.* 
+            FROM `' . _DB_PREFIX_ . 'mv_manifest` m
+            LEFT JOIN `' . _DB_PREFIX_ . 'mv_manifest_status_type` ms ON (m.id_manifest_status = ms.id_manifest_status_type)
+            WHERE m.id_vendor = ' . (int)$id_vendor . ' 
+            AND m.type = "' . pSQL($type) . '"
+            AND ms.allowed_modification = 1
+            ORDER BY m.date_add DESC';
 
-        $orderDetailIds = array_column(self::getOrderdetailsIDs($id_manifest), 'id_order_details');
-
-        $pdfData = [
-            
-            'vendor' => (int)$manifest->id_vendor,
-            'orderDetailIds' => $orderDetailIds,
-            'export_type' => $manifest->type,
-            'filename' => 'Manifest_' . $manifest->reference . '_' . date('YmdHis') . '.pdf'
-        ];
-
-        $pdf = new PDF([$pdfData], 'VendorManifestPDF', Context::getContext()->smarty);
-        $pdf->render(true);
-        exit;
+        return Db::getInstance(_PS_USE_SQL_SLAVE_)->getRow($sql);
     }
 
 

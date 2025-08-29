@@ -199,7 +199,7 @@
                     status_filter: statusFilter,
                     date_from: dateFrom,
                     date_to: dateTo,
-                    include_refunds: includeRefunds ? 1 : 0
+                    include_refunds: includeRefunds ? 1 : 0,
                     advanced: advanced ? 1 : 0
                 },
                 dataType: 'json',

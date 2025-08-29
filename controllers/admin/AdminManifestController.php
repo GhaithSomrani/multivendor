@@ -55,12 +55,23 @@ class AdminManifestController extends ModuleAdminController
                     Manifest::TYPE_RETURNS => $this->l('Returns')
                 ]
             ],
-            'address_name' => [
-                'title' => $this->l('Address'),
+            'shop_name' => [
+                'title' => $this->l('Vendor'),
                 'filter_key' => 'v!shop_name',
                 'callback' => 'displayAddressName',
                 'search' => true
             ],
+            'status_name' => [
+                'title' => $this->l('Status'),
+                'filter_key' => 'mst!name',
+                'callback' => 'displayStatusName',
+                'type' => 'select',
+                'filter_type' => 'select',
+                'list' => $this->getAllManifestStatusesForFilter(),
+                'filter_list' => $this->getAllManifestStatusesForFilter(),
+                'search' => true
+            ],
+
             'total_items' => [
                 'title' => $this->l('Total Items'),
                 'align' => 'center',
@@ -69,29 +80,31 @@ class AdminManifestController extends ModuleAdminController
                 'callback' => 'displayTotalItems'
             ],
 
-            'add_date' => [
+            'date_add' => [
                 'title' => $this->l('Date Add'),
                 'align' => 'right',
                 'type' => 'datetime',
-                'filter_key' => 'a!add_date'
+                'filter_key' => 'a!date_add'
             ],
-            'update_date' => [
+            'date_upd' => [
                 'title' => $this->l('Date Update'),
                 'align' => 'right',
                 'type' => 'datetime',
-                'filter_key' => 'a!update_date'
+                'filter_key' => 'a!date_upd'
             ]
         ];
 
-        // $this->_join = '
-        //     LEFT JOIN `' . _DB_PREFIX_ . 'address` ad ON (a.id_address = ad.id_address)';
+
         $this->_join .= '
-            LEFT JOIN `' . _DB_PREFIX_ . 'mv_vendor` v ON (v.id_vendor = a.id_vendor)';
+    LEFT JOIN `' . _DB_PREFIX_ . 'mv_vendor` v ON (v.id_vendor = a.id_vendor)
+    LEFT JOIN `' . _DB_PREFIX_ . 'mv_manifest_status_type` mst ON (mst.id_manifest_status_type = a.id_manifest_status)';
+
 
 
         $this->_select = '
-           v.shop_name as address_name,
-            a.id_manifest_status as status_display';
+   v.shop_name as shop_name,
+   mst.name as status_name,
+   a.id_manifest_status as status_display';
     }
 
     /**
@@ -101,6 +114,27 @@ class AdminManifestController extends ModuleAdminController
     {
         return $value;
     }
+    public function displayStatusName($value, $row)
+    {
+        if (!$value) {
+            return $this->l('No Status');
+        }
+
+        return Tools::safeOutput($value);
+    }
+    private function getAllManifestStatusesForFilter()
+    {
+        $statuses = ManifestStatusType::getAllManifestStatusTypes();
+        $filterList = [];
+
+        foreach ($statuses as $status) {
+            $filterList[$status['name']] = $status['name'];
+        }
+
+        return $filterList;
+    }
+
+
 
     /**
      * Display total items callback
@@ -153,11 +187,23 @@ class AdminManifestController extends ModuleAdminController
                     'disabled' => (bool)$this->object->id,
                     'options' => [
                         'query' => [
-                            ['id' => Manifest::TYPE_PICKUP, 'name' => $this->l('Pickup')],
-                            ['id' => Manifest::TYPE_RETURNS, 'name' => $this->l('Returns')]
+                            ['id' => Manifest::TYPE_PICKUP, 'name' => $this->l('Pickup'), 'value' => Manifest::TYPE_PICKUP],
+                            ['id' => Manifest::TYPE_RETURNS, 'name' => $this->l('Returns'), 'value' => Manifest::TYPE_RETURNS],
                         ],
                         'id' => 'id',
-                        'name' => 'name'
+                        'name' => 'name',
+                    ]
+
+                ],
+                [
+                    'type' => 'select',
+                    'label' => $this->l('Status'),
+                    'name' => 'id_manifest_status',
+                    'required' => true,
+                    'options' => [
+                        'query' => $this->getManifestStatuses(),
+                        'id' => 'id_manifest_status_type',
+                        'name' => 'name',
                     ]
                 ],
 
@@ -172,6 +218,10 @@ class AdminManifestController extends ModuleAdminController
                         'name' => 'address_display'
                     ]
                 ],
+                [
+                    'type' => 'hidden',
+                    'name' => 'selected_order_details'
+                ],
 
             ],
             'submit' => [
@@ -184,7 +234,6 @@ class AdminManifestController extends ModuleAdminController
         // Auto-generate reference if creating new manifest
         if (!$this->object->id) {
             $this->fields_value['reference'] = Manifest::generateReference();
-            $this->fields_value['id_manifest_status'] = 1;
         }
 
 
@@ -221,6 +270,7 @@ class AdminManifestController extends ModuleAdminController
             'statuses' => $statuses,
             'manifestAjaxUrl' => $this->context->link->getAdminLink('AdminManifest'),
         ]);
+
 
         return $this->context->smarty->fetch($this->getTemplatePath() . '/vendor_order_details_table.tpl');
     }
@@ -265,6 +315,12 @@ class AdminManifestController extends ModuleAdminController
         return $formatAddresses;
     }
 
+    private function getManifestStatuses()
+    {
+        $manifestType = Tools::getValue('type', $this->object->type);
+        return ManifestStatusType::getManifestStatusByAllowedManifestType($manifestType);
+    }
+
     /**
      * Process save
      */
@@ -279,6 +335,8 @@ class AdminManifestController extends ModuleAdminController
         if ($this->object->id) {
             $manifest = new Manifest($this->object->id);
             $manifest->clearOrderDetails();
+            $manifest->id_manifest_status = (int)Tools::getValue('id_manifest_status');
+            $manifest->update();
         }
 
         // Add selected order details
@@ -308,16 +366,15 @@ class AdminManifestController extends ModuleAdminController
     public function renderView()
     {
         $manifest = new Manifest($this->object->id);
-
+        $id_vendor = $manifest->id_vendor;
         $vendor = $manifest->getVendorByManifest();
-        $filters['manifest'] = $this->object->id;
-        $details = OrderHelper::getVendorOrderDetails($vendor, $filters);
-
+        $filters['manifest'] = (int)$this->object->id;
+        $details = OrderHelper::getVendorOrderDetails($id_vendor, $filters);
         if (!Validate::isLoadedObject($manifest)) {
             $this->errors[] = $this->l('The manifest cannot be found.');
             return false;
         }
-        $details = OrderHelper::getVendorOrderDetails($vendor, $filters);
+
         $address = new Address($manifest->id_address);
 
         $this->context->smarty->assign([
@@ -397,7 +454,7 @@ class AdminManifestController extends ModuleAdminController
                     $this->errors[] = $e->getMessage();
                 }
             }
-            return;
+            return null;
         }
 
         return parent::postProcess();
@@ -454,7 +511,7 @@ class AdminManifestController extends ModuleAdminController
     protected function ajaxProcessLoadVendorOrderDetailsBody()
     {
         $vendorId = (int)Tools::getValue('vendor_id');
-
+        $manifesTypeId = (int)Tools::getValue('manifest_status_id');
         if (!$vendorId) {
             die(json_encode([
                 'success' => false,
@@ -462,23 +519,23 @@ class AdminManifestController extends ModuleAdminController
             ]));
         }
 
-        // Collect filters
+
+        $AllowedOrderLineStatusTypes = ManifestStatusType::getAllowedOrderLineStatusTypes($manifesTypeId);
         $filters = Tools::getValue('filters', []);
-
+        $filters['allowed_order_line_status_types'] =  $AllowedOrderLineStatusTypes;
         $details = OrderHelper::getVendorOrderDetails($vendorId, $filters);
-
-        $manifestId = (int)Tools::getValue('manifest_id', 0);
-        $isEditMode = $manifestId > 0 ? true : false;
+        $currentManifestId = (int)Tools::getValue('id_manifest') ? (int)Tools::getValue('id_manifest') : null;
+        $isEditMode = $currentManifestId > 0 ? true : false;
 
         $selected_ids = [];
         if ($isEditMode) {
-            $selectedDetails = Manifest::getOrderdetailsIDs($manifestId);
+            $selectedDetails = Manifest::getOrderdetailsIDs($currentManifestId);
             if (!empty($selectedDetails)) {
                 $selected_ids = array_column($selectedDetails, 'id_order_details');
             }
         }
-        if ($manifestId > 0) {
-            $manifest = new Manifest($manifestId);
+        if ($currentManifestId > 0) {
+            $manifest = new Manifest($currentManifestId);
             if (Validate::isLoadedObject($manifest)) {
                 $selected_data = Manifest::getOrderdetailsIDs($manifest->id);
                 $selected_ids = !empty($selected_data) ? array_column($selected_data, 'id_order_details') : [];
@@ -486,6 +543,7 @@ class AdminManifestController extends ModuleAdminController
         }
 
         $this->context->smarty->assign([
+            'manifest_id' => $currentManifestId,
             'is_edit_mode' => $isEditMode,
             'order_details' => $details,
             'selected_ids' => $selected_ids,
@@ -515,30 +573,19 @@ class AdminManifestController extends ModuleAdminController
         }
     }
 
-
-    /**
-     * Process remove order detail from manifest
-     */
-    private function processRemoveOrderDetail()
+    public function ajaxProcessGetManifestStatusesByType()
     {
-        $id_manifest = (int)Tools::getValue('id_manifest');
-        $id_order_detail = (int)Tools::getValue('id_order_detail');
+        $manifestType = (string)Tools::getValue('manifest_type');
 
-        if (!$id_manifest || !$id_order_detail) {
-            $this->errors[] = $this->l('Invalid parameters');
-            return;
+        if (!$manifestType) {
+            die(json_encode(['success' => false, 'message' => 'Invalid manifest type']));
         }
 
-        $manifest = new Manifest($id_manifest);
-        if (!Validate::isLoadedObject($manifest)) {
-            $this->errors[] = $this->l('Manifest not found');
-            return;
-        }
+        $statuses = ManifestStatusType::getManifestStatusByAllowedManifestType($manifestType);
 
-        if ($manifest->removeOrderDetail($id_order_detail)) {
-            $this->confirmations[] = $this->l('Order detail removed from manifest successfully');
-        } else {
-            $this->errors[] = $this->l('Error removing order detail from manifest');
-        }
+        die(json_encode([
+            'success' => true,
+            'statuses' => $statuses
+        ]));
     }
 }

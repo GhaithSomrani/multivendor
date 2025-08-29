@@ -98,6 +98,16 @@ class OrderHelper
     }
 
 
+    /**
+     * Retrieves vendor order details based on filters
+     *
+     * @param int $id_vendor The ID of the vendor
+     * @param array $filters The filters to apply
+     * @param int $limit The maximum number of results to return
+     * @param int $offset The offset to start from
+     *
+     * @return array The vendor order details
+     */
     public static function getVendorOrderDetails($id_vendor, $filters = [], $limit = null, $offset = 0)
     {
         $defaultStatusTypeId = OrderLineStatus::getDefaultStatusTypeId();
@@ -120,9 +130,9 @@ class OrderHelper
             osl.name as order_state_name,
             o.date_add as order_created_date,
             vt.status as payment_status,
-            COALESCE(olst.name, "' . pSQL($defaultStatusType->name) . '") as line_status,
-            COALESCE(olst.color, "#6c757d") as status_color,
-            COALESCE(ols.id_order_line_status_type, ' . (int)$defaultStatusTypeId . ') as status_type_id,
+            olst.name as line_status,
+            olst.color as status_color,
+            ols.id_order_line_status_type as status_type_id,
             od.unit_price_tax_incl as unit_price , 
             md.id_manifest 
         FROM `' . _DB_PREFIX_ . 'mv_vendor_order_detail` vod
@@ -249,11 +259,17 @@ class OrderHelper
         // Manifest filter
         if (!empty($filters['manifest'])) {
             $manifest_id = (int)$filters['manifest'];
+            
             if ($manifest_id > 0) {
                 $sql .= ' AND md.id_manifest = ' . $manifest_id;
             } else {
                 $sql .= ' AND md.id_manifest IS NULL';
             }
+        }
+
+        if (!empty($filters['allowed_order_line_status_types'])) {
+            $allowedStatusTypes = $filters['allowed_order_line_status_types'];
+            $sql .= ' AND ols.id_order_line_status_type IN (' . $allowedStatusTypes . ')';
         }
 
         // Group by 
@@ -268,7 +284,6 @@ class OrderHelper
         if ($limit !== null) {
             $sql .= ' LIMIT ' . (int)$offset . ', ' . (int)$limit;
         }
-
         $results = Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS($sql);
 
         // If using pagination, also return total count

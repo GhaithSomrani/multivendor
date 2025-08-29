@@ -76,6 +76,14 @@
 
 <script type="text/javascript">
     $(document).ready(function() {
+
+        $('.order-detail-checkbox').off('change').on('change', function() {
+            var selectedValues = [];
+            $('.order-detail-checkbox:checked').each(function() {
+                selectedValues.push($(this).val());
+            });
+            $('#mv_manifest_form input[name="selected_order_details"]').val(selectedValues.join(','));
+        });
         var vendorId = {$vendor_id|intval};
 
         if (vendorId > 0) {

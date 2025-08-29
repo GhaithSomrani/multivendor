@@ -31,7 +31,7 @@
                     </dd> *}
 
                     <dt>{l s='Created:' mod='multivendor'}</dt>
-                    <dd>{$manifest->add_date}</dd>
+                    <dd>{$manifest->date_add}</dd>
                 </dl>
             </div>
 

@@ -348,7 +348,7 @@ class OrderLineStatus extends ObjectModel
     {
         // Check if status already exists
         $currentStatus = self::getByOrderDetailAndVendor($id_order_detail, $id_vendor);
-
+     
         if ($currentStatus) {
             $orderLineStatus = new OrderLineStatus($currentStatus['id_order_line_status']);
             $orderLineStatus->id_order_line_status_type = (int)$id_status_type;
