@@ -30,14 +30,9 @@ class AdminManifestStatusTypeController extends ModuleAdminController
                 'title' => $this->l('Nom'),
                 'filter_key' => 'a!name'
             ],
-            'allowed_manifest_type' => [
+            'manifest_type_name' => [
                 'title' => $this->l('Type'),
-                'filter_key' => 'a!allowed_manifest_type',
-                'type' => 'select',
-                'list' => [
-                    'pickup' => $this->l('Collecte'),
-                    'returns' => $this->l('Retours')
-                ]
+                'filter_key' => 'mt!name'
             ],
             'position' => [
                 'title' => $this->l('Position'),
@@ -62,6 +57,14 @@ class AdminManifestStatusTypeController extends ModuleAdminController
         ];
     }
 
+    public function renderList()
+    {
+        $this->_join = 'LEFT JOIN `' . _DB_PREFIX_ . 'mv_manifest_type` mt ON (a.id_manifest_type = mt.id_manifest_type)';
+        $this->_select = 'mt.name as manifest_type_name';
+
+        return parent::renderList();
+    }
+
     public function renderForm()
     {
         $this->fields_form = [
@@ -81,11 +84,14 @@ class AdminManifestStatusTypeController extends ModuleAdminController
                     'type' => 'checkbox',
                     'label' => $this->l('Transitions de statut de manifeste autorisées'),
                     'name' => 'allowed_manifest_status_type_ids',
+                    'maxlength' => 255,
+
                     'values' => [
                         'query' => $this->getManifestStatusOptions(),
                         'id' => 'id',
                         'name' => 'name'
                     ]
+
                 ],
                 [
                     'type' => 'checkbox',
@@ -98,27 +104,27 @@ class AdminManifestStatusTypeController extends ModuleAdminController
                     ]
                 ],
                 [
-                    'type' => 'checkbox',
+                    'type' => 'select',
                     'label' => $this->l('Types de statut de ligne de commande suivants'),
                     'name' => 'next_order_line_status_type_ids',
-                    'values' => [
+                    'options' => [
                         'query' => $this->getOrderLineStatusOptions(),
                         'id' => 'id_order_line_status_type',
-                        'name' => 'name'
+                        'name' => 'name',
+                        'default' => ['value' => '', 'label' => $this->l('Selectionner commande suivant')]
                     ]
+
                 ],
                 [
                     'type' => 'select',
                     'label' => $this->l('Type de manifeste'),
-                    'name' => 'allowed_manifest_type',
+                    'name' => 'id_manifest_type',
                     'required' => true,
                     'options' => [
-                        'query' => [
-                            ['id' => 'pickup', 'name' => $this->l('Collecte')],
-                            ['id' => 'returns', 'name' => $this->l('Retours')]
-                        ],
+                        'query' => ManifestType::getAll(),
                         'id' => 'id',
-                        'name' => 'name'
+                        'name' => 'name',
+                        'default' => ['value' => '', 'label' => $this->l('selectionner un type ')]
                     ]
                 ],
                 [
@@ -139,7 +145,6 @@ class AdminManifestStatusTypeController extends ModuleAdminController
                         ['id' => 'allowed_delete_off', 'value' => 0, 'label' => $this->l('Non')]
                     ]
                 ],
-
                 [
                     'type' => 'switch',
                     'label' => $this->l('Actif'),
@@ -192,7 +197,6 @@ class AdminManifestStatusTypeController extends ModuleAdminController
     {
         // Start with default values
         $fields = parent::getFieldsValue($obj);
-
         // Multi-select checkbox fields
         $multiSelectFields = [
             'allowed_manifest_status_type_ids',
@@ -220,7 +224,6 @@ class AdminManifestStatusTypeController extends ModuleAdminController
 
     private function getOrderLineStatusOptions()
     {
-
         return OrderLineStatusType::getAllActiveStatusTypes();
     }
 }

@@ -181,19 +181,19 @@ class AdminManifestController extends ModuleAdminController
 
                 [
                     'type' => 'select',
-                    'label' => $this->l('Type'),
-                    'name' => 'type',
+                    'label' => $this->l('Manifest Type'),
+                    'name' => 'id_manifest_type',
                     'required' => true,
                     'disabled' => (bool)$this->object->id,
                     'options' => [
-                        'query' => [
-                            ['id' => Manifest::TYPE_PICKUP, 'name' => $this->l('Pickup'), 'value' => Manifest::TYPE_PICKUP],
-                            ['id' => Manifest::TYPE_RETURNS, 'name' => $this->l('Returns'), 'value' => Manifest::TYPE_RETURNS],
-                        ],
+                        'query' => ManifestType::getAll(),
                         'id' => 'id',
                         'name' => 'name',
+                        'default' => [
+                            'value' => '',
+                            'label' => $this->l('Select Manifest Type')
+                        ],
                     ]
-
                 ],
                 [
                     'type' => 'select',
@@ -317,8 +317,11 @@ class AdminManifestController extends ModuleAdminController
 
     private function getManifestStatuses()
     {
-        $manifestType = Tools::getValue('type', $this->object->type);
-        return ManifestStatusType::getManifestStatusByAllowedManifestType($manifestType);
+
+        $idManifestType = Tools::getValue('id_manifest_type', $this->object->id_manifest_type ?? 0);
+
+
+        return ManifestStatusType::getManifestStatusByAllowedManifestType($idManifestType);
     }
 
     /**
@@ -378,10 +381,10 @@ class AdminManifestController extends ModuleAdminController
         $address = new Address($manifest->id_address);
 
         $this->context->smarty->assign([
-
             'vendor_name' =>  $vendor['shop_name'],
             'manifest' => $manifest,
             'manifest_details' => $details,
+            'manifestType' => $manifest->getManifestType(),
             'address' => $address,
             'total_items' => count($details),
             'back_url' => $this->context->link->getAdminLink('AdminManifest')
@@ -511,18 +514,35 @@ class AdminManifestController extends ModuleAdminController
     protected function ajaxProcessLoadVendorOrderDetailsBody()
     {
         $vendorId = (int)Tools::getValue('vendor_id');
-        $manifesTypeId = (int)Tools::getValue('manifest_status_id');
+        $manifesTypeStatusId = (int)Tools::getValue('id_manifest_status');
+        $manifesTypeId = (int)Tools::getValue('id_manifest_type');
         if (!$vendorId) {
             die(json_encode([
                 'success' => false,
                 'message' => 'Vendor ID is required'
             ]));
         }
+        if (!$manifesTypeStatusId) {
+            die(json_encode([
+                'success' => false,
+                'message' => 'Manifest Type ID is required'
+            ]));
+        }
+        if (!$manifesTypeId) {
+            die(json_encode([
+                'success' => false,
+                'message' => 'Manifest Type ID is required'
+            ]));
+        }
 
 
-        $AllowedOrderLineStatusTypes = ManifestStatusType::getAllowedOrderLineStatusTypes($manifesTypeId);
+
+        $AllowedOrderLineStatusTypes = ManifestStatusType::getAllowedOrderLineStatusTypes($manifesTypeStatusId);
+
         $filters = Tools::getValue('filters', []);
         $filters['allowed_order_line_status_types'] =  $AllowedOrderLineStatusTypes;
+
+        $filters['id_vendor'] = $vendorId;
         $details = OrderHelper::getVendorOrderDetails($vendorId, $filters);
         $currentManifestId = (int)Tools::getValue('id_manifest') ? (int)Tools::getValue('id_manifest') : null;
         $isEditMode = $currentManifestId > 0 ? true : false;
@@ -541,6 +561,17 @@ class AdminManifestController extends ModuleAdminController
                 $selected_ids = !empty($selected_data) ? array_column($selected_data, 'id_order_details') : [];
             }
         }
+        // Add checkbox states to each order detail
+        foreach ($details as &$detail) {
+            $checkboxState = Manifest::getOrderDetailCheckboxState(
+                $detail['id_order_detail'],
+                $currentManifestId,
+                $manifesTypeId
+            );
+            $detail['checkbox_checked'] = $checkboxState['checked'];
+            $detail['checkbox_disabled'] = $checkboxState['disabled'];
+        }
+
 
         $this->context->smarty->assign([
             'manifest_id' => $currentManifestId,
@@ -575,7 +606,7 @@ class AdminManifestController extends ModuleAdminController
 
     public function ajaxProcessGetManifestStatusesByType()
     {
-        $manifestType = (string)Tools::getValue('manifest_type');
+        $manifestType = (int)Tools::getValue('id_manifest_type');
 
         if (!$manifestType) {
             die(json_encode(['success' => false, 'message' => 'Invalid manifest type']));

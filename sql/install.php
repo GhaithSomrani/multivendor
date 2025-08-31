@@ -182,7 +182,7 @@ $sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'mv_manifest` (
     `id_manifest_status` int(10) unsigned NOT NULL DEFAULT "1",
     `date_add` datetime NOT NULL,
     `date_upd` datetime NOT NULL,
-    `type` varchar(32) NOT NULL DEFAULT "pickup",
+    `id_manifest_type`  int(10) unsigned NOT NULL,
     PRIMARY KEY (`id_manifest`),
     UNIQUE KEY `reference` (`reference`),
     KEY `id_address` (`id_address`),
@@ -208,7 +208,7 @@ $sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'mv_manifest_status_type
         `allowed_manifest_status_type_ids` TEXT,
         `allowed_order_line_status_type_ids` TEXT,
         `next_order_line_status_type_ids` INT(11),
-        `allowed_manifest_type` ENUM("pickup","returns") NOT NULL,
+        `id_manifest_type` INT(11) NOT NULL,
         `allowed_modification` TINYINT(1) DEFAULT 0,
         `allowed_delete` TINYINT(1) DEFAULT 0,
         `position` INT(11) DEFAULT 1,
@@ -218,40 +218,22 @@ $sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'mv_manifest_status_type
         PRIMARY KEY (`id_manifest_status_type`),
         INDEX `idx_active` (`active`),
         INDEX `idx_position` (`position`),
-        INDEX `idx_manifest_type` (`allowed_manifest_type`)
+        INDEX `idx_manifest_type` (`id_manifest_type`)
     ) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8;';
 
-// $sql[] = 'INSERT INTO `' . _DB_PREFIX_ . 'mv_order_line_status_type` 
-//     (`id_order_line_status_type`, `name`, `is_admin_allowed`, `is_vendor_allowed`, `color`, `affects_commission`, `commission_action`, `position`, `active`, `available_status`, `date_add`, `date_upd`) 
-//     VALUES 
-//     (1, "en attente client", 1, 0, "#0079FF", 0, "none", 1, 1, "2,19,22", NOW(), NOW()),
-//     (2, "à traiter", 1, 1, "#FF865D", 0, "none", 2, 1, "3,18,19,22", NOW(), NOW()),
-//     (3, "disponible", 1, 1, "#0079FF", 0, "none", 3, 1, "4,19,22", NOW(), NOW()),
-//     (4, "prêt pour ramassage", 1, 1, "#0079FF", 1, "add", 4, 1, "5,19,22", NOW(), NOW()),
-//     (5, "ramassé", 1, 1, "#0079FF", 1, "add", 5, 1, "6,22", NOW(), NOW()),
-//     (6, "réception magasin", 1, 0, "#FF865D", 1, "add", 6, 1, "7,10,9,17,22", NOW(), NOW()),
-//     (7, "prêt pour expédition", 1, 0, "#FF865D", 1, "add", 7, 1, "8,22", NOW(), NOW()),
-//     (8, "expédié", 1, 0, "#00DFA2", 1, "add", 8, 1, "11,10,9,15,22", NOW(), NOW()),
-//     (9, "endommagé", 1, 0, "#FF0060", 1, "refund", 9, 1, "20,22", NOW(), NOW()),
-//     (10, "perdu", 1, 0, "#FF0060", 1, "add", 10, 1, "22", NOW(), NOW()),
-//     (11, "rejeté", 1, 0, "#FF0060", 1, "refund", 11, 1, "12,22", NOW(), NOW()),
-//     (12, "retour magasin", 1, 0, "#FF0060", 1, "refund", 12, 1, "13,22", NOW(), NOW()),
-//     (13, "retour fournisseur", 1, 0, "#FF0060", 1, "refund", 13, 1, "14,22", NOW(), NOW()),
-//     (14, "remboursé", 1, 0, "#FF0060", 1, "cancel", 14, 1, "22", NOW(), NOW()),
-//     (15, "livré", 1, 0, "#00DFA2", 1, "add", 15, 1, "16", NOW(), NOW()),
-//     (16, "payé", 1, 0, "#00DFA2", 1, "add", 16, 1, "21", NOW(), NOW()),
-//     (17, "non conforme", 1, 0, "#FF0060", 1, "cancel", 17, 1, "13", NOW(), NOW()),
-//     (18, "rupture de stock", 1, 1, "#FF0060", 0, "none", 18, 1, "22", NOW(), NOW()),
-//     (19, "annulé par client", 1, 0, "#000000", 0, "none", 19, 1, "22", NOW(), NOW()),
-//     (20, "recipition endommagé", 1, 0, "#FF0060", 0, "none", 20, 1, "12", NOW(), NOW()),
-//     (21, "demande du retour", 1, 0, "#FF0060", 0, "none", 21, 1, "12", NOW(), NOW()),
-//     (22, "Faute", 1, 0, "#FFFFFF", 0, "none", 22, 0, "1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22", NOW(), NOW())';
+$sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'mv_manifest_type` (
+    `id_manifest_type` int(10) unsigned NOT NULL AUTO_INCREMENT,
+    `name` varchar(255) NOT NULL,
+    `date_add` datetime NOT NULL,
+    `date_upd` datetime NOT NULL,
+    PRIMARY KEY (`id_manifest_type`)
+) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8;';
 
 
 
 // Execute all SQL queries
 foreach ($sql as $query) {
-    if (Db::getInstance()->execute($query) == false) {
+    if (!Db::getInstance()->execute($query)) {
         return false;
     }
 }

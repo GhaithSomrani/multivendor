@@ -26,7 +26,7 @@ class Manifest extends ObjectModel
     public $id_manifest_status;
 
     /** @var string Manifest type */
-    public $type;
+    public $id_manifest_type;
 
     /** @var string Creation date */
     public $date_add;
@@ -44,8 +44,8 @@ class Manifest extends ObjectModel
             'reference' => ['type' => self::TYPE_STRING, 'validate' => 'isGenericName', 'required' => true, 'size' => 128],
             'id_vendor' => ['type' => self::TYPE_INT, 'validate' => 'isUnsignedId', 'required' => true],
             'id_address' => ['type' => self::TYPE_INT, 'validate' => 'isUnsignedId', 'required' => false, 'default' => null],
-            'id_manifest_status' => ['type' => self::TYPE_INT, 'validate' => 'isUnsignedId', 'required' => false, 'default' => 1],
-            'type' => ['type' => self::TYPE_STRING, 'validate' => 'isGenericName', 'required' => false, 'default' => self::TYPE_PICKUP],
+            'id_manifest_status' => ['type' => self::TYPE_INT, 'validate' => 'isUnsignedId', 'required' => true],
+            'id_manifest_type' => ['type' => self::TYPE_STRING, 'validate' => 'isGenericName', 'required' => true],
             'date_add' => ['type' => self::TYPE_DATE, 'validate' => 'isDate', 'required' => true],
             'date_upd' => ['type' => self::TYPE_DATE, 'validate' => 'isDate', 'required' => true],
         ],
@@ -62,12 +62,6 @@ class Manifest extends ObjectModel
     public function __construct($id = null, $id_lang = null)
     {
         parent::__construct($id, $id_lang);
-
-        // Set default dates if creating new manifest
-        if (!$this->id) {
-            $this->id_manifest_status = ManifestStatusType::getDefaultManifestStatusType(self::TYPE_PICKUP);
-            $this->type = self::TYPE_PICKUP;
-        }
     }
 
     /**
@@ -260,7 +254,7 @@ class Manifest extends ObjectModel
                 $manifest->id_vendor = (int)$id_vendor;
                 $manifest->id_address = $id_address;
                 $manifest->id_manifest_status = $id_manifest_status;
-                $manifest->type = $type;
+                $manifest->id_manifest_type = $type;
 
 
                 if (!$manifest->add()) {
@@ -290,6 +284,56 @@ class Manifest extends ObjectModel
         return Db::getInstance(_PS_USE_SQL_SLAVE_)->getRow($sql);
     }
 
+
+    public function getManifestType()
+    {
+        $manifestType = new ManifestType($this->id_manifest_type);
+        return $manifestType->name;
+    }
+
+    public static function getOrderDetailCheckboxState($id_order_detail, $current_manifest_id = null, $current_manifest_type_id = null)
+    {
+        $existingManifestId = self::getManifestIdByOrderDetail($id_order_detail);
+
+        // No existing manifest - enabled and unchecked
+        if (!$existingManifestId) {
+            return ['checked' => false, 'disabled' => false];
+        }
+
+        // Same manifest - checked and enabled
+        if ($current_manifest_id && $existingManifestId == $current_manifest_id) {
+            return ['checked' => true, 'disabled' => false];
+        }
+
+        // Different manifest - check if same manifest type
+        if ($current_manifest_type_id) {
+            $existingManifestTypeId = self::getManifestTypeByOrderDetail($id_order_detail);
+
+            // Same manifest type - checked and disabled
+            if ($existingManifestTypeId == $current_manifest_type_id) {
+                return ['checked' => true, 'disabled' => true];
+            }
+
+            // Different manifest type - unchecked and enabled
+            return ['checked' => false, 'disabled' => false];
+        }
+
+        // Default case - checked and disabled
+        return ['checked' => true, 'disabled' => true];
+    }
+
+    public static function getManifestTypeByOrderDetail($id_order_detail)
+    {
+        if (!Validate::isUnsignedId($id_order_detail)) {
+            return false;
+        }
+
+        $sql = 'SELECT m.id_manifest_type FROM `' . _DB_PREFIX_ . 'mv_manifest_details` md
+            LEFT JOIN `' . _DB_PREFIX_ . 'mv_manifest` m ON (md.id_manifest = m.id_manifest)
+            WHERE md.id_order_details = ' . (int)$id_order_detail;
+
+        return Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue($sql);
+    }
     /**
      * Generate new manifest
      * @param string $orderdetails order details array of int
@@ -326,7 +370,7 @@ class Manifest extends ObjectModel
 
                 'vendor' => (int)$manifest->id_vendor,
                 'orderDetailIds' => $orderDetailIds,
-                'export_type' => $manifest->type,
+                'export_type' => $manifest->id_manifest_type,
                 'filename' => 'Manifest_' . $manifest->reference . '_' . date('YmdHis') . '.pdf'
             ];
 

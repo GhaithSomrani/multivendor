@@ -18,11 +18,7 @@
 
                     <dt>{l s='Type:' mod='multivendor'}</dt>
                     <dd>
-                        {if $manifest->type == 1}
-                            {l s='Pickup' mod='multivendor'}
-                        {else}
-                            {l s='Returns' mod='multivendor'}
-                        {/if}
+                        {$manifestType}
                     </dd>
 
                     <dt>{l s='Status:' mod='multivendor'}</dt>

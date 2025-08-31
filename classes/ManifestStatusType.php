@@ -9,15 +9,15 @@ if (!defined('_PS_VERSION_')) {
  */
 class ManifestStatusType extends ObjectModel
 {
-    public $name;                                  
-    public $allowed_manifest_status_type_ids;      
-    public $allowed_order_line_status_type_ids;     
-    public $next_order_line_status_type_ids;       
-    public $allowed_manifest_type;                  
-    public $allowed_modification;                  
-    public $allowed_delete;                         
-    public $position;                              
-    public $active;                                
+    public $name;
+    public $allowed_manifest_status_type_ids;
+    public $allowed_order_line_status_type_ids;
+    public $next_order_line_status_type_ids;
+    public $id_manifest_type;
+    public $allowed_modification;
+    public $allowed_delete;
+    public $position;
+    public $active;
     public $date_add;
     public $date_upd;
 
@@ -29,7 +29,7 @@ class ManifestStatusType extends ObjectModel
             'allowed_manifest_status_type_ids' => ['type' => self::TYPE_STRING, 'validate' => 'isString'],
             'allowed_order_line_status_type_ids' => ['type' => self::TYPE_STRING, 'validate' => 'isString'],
             'next_order_line_status_type_ids' => ['type' => self::TYPE_INT, 'validate' => 'isUnsignedInt'],
-            'allowed_manifest_type' => ['type' => self::TYPE_STRING, 'validate' => 'isGenericName', 'required' => true, 'values' => ['pickup', 'returns']],
+            'id_manifest_type' => ['type' => self::TYPE_INT, 'validate' => 'isUnsignedId', 'required' => false],
             'allowed_modification' => ['type' => self::TYPE_BOOL, 'validate' => 'isBool'],
             'allowed_delete' => ['type' => self::TYPE_BOOL, 'validate' => 'isBool'],
             'position' => ['type' => self::TYPE_INT, 'validate' => 'isUnsignedInt'],
@@ -90,12 +90,13 @@ class ManifestStatusType extends ObjectModel
      * @param string $manifest_type Manifest type (pickup or returns)
      * @return int
      */
-    public static function getDefaultManifestStatusType($manifest_type)
+    public static function getDefaultManifestStatusType($id_manifest_type)
     {
         $sql = 'SELECT id_manifest_status_type FROM `' . _DB_PREFIX_ . 'mv_manifest_status_type` 
-                WHERE active = 1 
-                AND allowed_manifest_type = "' . $manifest_type . '"
-                ORDER BY position ASC';
+            WHERE active = 1 
+            AND id_manifest_type = ' . (int)$id_manifest_type . '
+            ORDER BY position ASC';
+
         return Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue($sql);
     }
 
@@ -108,16 +109,16 @@ class ManifestStatusType extends ObjectModel
      * @return array
      */
 
-    public static function getManifestStatusByAllowedManifestType($manifest_type)
+    public static function getManifestStatusByAllowedManifestType($id_manifest_type)
     {
-
         $sql = 'SELECT * FROM `' . _DB_PREFIX_ . 'mv_manifest_status_type`
-                WHERE active = 1 
-                AND allowed_manifest_type = "' . $manifest_type . '"
-                ORDER BY position ASC';
+            WHERE active = 1 
+            AND id_manifest_type = ' . (int)$id_manifest_type . '
+            ORDER BY position ASC';
 
         return Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS($sql);
     }
+
 
     // Get allowed order line status type IDs for a manifest status
     public static function getAllowedOrderLineStatusTypes($id_manifest_status_type)

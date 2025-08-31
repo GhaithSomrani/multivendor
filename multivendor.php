@@ -26,7 +26,7 @@ require_once(dirname(__FILE__) . '/classes/OrderHelper.php');
 require_once(dirname(__FILE__) . '/classes/TransactionHelper.php');
 require_once(dirname(__FILE__) . '/classes/Manifest.php');
 require_once(dirname(__FILE__) . '/classes/ManifestStatusType.php');
-
+require_once(dirname(__FILE__) . '/classes/ManifestType.php');
 class multivendor extends Module
 {
     public function __construct()
@@ -142,6 +142,11 @@ class multivendor extends Module
                 'class_name' => 'AdminManifest',
                 'name' => 'Manifests'
             ],
+            [
+                'class_name' => 'AdminManifestType',
+                'name' => 'Manifest Types'
+            ],
+
             [
                 'class_name' => 'AdminVendorPayments',
                 'name' => 'Payments'

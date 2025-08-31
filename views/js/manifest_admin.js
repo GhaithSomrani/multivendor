@@ -4,10 +4,30 @@
  */
 
 // Global function for vendor order details loading
-function loadVendorOrderDetailsBody(vendorId) {
+function loadVendorOrderDetailsBody() {
+    var vendorId = $('select[name="id_vendor"]').val();
+    var manifestTypeId = $('select[name="id_manifest_type"]').val();
+    var manifestStatusId = $('select[name="id_manifest_status"]').val();
+    var addressId = $('select[name="id_address"]').val();
+
+    // Check if all required fields are selected
     if (!vendorId || vendorId == '0') {
         $('#order-details-tbody').html(
             '<tr><td colspan="13" class="text-center text-muted">Please select a vendor to view order details.</td></tr>'
+        );
+        return;
+    }
+
+    if (!manifestTypeId || manifestTypeId == '0') {
+        $('#order-details-tbody').html(
+            '<tr><td colspan="13" class="text-center text-muted">Please select a manifest type to view order details.</td></tr>'
+        );
+        return;
+    }
+
+    if (!manifestStatusId || manifestStatusId == '0') {
+        $('#order-details-tbody').html(
+            '<tr><td colspan="13" class="text-center text-muted">Please select a manifest status to view order details.</td></tr>'
         );
         return;
     }
@@ -24,8 +44,8 @@ function loadVendorOrderDetailsBody(vendorId) {
         }
     });
 
-    var manifestStatusId = $('select[name="id_manifest_status"]').val();
     var id_manifest = $('input[name="id_manifest"]').val() ? $('input[name="id_manifest"]').val() : null;
+
     $.ajax({
         url: manifestAjaxUrl,
         type: 'POST',
@@ -33,8 +53,10 @@ function loadVendorOrderDetailsBody(vendorId) {
             ajax: true,
             action: 'LoadVendorOrderDetailsBody',
             vendor_id: vendorId,
+            id_manifest_type: manifestTypeId,
+            id_manifest_status: manifestStatusId,
+            id_address: addressId,
             id_manifest: id_manifest,
-            manifest_status_id: manifestStatusId,
             filters: filters,
             token: manifestToken
         },
@@ -60,16 +82,47 @@ function loadVendorOrderDetailsBody(vendorId) {
     });
 }
 
-function updateItemCount(count) {
-    $('#items-count').text(count + ' items');
-}
+function loadManifestStatuses(manifestTypeId) {
+    if (!manifestTypeId || manifestTypeId == '0') {
+        var $statusSelect = $('select[name="id_manifest_status"]');
+        $statusSelect.empty().append('<option value="0">Select manifest type first</option>');
+        return;
+    }
 
-function loadVendorOrderDetails(vendorId) {
-    loadVendorOrderDetailsBody(vendorId);
+    $.ajax({
+        url: manifestAjaxUrl,
+        type: 'POST',
+        data: {
+            ajax: true,
+            action: 'getManifestStatusesByType',
+            id_manifest_type: manifestTypeId,
+            token: manifestToken
+        },
+        dataType: 'json',
+        success: function (response) {
+            if (response.success) {
+                var $statusSelect = $('select[name="id_manifest_status"]');
+                $statusSelect.empty();
+                $.each(response.statuses, function (index, status) {
+                    $statusSelect.append('<option value="' + status.id_manifest_status_type + '">' + status.name + '</option>');
+                });
+                // Trigger order details reload if vendor is selected
+                var vendorId = $('select[name="id_vendor"]').val();
+                if (vendorId && vendorId != '0') {
+                    loadVendorOrderDetailsBody();
+                }
+            }
+        }
+    });
 }
 
 function loadVendorAddress(vendorId) {
-    // Get current selected address if in edit mode
+    if (!vendorId || vendorId == '0') {
+        var addressSelect = $('select[name="id_address"]');
+        addressSelect.empty().append('<option value="0">Select vendor first</option>');
+        return;
+    }
+
     var currentAddressId = $('select[name="id_address"]').val() || 0;
 
     $.ajax({
@@ -94,7 +147,6 @@ function loadVendorAddress(vendorId) {
                             .attr('value', addr.id_address)
                             .html(addr.address_display);
 
-                        // Select if this was the previously selected address or marked as selected
                         if (addr.selected || addr.id_address == response.current_address_id) {
                             option.prop('selected', true);
                         }
@@ -108,50 +160,28 @@ function loadVendorAddress(vendorId) {
                             .text('No addresses available for this vendor')
                     );
                 }
-            } else {
-                alert(response.message || 'Error loading vendor address.');
-            }
-        },
-        error: function () {
-            alert('Error loading vendor address. Please try again.');
-        }
-    });
-}
-function loadManifestStatuses(manifestType) {
-    $.ajax({
-        url: manifestAjaxUrl,
-        type: 'POST',
-        data: {
-            ajax: true,
-            action: 'getManifestStatusesByType',
-            manifest_type: manifestType,
-            token: manifestToken
-        },
-        dataType: 'json',
-        success: function (response) {
-            if (response.success) {
-                var $statusSelect = $('select[name="id_manifest_status"]');
-                $statusSelect.empty();
-                $.each(response.statuses, function (index, status) {
-                    $statusSelect.append('<option value="' + status.id_manifest_status_type + '">' + status.name + '</option>');
-                });
+                // Trigger order details reload after address is loaded
+                loadVendorOrderDetailsBody();
             }
         }
     });
 }
 
+function updateItemCount(count) {
+    $('#items-count').text(count + ' items');
+}
 
-// Initialize order details table handlers
 function initializeOrderDetailsHandlers() {
     var selectedValues = [];
     $('.order-detail-checkbox:checked').each(function () {
         selectedValues.push($(this).val());
     });
     $('#mv_manifest_form input[name="selected_order_details"]').val(selectedValues.join(','));
+
     $('.order-detail-checkbox').off('change').on('change', function () {
-        $('.order-detail-checkbox:checked').each(function () {
-            selectedValues.push($(this).val());
-        });
+        var selectedValues = $('.order-detail-checkbox:checked').map(function () {
+            return $(this).val();
+        }).get();
         $('#mv_manifest_form input[name="selected_order_details"]').val(selectedValues.join(','));
     });
 
@@ -159,93 +189,42 @@ function initializeOrderDetailsHandlers() {
         var isChecked = $(this).is(':checked');
         $('.order-detail-checkbox').prop('checked', isChecked).trigger('change');
     });
-
-    // Individual checkbox handlers
-    $('.order-detail-checkbox').off('change').on('change', function () {
-        var selectedValues = []
-        // collect checked values
-        selectedValues.push($('.order-detail-checkbox:checked').map(function () {
-            return $(this).val();
-        }).get());
-        $('#mv_manifest_form input[name="selected_order_details"]').val(selectedValues);
-    });
 }
-
 
 // Document ready initialization
 $(document).ready(function () {
     initializeOrderDetailsHandlers();
-    $('select[name="id_manifest_status"]').on('change', function () {
-        var vendorId = $('select[name="id_vendor"]').val();
-        if (vendorId) {
-            loadVendorOrderDetailsBody(vendorId);
-            initializeOrderDetailsHandlers();
 
-        }
-    });
-    $('select[name="type"]').on('change', function () {
-        var manifestType = $(this).val();
-        if (manifestType) {
-            loadManifestStatuses(manifestType);
-        }
-    });
-
-
+    // Vendor selection handler
     $('select[name="id_vendor"]').on('change', function () {
         var vendorId = $(this).val();
-        loadVendorOrderDetailsBody(vendorId);
         loadVendorAddress(vendorId);
+        // Order details will be loaded after address is loaded
     });
 
+    // Manifest type selection handler
+    $('select[name="id_manifest_type"]').on('change', function () {
+        var manifestTypeId = $(this).val();
+        loadManifestStatuses(manifestTypeId);
+        // Order details will be loaded after status is loaded
+    });
+
+    // Manifest status selection handler
+    $('select[name="id_manifest_status"]').on('change', function () {
+        loadVendorOrderDetailsBody();
+    });
+
+    // Address selection handler
+    $('select[name="id_address"]').on('change', function () {
+        loadVendorOrderDetailsBody();
+    });
+
+    // Filter handlers
     $(document).on('change keyup', '.filter-input', function () {
-        var vendorId = $('select[name="id_vendor"]').val();
-        if (vendorId) {
-            loadVendorOrderDetailsBody(vendorId);
-        }
+        loadVendorOrderDetailsBody();
     });
-
 });
 
-
-
-// Manifest view page specific handlers
-function manifestViewHandlers() {
-
-    // Handle print manifest
-    $('#print-manifest').on('click', function () {
-        window.print();
-    });
-}
-
-// Update manifest items count
-function updateManifestCount() {
-    var count = $('#manifest-details-table tbody tr').length;
-    $('.manifest-count').text(count);
-
-    if (count === 0) {
-        $('#manifest-details-table tbody').html(
-            '<tr><td colspan="6" class="text-center text-muted">No items in this manifest</td></tr>'
-        );
-    }
-}
-
-// Utility functions for messages
-function showSuccessMessage(message) {
-    if (typeof showSuccessNotification !== 'undefined') {
-        showSuccessNotification(message);
-    } else {
-        alert(message);
-    }
-}
-
-function showErrorMessage(message) {
-    if (typeof showErrorNotification !== 'undefined') {
-        showErrorNotification(message);
-    } else {
-        alert(message);
-    }
-}
-
 // Make key functions globally available
-window.loadVendorOrderDetails = loadVendorOrderDetails;
+window.loadVendorOrderDetails = loadVendorOrderDetailsBody;
 window.initializeOrderDetailsHandlers = initializeOrderDetailsHandlers;
