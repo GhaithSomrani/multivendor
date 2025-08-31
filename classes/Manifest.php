@@ -353,7 +353,8 @@ class Manifest extends ObjectModel
         $pdfData = [
             'orderDetailIds' => $orderdetails,
             'vendor' => $id_vendor,
-            'filename' => 'Pickup_Manifest_' . $manifest->reference . '.pdf'
+            'filename' => 'Pickup_Manifest_' . $manifest->reference . '.pdf',
+            'id_address' => $id_address
         ];
         $pdf = new PDF([$pdfData], 'VendorManifestPDF', Context::getContext()->smarty);
         $pdf->render(true);
@@ -367,20 +368,21 @@ class Manifest extends ObjectModel
             $manifest = new Manifest($id_manifest);
             $orderDetailIds = array_column(self::getOrderdetailsIDs($id_manifest), 'id_order_details');
             $pdfData = [
-
                 'vendor' => (int)$manifest->id_vendor,
                 'orderDetailIds' => $orderDetailIds,
                 'export_type' => $manifest->id_manifest_type,
+                'id_address' => $manifest->id_address,
                 'filename' => 'Manifest_' . $manifest->reference . '_' . date('YmdHis') . '.pdf'
             ];
 
             $pdf = new PDF([$pdfData], 'VendorManifestPDF', Context::getContext()->smarty);
-            $pdf->render(true);
+            $pdf->render('D'); // Changed from true to 'D' for inline display
             exit;
         } catch (Exception $e) {
             PrestaShopLogger::addLog('Export PDF Error: ' . $e->getMessage(), 3, null, 'AdminVendorOrderDetails');
         }
     }
+
     public static function getModifiableManifest($id_vendor, $type)
     {
         $sql = 'SELECT m.* 
