@@ -544,17 +544,6 @@ class VendorHelper
         return $isValid;
     }
 
-    public static function verifyOrderDetailOwnership($id_order_detail, $id_customer)
-    {
-        $vendor = self::getVendorByCustomer($id_customer);
-
-        if (!$vendor) {
-            return false;
-        }
-
-        return self::validateVendorOrderDetailAccess($id_order_detail, $vendor['id_vendor']);
-    }
-
     /**
      * Update vendor order line status
      * 
@@ -1149,23 +1138,6 @@ class VendorHelper
         $query->leftJoin('country_lang', 'co', 'co.id_country = a.id_country');
         $query->where('v.id_vendor = ' . (int)$id_vendor);
         $query->where('a.deleted = 0');
-
-        return Db::getInstance()->getRow($query);
-    }
-    /**
-     * Get vendor by order detail ID
-     * 
-     * @param int $id_customer Customer ID
-     * @return array|false Vendor data or false if not found
-     */
-    public static function getVendorByIdOrderDetail($id_order_detail)
-    {
-        $query = new DbQuery();
-        $query->select('v.*');
-        $query->from('mv_vendor_order_detail', 'vod');
-        $query->leftJoin('mv_vendor', 'v', 'v.id_vendor = vod.id_vendor');
-        $query->where('vod.id_order_detail = ' . (int)$id_order_detail);
-        $query->groupBy('v.id_vendor');
 
         return Db::getInstance()->getRow($query);
     }

@@ -45,7 +45,7 @@
                     <div class="mv-stat-card">
                         <div class="mv-stat-content">
                             <h6 class="mv-stat-label">{l s='Revenus (28 derniers jours)' mod='multivendor'}</h6>
-                            <h3 class="mv-stat-value">{$order_summary.total_revenue|number_format:2} TND</h3>
+                            <h3 class="mv-stat-value">{$order_summary.total_revenue|number_format:3} TND</h3>
                             <p class="mv-stat-description">{l s='Vos gains après commission' mod='multivendor'}</p>
                         </div>
                     </div>

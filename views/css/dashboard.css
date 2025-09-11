@@ -53,7 +53,7 @@
     justify-content: space-between;
 }
 .mv-card-title {
-    margin: 0;
+    margin-bottom: 10px ;
     font-size: 18px;
     font-weight: 600;
     color: #1a1a1a;

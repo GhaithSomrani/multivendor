@@ -276,21 +276,7 @@ class OrderLineStatus extends ObjectModel
         return Db::getInstance()->getRow($query);
     }
 
-    /**
-     * Get existing order line status by order detail ID
-     *
-     * @param int $id_order_detail Order detail ID
-     * @return array|false Existing status record or false
-     */
-    public static function getByOrderDetailId($id_order_detail)
-    {
-        $query = new DbQuery();
-        $query->select('*');
-        $query->from('mv_order_line_status');
-        $query->where('id_order_detail = ' . (int)$id_order_detail);
 
-        return Db::getInstance()->getRow($query);
-    }
 
     /**
      * Process commission for order detail
@@ -367,37 +353,7 @@ class OrderLineStatus extends ObjectModel
         }
     }
 
-    /**
-     * Update status using webservice - simplified
-     */
-    public static function updateStatusByWebservice($id_order_detail, $id_status_type)
-    {
-        // Check if status already exists
-        $vendor_id = self::getVendorByOrderDetail($id_order_detail);
-        if (!$vendor_id) {
-            return false;
-        }
 
-        $currentStatus = self::getByOrderDetailAndVendor($id_order_detail, $vendor_id);
-
-        if ($currentStatus) {
-            // Update existing status
-            $orderLineStatus = new OrderLineStatus($currentStatus['id_order_line_status']);
-            $orderLineStatus->id_order_line_status_type = (int)$id_status_type;
-            $orderLineStatus->comment = 'Mis à jour via le service web';
-
-            return $orderLineStatus->update();
-        } else {
-            // Create new status
-            $orderLineStatus = new OrderLineStatus();
-            $orderLineStatus->id_order_detail = (int)$id_order_detail;
-            $orderLineStatus->id_vendor = $vendor_id;
-            $orderLineStatus->id_order_line_status_type = (int)$id_status_type;
-            $orderLineStatus->comment = 'Mis à jour via le service web';
-
-            return $orderLineStatus->save();
-        }
-    }
     /**
      * Set webservice error for API calls
      *

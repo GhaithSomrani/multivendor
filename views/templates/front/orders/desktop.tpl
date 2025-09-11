@@ -132,11 +132,11 @@
                                     <p class="mv-mobile-product-sku"> Marque: {$brand} </p>
                                     <p class="mv-mobile-product-sku"> SKU: {$line.product_reference} </p>
                                     <p class="mv-mobile-product-sku"> {if $line.product_mpn}MPN: {$line.product_mpn}{/if} </p>
-                                    <p class="mv-mobile-product-sku">Prix Public: {$line.product_price|number_format:2}</p>
+                                    <p class="mv-mobile-product-sku">Prix Public: {$line.product_price|number_format:3}</p>
                                 </td>
                                 <td class="mv-text-center {if $line.product_quantity > 1 } flash-fast {/if}">
                                     {$line.product_quantity}</td>
-                                <td>{($line.vendor_amount)|number_format:2} TND</td>
+                                <td>{($line.vendor_amount)|number_format:3} TND</td>
                                 <td>
                                     {if isset($all_statuses[$line.status_type_id]) && !isset($vendor_statuses[$line.status_type_id])}
                                         <span class="mv-status-badge"
@@ -258,9 +258,22 @@
                         <h3 class="mv-card-title">{l s='Manifeste de collecte' mod='multivendor'} (<span
                                 id="manifest-count">0</span>)</h3>
                         <button id="print-manifest-btn" class="mv-btn mv-btn-primary">
-                            <i class="mv-icon">🖨️</i> {l s='Imprimer le manifeste' mod='multivendor'}
+                            <i class="mv-icon">🖨️</i> {l s='Imprimer/Validé  le manifeste' mod='multivendor'}
                         </button>
+
                     </div>
+
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h3 class="mv-card-title address-title">{l s='Sélectionner l\'adresse' mod='multivendor'} </h3>
+                        <select id="address-selection" class="mv-status-select">
+                            {foreach from=$addresses item=address key=key}
+                            <option value="{$address.id_address}"  {if $key == 0} selected {/if}>  {$address.address}</option>
+                            {/foreach}
+                        </select>
+
+                    </div>
+
+
                 </div>
                 <div class="mv-card-body">
                     <div class="table-responsive">

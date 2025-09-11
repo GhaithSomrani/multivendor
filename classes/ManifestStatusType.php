@@ -39,24 +39,19 @@ class ManifestStatusType extends ObjectModel
         ]
     ];
 
-    // Auto-set position when adding new status
     public function add($auto_date = true, $null_values = false)
     {
-        if (!$this->position) {
-            $this->position = $this->getNextPosition();
-        }
+
         return parent::add($auto_date, $null_values);
     }
 
-    // Get next available position
-    private function getNextPosition()
-    {
-        $sql = 'SELECT MAX(position) + 1 FROM `' . _DB_PREFIX_ . 'mv_manifest_status_type`';
-        return (int)Db::getInstance()->getValue($sql) ?: 1;
-    }
 
-    // Get all active status types ordered by position
-    public static function getAllManifestStatusTypes()
+    /**
+     * Get all manifest status types
+     * 
+     * @return array Associative array of all manifest status types, sorted by position
+     */
+    public static function getAllActive()
     {
         $sql = 'SELECT * FROM `' . _DB_PREFIX_ . 'mv_manifest_status_type` 
                 WHERE active = 1 
@@ -64,8 +59,13 @@ class ManifestStatusType extends ObjectModel
         return Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS($sql);
     }
 
-    // Get allowed next status IDs for a given status
-    public static function getAllowedManifestStatusTypesIds($id_manifest_status_type)
+    /**
+     * Get allowed manifest status types IDs for a manifest status type
+     * 
+     * @param int $id_manifest_status_type ID of manifest status type
+     * @return string Comma-separated list of allowed manifest status type IDs
+     */
+    public static function getAllowedIds($id_manifest_status_type)
     {
         $sql = 'SELECT allowed_manifest_status_type_ids FROM `' . _DB_PREFIX_ . 'mv_manifest_status_type` 
                 WHERE active = 1 
@@ -75,13 +75,25 @@ class ManifestStatusType extends ObjectModel
     }
 
 
-    // Get manifest type (pickup/returns) for a status
-    public static function getAllowedManifestTypes($id_manifest_status_type)
+    /**
+     * Get allowed manifest types for a manifest status type
+     * 
+     * @param int $id_manifest_status_type ID of manifest status type
+     * @return string Comma-separated list of allowed manifest types
+     */
+    public static function getAvailable($id_manifest_status_type)
+
     {
-        $sql = 'SELECT allowed_manifest_type FROM `' . _DB_PREFIX_ . 'mv_manifest_status_type` 
-                WHERE active = 1 
-                AND id_manifest_status_type = ' . $id_manifest_status_type;
-        return Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue($sql);
+
+        $allowed_manifest_status_type_ids = self::getAllowedIds($id_manifest_status_type);
+        $query = new DbQuery();
+        $query->select('*');
+        $query->from('mv_manifest_status_type', 'mst');
+        $query->where('mst.active = 1');
+        if ($allowed_manifest_status_type_ids) {
+            $query->where('mst.id_manifest_status_type IN (' . $allowed_manifest_status_type_ids . ')');
+        }
+        return Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS($query);
     }
 
     /**
@@ -120,7 +132,12 @@ class ManifestStatusType extends ObjectModel
     }
 
 
-    // Get allowed order line status type IDs for a manifest status
+    /**
+     * Get allowed order line status types for a manifest status type
+     * 
+     * @param int $id_manifest_status_type Manifest status type ID
+     * @return string Comma-separated list of allowed order line status type IDs
+     */
     public static function getAllowedOrderLineStatusTypes($id_manifest_status_type)
     {
         $sql = 'SELECT allowed_order_line_status_type_ids FROM `' . _DB_PREFIX_ . 'mv_manifest_status_type` 
@@ -140,5 +157,20 @@ class ManifestStatusType extends ObjectModel
         $sql = 'SELECT next_order_line_status_type_ids FROM `'
             . _DB_PREFIX_ . 'mv_manifest_status_type` WHERE id_manifest_status_type = ' . $id_manifest_status_type;
         return Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue($sql);
+    }
+
+
+
+
+    public function delete()
+    {
+        $sql = 'SELECT COUNT(*) FROM `' . _DB_PREFIX_ . 'mv_manifest` 
+            WHERE id_manifest_status = ' . (int)$this->id;
+
+        if (Db::getInstance()->getValue($sql)) {
+            throw new PrestaShopException('Cannot delete a manifest status that is linked to a manifest');
+        }
+
+        return parent::delete();
     }
 }

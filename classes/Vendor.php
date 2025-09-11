@@ -119,8 +119,9 @@ class Vendor extends ObjectModel
         $query = new DbQuery();
         $query->select('*');
         $query->from('address');
-        $query->where('id_customer = ' . (int)$this->id_customer );
-        
+        $query->where('id_customer = ' . (int)$this->id_customer) ;
+        $query->where('deleted = 0');
+        $query->where('active = 1');
 
         return Db::getInstance()->executeS($query);
     }
@@ -212,4 +213,19 @@ class Vendor extends ObjectModel
 
         return $summary;
     }
+    /**
+     * Get vendor ID from order detail ID
+     * @param int $orderDetailId
+     * @return int|false
+     */
+    public static function getVendorIdFromOrderDetail($orderDetailId)
+    {
+        $sql = 'SELECT id_vendor
+                FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail
+                WHERE id_order_detail = ' . (int)$orderDetailId;
+        $result = Db::getInstance()->getValue($sql);
+
+        return $result ? (int)$result : false;
+    }
+  
 }

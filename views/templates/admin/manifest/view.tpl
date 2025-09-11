@@ -4,6 +4,31 @@
         <i class="icon-list"></i> {l s='Manifest Details' mod='multivendor'}
         <span class="badge manifest-count">{$total_items}</span>
     </div>
+    <div class="row" style="margin-top: 20px;">
+        <div class="col-md-12">
+            <h4>{l s='Manifest Status' mod='multivendor'}</h4>
+            <form method="post" action="{$smarty.server.REQUEST_URI}">
+                <div class="row">
+                    <div class="col-md-4">
+                        <select name="id_manifest_status" class="form-control" onchange="this.form.submit()">
+                            {foreach $available_statuses as $status}
+                                <option value="{$status.id_manifest_status_type}"
+                                    {if $manifest->id_manifest_status == $status.id_manifest_status_type}selected{/if}>
+                                    {$status.name|escape:'html':'UTF-8'}
+                                </option>
+                            {/foreach}
+                        </select>
+                    </div>
+                    <div class="col-md-8">
+                        <p class="help-block">
+                            {l s='Select status to update manifest and associated order lines' mod='multivendor'}</p>
+                    </div>
+                </div>
+                <input type="hidden" name="submitUpdateManifestStatus" value="1">
+                <input type="hidden" name="id_manifest" value="{$manifest->id}">
+            </form>
+        </div>
+    </div>
 
     <div class="panel-body">
         <div class="row">
@@ -46,7 +71,6 @@
                 {/if}
             </div>
         </div>
-
         {if $manifest_details && count($manifest_details) > 0}
             <h4>{l s='Items in Manifest' mod='multivendor'}</h4>
             <div class="table-responsive">
@@ -92,7 +116,7 @@
                                 </td>
                                 <td>
                                     {if $detail.vendor_amount}
-                                        {$detail.vendor_amount|number_format:2}
+                                        {$detail.vendor_amount|number_format:3}
                                     {else}
                                         <span class="text-muted">-</span>
                                     {/if}
@@ -100,8 +124,8 @@
                                 <td>
                                     {if $detail.payment_status}
                                         <span class="badge"
-                                            style="background-color: {if $detail.payment_status == 'completed'}#28a745{elseif $detail.payment_status == 'pending'}#ffc107{else}#dc3545{/if}; color: white;">
-                                            {if $detail.payment_status == 'completed'}{l s='Payé' mod='multivendor'}
+                                            style="background-color: {if $detail.payment_status == 'paid'}#28a745{elseif $detail.payment_status == 'pending'}#ffc107{else}#dc3545{/if}; color: white;">
+                                            {if $detail.payment_status == 'paid'}{l s='Payé' mod='multivendor'}
                                             {elseif $detail.payment_status == 'pending'}{l s='En attente' mod='multivendor'}
                                             {elseif $detail.payment_status == 'cancelled'}{l s='Annulé' mod='multivendor'}
                                             {else}
@@ -157,16 +181,18 @@
         <a href="{$back_url}" class="btn btn-default">
             <i class="process-icon-back"></i> {l s='Back to list' mod='multivendor'}
         </a>
-        <a href="{$link->getAdminLink('AdminManifest')}&id_manifest={$manifest->id}&updatemv_manifest"
-            class="btn btn-primary">
-            <i class="process-icon-edit"></i> {l s='Edit manifest' mod='multivendor'}
-        </a>
+        {assign var='isEditable' value=Manifest::isEditable($manifest->id)}
+        {if $isEditable}
+            <a href="{$link->getAdminLink('AdminManifest')}&id_manifest={$manifest->id}&updatemv_manifest"
+                class="btn btn-primary">
+                <i class="process-icon-edit"></i> {l s='Edit manifest' mod='multivendor'}
+            </a>
+        {/if}
         <button type="button" class="btn btn-info" id="print-manifest">
             <i class="icon-print"></i> {l s='Print manifest' mod='multivendor'}
         </button>
     </div>
 </div>
-
 <script type="text/javascript">
     // Update the print manifest button handler
     $('#print-manifest').on('click', function() {

@@ -16,7 +16,7 @@ class AdminManifestStatusTypeController extends ModuleAdminController
         $this->identifier = 'id_manifest_status_type';
         $this->_defaultOrderBy = 'position';
         $this->_defaultOrderWay = 'ASC';
-        $this->position_identifier = 'position';
+        $this->position_identifier = 'id_manifest_status_type';
 
         parent::__construct();
 
@@ -65,6 +65,7 @@ class AdminManifestStatusTypeController extends ModuleAdminController
         return parent::renderList();
     }
 
+    
     public function renderForm()
     {
         $this->fields_form = [
@@ -174,10 +175,18 @@ class AdminManifestStatusTypeController extends ModuleAdminController
         $_POST = $this->processMultiSelectFields($_POST);
         return parent::processUpdate();
     }
-
+    public function processDelete()
+    {
+        try {
+            return parent::processDelete();
+        } catch (PrestaShopException $e) {
+            $this->errors[] = $e->getMessage();
+            return false;
+        }
+    }
     private function processMultiSelectFields($post)
     {
-        $fields = ['allowed_manifest_status_type_ids', 'allowed_order_line_status_type_ids', 'next_order_line_status_type_ids'];
+        $fields = ['allowed_manifest_status_type_ids', 'allowed_order_line_status_type_ids'];
 
         foreach ($fields as $field) {
             $values = [];
@@ -195,13 +204,11 @@ class AdminManifestStatusTypeController extends ModuleAdminController
 
     public function getFieldsValue($obj)
     {
-        // Start with default values
         $fields = parent::getFieldsValue($obj);
-        // Multi-select checkbox fields
+
         $multiSelectFields = [
             'allowed_manifest_status_type_ids',
             'allowed_order_line_status_type_ids',
-            'next_order_line_status_type_ids'
         ];
 
         foreach ($multiSelectFields as $field) {

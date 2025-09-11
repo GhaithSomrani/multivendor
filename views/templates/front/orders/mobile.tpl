@@ -130,7 +130,7 @@
                                 {if ($brand)}
                                     <p class="mv-mobile-product-sku">Marque: {$brand}</p>
                                 {/if}
-                                <p class="mv-mobile-product-sku mv-mobile-value mv-mobile-amount">Prix Public: {$line.product_price|number_format:2}</p>
+                                <p class="mv-mobile-product-sku mv-mobile-value mv-mobile-amount">Prix Public: {$line.product_price|number_format:3}</p>
 
                             </div>
 
@@ -145,7 +145,7 @@
                                 </div>
                                 <div class="mv-mobile-detail-row">
                                     <span class="mv-mobile-label">{l s='Total' mod='multivendor'}</span>
-                                    <span class="mv-mobile-value mv-mobile-amount">{($line.vendor_amount)|number_format:2}
+                                    <span class="mv-mobile-value mv-mobile-amount">{($line.vendor_amount)|number_format:3}
                                         TND</span>
                                 </div>
                             </div>

@@ -9,17 +9,17 @@
         {if isset($payment)}
             - Payment #{$payment->id}
         {/if}
-        
+
         {* Print Button *}
         {if isset($print_url)}
-        <div class="pull-right">
-            <a href="{$print_url}" target="_blank" class="btn btn-default">
-                <i class="icon-print"></i> {l s='Print Payment' mod='multivendor'}
-            </a>
-        </div>
+            <div class="pull-right">
+                <a href="{$print_url}" target="_blank" class="btn btn-default">
+                    <i class="icon-print"></i> {l s='Print Payment' mod='multivendor'}
+                </a>
+            </div>
         {/if}
     </div>
-    
+
     <div class="panel-body">
         {if isset($payment)}
             {* Payment Information *}
@@ -33,12 +33,13 @@
                         </tr>
                         <tr>
                             <td><strong>{l s='Amount:' mod='multivendor'}</strong></td>
-                            <td class="text-success"><strong>{$payment->amount|number_format:2} TND</strong></td>
+                            <td class="text-success"><strong>{$payment->amount|number_format:3} TND</strong></td>
                         </tr>
                         <tr>
                             <td><strong>{l s='Status:' mod='multivendor'}</strong></td>
                             <td>
-                                <span class="badge badge-{if $payment->status == 'completed'}success{elseif $payment->status == 'pending'}warning{elseif $payment->status == 'cancelled'}danger{else}default{/if}">
+                                <span
+                                    class="badge badge-{if $payment->status == 'completed'}success{elseif $payment->status == 'pending'}warning{elseif $payment->status == 'cancelled'}danger{else}default{/if}">
                                     {$payment->status|ucfirst}
                                 </span>
                             </td>
@@ -57,7 +58,7 @@
                         </tr>
                     </table>
                 </div>
-                
+
                 <div class="col-md-6">
                     <h4>{l s='Vendor Information' mod='multivendor'}</h4>
                     <table class="table table-bordered">
@@ -80,7 +81,8 @@
                         <tr>
                             <td><strong>{l s='Status:' mod='multivendor'}</strong></td>
                             <td>
-                                <span class="badge badge-{if $vendor->status == 'approved'}success{elseif $vendor->status == 'pending'}warning{else}danger{/if}">
+                                <span
+                                    class="badge badge-{if $vendor->status == 'approved'}success{elseif $vendor->status == 'pending'}warning{else}danger{/if}">
                                     {$vendor->status|ucfirst}
                                 </span>
                             </td>
@@ -110,8 +112,9 @@
                                     {foreach from=$transaction_details item=detail}
                                         <tr>
                                             <td>
-                                                <a href="{$link->getAdminLink('AdminOrders')}&id_order={$detail.id_order}&vieworder" target="_blank">
-                                                    #{$detail.order_reference|default:'N/A'}
+                                                <a href="{$link->getAdminLink('AdminOrders')}&id_order={$detail.id_order}&vieworder"
+                                                    target="_blank">
+                                                    {$detail.id_order|default:'N/A'}#{$detail.id_order_detail|default:'N/A'}
                                                 </a>
                                             </td>
                                             <td>
@@ -123,11 +126,12 @@
                                                     <br><small class="text-info">Qty: {$detail.product_quantity}</small>
                                                 {/if}
                                             </td>
-                                            <td class="text-info"><strong>{$detail.vendor_amount|number_format:2} TND</strong></td>
+                                            <td class="text-info"><strong>{$detail.vendor_amount|number_format:3} TND</strong></td>
                                             <td>{$detail.transaction_type|default:'commission'|ucfirst}</td>
                                             <td>{dateFormat date=$detail.order_date full=0}</td>
                                             <td>
-                                                <span class="badge badge-{if $detail.status == 'completed'}success{elseif $detail.status == 'pending'}warning{elseif $detail.status == 'cancelled'}danger{else}info{/if}">
+                                                <span
+                                                    class="badge badge-{if $detail.status == 'completed'}success{elseif $detail.status == 'pending'}warning{elseif $detail.status == 'cancelled'}danger{else}info{/if}">
                                                     {$detail.status|default:'pending'|ucfirst}
                                                 </span>
                                             </td>
@@ -136,8 +140,10 @@
                                 </tbody>
                                 <tfoot>
                                     <tr class="info">
-                                        <td colspan="3" class="text-right"><strong>{l s='Total Payment Amount:' mod='multivendor'}</strong></td>
-                                        <td><strong class="text-success">{$payment->amount|number_format:2} TND</strong></td>
+                                        <td colspan="3" class="text-right">
+                                            <strong>{l s='Total Payment Amount:' mod='multivendor'}</strong>
+                                        </td>
+                                        <td><strong class="text-success">{$payment->amount|number_format:3} TND</strong></td>
                                         <td colspan="3"></td>
                                     </tr>
                                 </tfoot>
@@ -170,9 +176,10 @@
                                 <i class="icon-arrow-left"></i> {l s='Back to Payments List' mod='multivendor'}
                             </a>
                             {if $payment->status == 'pending'}
-                            <a href="{$link->getAdminLink('AdminVendorPayments')}&id_vendor_payment={$payment->id}&updatevendor_payment" class="btn btn-primary">
-                                <i class="icon-edit"></i> {l s='Edit Payment' mod='multivendor'}
-                            </a>
+                                <a href="{$link->getAdminLink('AdminVendorPayments')}&id_vendor_payment={$payment->id}&updatevendor_payment"
+                                    class="btn btn-primary">
+                                    <i class="icon-edit"></i> {l s='Edit Payment' mod='multivendor'}
+                                </a>
                             {/if}
                         </div>
                     </div>
@@ -187,22 +194,22 @@
 </div>
 
 <style>
-.panel-heading .pull-right {
-    margin-top: -5px;
-}
+    .panel-heading .pull-right {
+        margin-top: -5px;
+    }
 
-.table-responsive {
-    margin-top: 15px;
-}
+    .table-responsive {
+        margin-top: 15px;
+    }
 
-.badge {
-    font-size: 11px;
-}
+    .badge {
+        font-size: 11px;
+    }
 
-.panel-body h4 {
-    color: #555;
-    border-bottom: 1px solid #ddd;
-    padding-bottom: 8px;
-    margin-bottom: 15px;
-}
+    .panel-body h4 {
+        color: #555;
+        border-bottom: 1px solid #ddd;
+        padding-bottom: 8px;
+        margin-bottom: 15px;
+    }
 </style>

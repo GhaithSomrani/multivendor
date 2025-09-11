@@ -78,6 +78,10 @@ class AdminVendorPaymentsController extends ModuleAdminController
             'markCompleted' => [
                 'text' => $this->l('Mark as Completed'),
                 'confirm' => $this->l('Mark selected payments as completed?')
+            ],
+            'delete' => [
+                'text' => $this->l('Delete selected'),
+                'confirm' => $this->l('Delete selected payments?')
             ]
         ];
     }

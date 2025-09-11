@@ -39,7 +39,7 @@
         </td>
         <td>
             {if $detail.vendor_amount}
-                {$detail.vendor_amount|number_format:2}
+                {$detail.vendor_amount|number_format:3}
             {else}
                 <span class="text-muted">-</span>
             {/if}
@@ -48,7 +48,7 @@
             {if $detail.payment_status}
                 <span class="badge"
                     style="background-color: {if $detail.payment_status == 'completed'}#28a745{elseif $detail.payment_status == 'pending'}#ffc107{else}#dc3545{/if}; color: white;">
-                    {if $detail.payment_status == 'completed'}{l s='Payé' mod='multivendor'}
+                    {if $detail.payment_status == 'paid'}{l s='Payé' mod='multivendor'}
                     {elseif $detail.payment_status == 'pending'}{l s='En attente' mod='multivendor'}
                     {elseif $detail.payment_status == 'cancelled'}{l s='Annulé' mod='multivendor'}
                     {else}

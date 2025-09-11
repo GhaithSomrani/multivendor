@@ -35,8 +35,9 @@
                     <div class="form-group">
                         <label for="export_type">Export Type:</label>
                         <select name="export_type" id="export_type" class="form-control" required>
-                            <option value="retour">Retour</option>
-                            <option value="pickup">Pickup</option>
+                            {foreach from=$manifest_types item=type}
+                                <option value="{$type.id}">{$type.name}</option>
+                            {/foreach}
                         </select>
                     </div>
                 </div>
@@ -79,7 +80,7 @@
             var selectedStatus = [];
             var exportType = $('#export_type').val();
             var vendorId = $('#export_vendor').val();
-                console.log(exportType, vendorId);
+            console.log(exportType, vendorId);
             $('input[name="vendor_order_detailsBox[]"]:checked').each(function() {
                 selectedStatus.push($(this).val());
             });
@@ -105,27 +106,11 @@
 
                 if (xhr.status === 200) {
                     var blob = xhr.response;
-                    var contentDisposition = xhr.getResponseHeader('Content-Disposition');
-                    var filename = 'export.pdf';
-
-                    if (contentDisposition) {
-                        var filenameMatch = contentDisposition.match(/filename="(.+)"/);
-                        if (filenameMatch) {
-                            filename = filenameMatch[1];
-                        }
-                    }
-
                     var url = window.URL.createObjectURL(blob);
-                    var a = document.createElement('a');
-                    a.style.display = 'none';
-                    a.href = url;
-                    a.download = filename;
-                    document.body.appendChild(a);
-                    a.click();
+                    window.open(url, '_blank');
                     window.URL.revokeObjectURL(url);
-                    document.body.removeChild(a);
                 } else {
-                    alert('Error generating PDF. Please try again.');
+                    alert('Error generating export. Please try again.');
                 }
             };
 

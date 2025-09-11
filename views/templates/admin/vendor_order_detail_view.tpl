@@ -42,7 +42,7 @@
                         </tr>
                         <tr>
                             <td><strong>{l s='Order Total:' mod='multivendor'}</strong></td>
-                            <td>{$order->total_paid|number_format:2} TND</td>
+                            <td>{$order->total_paid|number_format:3} TND</td>
                         </tr>
                     </table>
                 </div>
@@ -102,7 +102,7 @@
                         </tr>
                         <tr>
                             <td><strong>{l s='Unit Price:' mod='multivendor'}</strong></td>
-                            <td>{$vendor_order_detail->product_price|number_format:2} TND</td>
+                            <td>{$vendor_order_detail->product_price|number_format:3} TND</td>
                         </tr>
                         <tr>
                             <td><strong>{l s='Quantity:' mod='multivendor'}</strong></td>
@@ -122,18 +122,18 @@
                         <tr>
                             <td><strong>{l s='Commission Amount:' mod='multivendor'}</strong></td>
                             <td class="text-warning">
-                                {$vendor_order_detail->commission_amount|number_format:2} TND</td>
+                                {$vendor_order_detail->commission_amount|number_format:3} TND</td>
                         </tr>
                         <tr>
                             <td><strong>{l s='Vendor Amount:' mod='multivendor'}</strong></td>
-                            <td class="text-success">{$vendor_order_detail->vendor_amount|number_format:2}
+                            <td class="text-success">{$vendor_order_detail->vendor_amount|number_format:3}
                             </td>
                         </tr>
                         <tr>
                             <td><strong>{l s='Total Product Value:' mod='multivendor'}</strong></td>
                             <td class="text-info">
                                 {assign var="total_value" value=($vendor_order_detail->commission_amount + $vendor_order_detail->vendor_amount)}
-                                {$total_value|number_format:2}
+                                {$total_value|number_format:3}
                             </td>
                         </tr>
                     </table>

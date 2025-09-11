@@ -55,4 +55,14 @@ class AdminManifestTypeController extends ModuleAdminController
         $this->addRowAction('edit');
         $this->addRowAction('delete');
     }
+
+    public function processDelete()
+    {
+        try {
+            return parent::processDelete();
+        } catch (PrestaShopException $e) {
+            $this->errors[] = $e->getMessage();
+            return false;
+        }
+    }
 }

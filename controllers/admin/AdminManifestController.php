@@ -4,6 +4,8 @@
  * Admin Manifest Controller
  */
 
+use GuzzleHttp\Transaction;
+
 if (!defined('_PS_VERSION_')) {
     exit;
 }
@@ -20,11 +22,6 @@ class AdminManifestController extends ModuleAdminController
         $this->_defaultOrderBy = 'id_manifest';
         $this->_defaultOrderWay = 'DESC';
         $this->list_id = 'manifest';
-
-        // Enable actions
-        $this->addRowAction('view');
-        $this->addRowAction('edit');
-        $this->addRowAction('delete');
         $this->allow_export = true;
         $this->_use_found_rows = true;
 
@@ -32,6 +29,7 @@ class AdminManifestController extends ModuleAdminController
         parent::__construct();
 
         $this->fields_list = [
+
             'id_manifest' => [
                 'title' => $this->l('ID'),
                 'align' => 'center',
@@ -41,19 +39,14 @@ class AdminManifestController extends ModuleAdminController
                 'title' => $this->l('Reference'),
                 'filter_key' => 'a!reference',
             ],
-            'type' => [
+            'type_name' => [
                 'title' => $this->l('Type'),
+                'filter_key' => 'mt!name',
                 'type' => 'select',
-                'list' => [
-                    Manifest::TYPE_PICKUP => $this->l('Pickup'),
-                    Manifest::TYPE_RETURNS => $this->l('Returns')
-                ],
-                'filter_key' => 'a!type',
                 'filter_type' => 'select',
-                'filter_list' => [
-                    Manifest::TYPE_PICKUP => $this->l('Pickup'),
-                    Manifest::TYPE_RETURNS => $this->l('Returns')
-                ]
+                'list' => $this->getAllManifestTypesForFilter(),
+                'filter_list' => $this->getAllManifestTypesForFilter(),
+                'search' => true
             ],
             'shop_name' => [
                 'title' => $this->l('Vendor'),
@@ -71,15 +64,13 @@ class AdminManifestController extends ModuleAdminController
                 'filter_list' => $this->getAllManifestStatusesForFilter(),
                 'search' => true
             ],
-
             'total_items' => [
+                'filter_key' => 'a!total_items',
                 'title' => $this->l('Total Items'),
                 'align' => 'center',
-                'search' => true,
-                'orderby' => true,
-                'callback' => 'displayTotalItems'
+                'search' => false,
+                'orderby' => false
             ],
-
             'date_add' => [
                 'title' => $this->l('Date Add'),
                 'align' => 'right',
@@ -94,18 +85,45 @@ class AdminManifestController extends ModuleAdminController
             ]
         ];
 
-
         $this->_join .= '
-    LEFT JOIN `' . _DB_PREFIX_ . 'mv_vendor` v ON (v.id_vendor = a.id_vendor)
-    LEFT JOIN `' . _DB_PREFIX_ . 'mv_manifest_status_type` mst ON (mst.id_manifest_status_type = a.id_manifest_status)';
-
-
+        LEFT JOIN `' . _DB_PREFIX_ . 'mv_vendor` v ON (v.id_vendor = a.id_vendor)
+        LEFT JOIN `' . _DB_PREFIX_ . 'mv_manifest_status_type` mst ON (mst.id_manifest_status_type = a.id_manifest_status) 
+        LEFT JOIN `' . _DB_PREFIX_ . 'mv_manifest_details` md ON (md.id_manifest = a.id_manifest) 
+        LEFT JOIN `' . _DB_PREFIX_ . 'mv_manifest_type` mt ON (mt.id_manifest_type = a.id_manifest_type)';
 
         $this->_select = '
-   v.shop_name as shop_name,
-   mst.name as status_name,
-   a.id_manifest_status as status_display';
+        a.id_manifest as manifest,
+            v.shop_name as shop_name,
+            mst.name as status_name,
+            a.id_manifest_status as status_display,
+            count(md.id_manifest_details) as total_items,
+            mt.name as type_name';
+
+        $this->_group = 'GROUP BY a.id_manifest';
+        $this->bulk_actions = array(
+            'merge' => array(
+                'text' => $this->l('merge'),
+                'icon' => 'icon-trash',
+                'confirm' => $this->l('Are you sure?'),
+                'action' => 'merge'
+            )
+        );
+        $this->addRowAction('view');
+        $this->addRowAction('merge');
     }
+
+    private function getAllManifestTypesForFilter()
+    {
+        $types = ManifestType::getAll();
+        $filterList = [];
+
+        foreach ($types as $type) {
+            $filterList[$type['name']] = $type['name'];
+        }
+
+        return $filterList;
+    }
+
 
     /**
      * Display address name callback
@@ -114,6 +132,8 @@ class AdminManifestController extends ModuleAdminController
     {
         return $value;
     }
+
+
     public function displayStatusName($value, $row)
     {
         if (!$value) {
@@ -124,7 +144,7 @@ class AdminManifestController extends ModuleAdminController
     }
     private function getAllManifestStatusesForFilter()
     {
-        $statuses = ManifestStatusType::getAllManifestStatusTypes();
+        $statuses = ManifestStatusType::getAllActive();
         $filterList = [];
 
         foreach ($statuses as $status) {
@@ -132,20 +152,6 @@ class AdminManifestController extends ModuleAdminController
         }
 
         return $filterList;
-    }
-
-
-
-    /**
-     * Display total items callback
-     */
-    public function displayTotalItems($value, $row)
-    {
-        $sql = 'SELECT COUNT(*) FROM `' . _DB_PREFIX_ . 'mv_manifest_details` 
-                WHERE id_manifest = ' . (int)$row['id_manifest'];
-
-        $count = Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue($sql);
-        return (int)$count;
     }
     /**
      * Render form for add/edit
@@ -161,12 +167,19 @@ class AdminManifestController extends ModuleAdminController
             'input' => [
 
                 [
+                    'type' => 'hidden',
+                    'label' => $this->l('Reference'),
+                    'name' => 'reference',
+                    'id' => 'reference',
+                    'hidden' => true
+                ],
+
+                [
                     'type' => 'select',
                     'label' => $this->l('vendor'),
                     'name' => 'id_vendor',
                     'required' => true,
                     'disabled' => (bool)$this->object->id,
-
                     'options' => [
                         'query' => $this->getVendors(),
                         'id' => 'id_vendor',
@@ -178,6 +191,7 @@ class AdminManifestController extends ModuleAdminController
                         ],
                     ],
                 ],
+
 
                 [
                     'type' => 'select',
@@ -200,6 +214,7 @@ class AdminManifestController extends ModuleAdminController
                     'label' => $this->l('Status'),
                     'name' => 'id_manifest_status',
                     'required' => true,
+                    'disabled' => (bool)$this->object->id,
                     'options' => [
                         'query' => $this->getManifestStatuses(),
                         'id' => 'id_manifest_status_type',
@@ -231,10 +246,7 @@ class AdminManifestController extends ModuleAdminController
 
 
 
-        // Auto-generate reference if creating new manifest
-        if (!$this->object->id) {
-            $this->fields_value['reference'] = Manifest::generateReference();
-        }
+
 
 
         $form = parent::renderForm();
@@ -272,7 +284,7 @@ class AdminManifestController extends ModuleAdminController
         ]);
 
 
-        return $this->context->smarty->fetch($this->getTemplatePath() . '/vendor_order_details_table.tpl');
+        return $this->context->smarty->fetch($this->getTemplatePath() . 'vendor_order_details_table.tpl');
     }
 
     /**
@@ -318,19 +330,44 @@ class AdminManifestController extends ModuleAdminController
     private function getManifestStatuses()
     {
 
-        $idManifestType = Tools::getValue('id_manifest_type', $this->object->id_manifest_type ?? 0);
+        $idManifestType = Tools::getValue('id_manifest_type', $this->object->id_manifest_type);
 
 
         return ManifestStatusType::getManifestStatusByAllowedManifestType($idManifestType);
     }
+
+    protected function getNonModifedIds()
+    {
+        $query = new DbQuery();
+        $query->select('id_manifest');
+        $query->from('mv_manifest', 'ms');
+        $query->leftJoin('mv_manifest_status_type', 'mst', 'mst.id_manifest_status_type = ms.id_manifest_status');
+        $query->where('mst.allowed_modification = 0');
+        $result = Db::getInstance()->executeS($query);
+        return array_column($result, 'id_manifest');
+    }
+    protected function getNonDeleteIds()
+    {
+        $query = new DbQuery();
+        $query->select('id_manifest');
+        $query->from('mv_manifest', 'ms');
+        $query->leftJoin('mv_manifest_status_type', 'mst', 'mst.id_manifest_status_type = ms.id_manifest_status');
+        $query->where('mst.allowed_delete = 0');
+        $result = Db::getInstance()->executeS($query);
+        return array_column($result, 'id_manifest');
+    }
+
+
 
     /**
      * Process save
      */
     public function processSave()
     {
+
+
         if (!Tools::getValue('reference')) {
-            $_POST['reference'] = Manifest::generateReference();
+            $_POST['reference'] = Manifest::generateReference($_POST['id_vendor'], $_POST['id_manifest_type']);
         }
 
         $result = parent::processSave();
@@ -338,7 +375,9 @@ class AdminManifestController extends ModuleAdminController
         if ($this->object->id) {
             $manifest = new Manifest($this->object->id);
             $manifest->clearOrderDetails();
-            $manifest->id_manifest_status = (int)Tools::getValue('id_manifest_status');
+            if ((int)Tools::getValue('id_manifest_status')) {
+                $manifest->id_manifest_status = (int)Tools::getValue('id_manifest_status');
+            }
             $manifest->update();
         }
 
@@ -354,6 +393,12 @@ class AdminManifestController extends ModuleAdminController
         return $result;
     }
 
+    public function processDelete()
+    {
+        $manifest = new Manifest(Tools::getValue('id_manifest'));
+        $manifest->clearOrderDetails();
+        return  parent::processDelete();
+    }
 
     /**
      * Add order detail to manifest
@@ -379,8 +424,9 @@ class AdminManifestController extends ModuleAdminController
         }
 
         $address = new Address($manifest->id_address);
-
+        $availableStatuses = ManifestStatusType::getAvailable($this->object->id_manifest_status);
         $this->context->smarty->assign([
+            'available_statuses' => $availableStatuses,
             'vendor_name' =>  $vendor['shop_name'],
             'manifest' => $manifest,
             'manifest_details' => $details,
@@ -401,6 +447,19 @@ class AdminManifestController extends ModuleAdminController
     public function getTemplatePath()
     {
         return _PS_MODULE_DIR_ . $this->module->name . '/views/templates/admin/manifest/';
+    }
+
+    public function processsubmitUpdateManifestStatus()
+    {
+        try {
+            $id_manifest = (int)Tools::getValue('id_manifest');
+            $id_manifest_status = (int)Tools::getValue('id_manifest_status');
+            $manifest = new Manifest($id_manifest);
+            $manifest->id_manifest_status = $id_manifest_status;
+            $manifest->update();
+        } catch (Exception $e) {
+            return $this->errors[] = $e->getMessage();
+        }
     }
 
     /**
@@ -459,8 +518,94 @@ class AdminManifestController extends ModuleAdminController
             }
             return null;
         }
+        if (Tools::isSubmit('submitBulkmergemv_manifest')) {
+            try {
+                $this->mergeManifestIntoPayment(Tools::getValue('manifestBox'));
+            } catch (Exception $e) {
+                $this->errors[] = $e->getMessage();
+            }
+        }
+        if (Tools::isSubmit('submitUpdateManifestStatus')) {
+            $this->processsubmitUpdateManifestStatus();
+        }
 
         return parent::postProcess();
+    }
+
+
+    public function mergeManifestIntoPayment($manifestIds)
+    {
+        $manifestsData = [];
+        $totalAmount = 0;
+        $reference = 'M';
+        foreach ($manifestIds as $id_manifest) {
+            $reference .=  '-' . $id_manifest;
+
+            try {
+                $manifest = new Manifest($id_manifest);
+                $orderDetailIds = array_column(Manifest::getOrderdetailsIDs($id_manifest), 'id_order_details');
+                $transactionType = $manifest->getTransactionType();
+                $Amount = $this->getAmounts($orderDetailIds, $transactionType, $id_manifest);
+                $manifestsData[] = [
+                    'id_vendor' => $manifest->id_vendor,
+                    'id_manifest' => $id_manifest,
+                    'Manifest_type' => $manifest->id_manifest_type,
+                    'orderDetailIds' => $orderDetailIds,
+                    'amount' => $Amount,
+                ];
+                $totalAmount += $Amount;
+            } catch (Exception $e) {
+                $this->errors[] = $e->getMessage();
+            }
+        }
+        $vendorArray = array_column($manifestsData, 'id_vendor');
+
+        if (count(array_unique($vendorArray)) != 1) {
+            throw new Exception('Vous ne pouvez fusionner que les manifestes du même fournisseur');
+        }
+
+        $vendorPaymentObj = new VendorPayment();
+        $vendorPaymentObj->id_vendor = $vendorArray[0];
+        $vendorPaymentObj->amount = $totalAmount;
+        $vendorPaymentObj->reference = $reference;
+        $vendorPaymentObj->status = 'pending';
+        $vendorPaymentObj->save();
+
+        $id_payment = $vendorPaymentObj->id;
+        dump($id_payment);
+        foreach ($manifestsData as $manifestData) {
+            $manifest = new Manifest($manifestData['id_manifest']);
+            $transactionType = $manifest->getTransactionType();
+            $this->updateTransaction($manifestData['orderDetailIds'], $transactionType, $id_payment);
+        }
+    }
+    private function getAmounts($orderDetailIds, $transactionType, $id_manifest): float
+    {
+        $totalAmount = 0;
+        foreach ($orderDetailIds as $id_order_detail) {
+            $transactionsRow = TransactionHelper::getExistingTransaction($id_order_detail, $transactionType);
+            if (!$transactionsRow) {
+                throw new Exception('Transaction non trouvée pour le détail de commande : ' . $id_order_detail . ' et le type de transaction : ' . $transactionType . ' dans le manifeste : ' . $id_manifest);
+            }
+            $totalAmount += (float)$transactionsRow['vendor_amount'];
+        }
+        return $totalAmount;
+    }
+
+
+    private function updateTransaction($orderDetailIds, $transactionType, $id_payment)
+    {
+
+        foreach ($orderDetailIds as $id_order_detail) {
+            $transactionsRow = TransactionHelper::getExistingTransaction($id_order_detail, $transactionType);
+            if ($transactionsRow['id_vendor_payment'] == 0) {
+                $transactionsObj = new VendorTransaction($transactionsRow['id_vendor_transaction']);
+                $transactionsObj->id_vendor_payment = (int)$id_payment;
+                $transactionsObj->save();
+            } else {
+                throw new Exception('order detail ' . $id_order_detail . ' already has a payment :' . $transactionsRow['id_vendor_payment']);
+            }
+        }
     }
 
     public function ajaxProcessLoadVendorAddress()
@@ -580,7 +725,7 @@ class AdminManifestController extends ModuleAdminController
             'selected_ids' => $selected_ids,
         ]);
 
-        $html = $this->context->smarty->fetch($this->getTemplatePath() . '/vendor_order_details_table_body.tpl');
+        $html = $this->context->smarty->fetch($this->getTemplatePath() . 'vendor_order_details_table_body.tpl');
 
         die(json_encode([
             'success' => true,

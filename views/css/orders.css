@@ -520,7 +520,9 @@ textarea.mv-form-control {
 }
 
 #bulk-status-select,
-#per_page {
+#per_page,
+#address-selection {
+    padding: 10px 20px;
     color: #000;
 }
 
@@ -1457,4 +1459,10 @@ tr.mv-mpn-found {
     50% {
         color: black;
     }
+
+
+}
+
+h3.mv-card-title.address-title {
+    text-align: right;
 }

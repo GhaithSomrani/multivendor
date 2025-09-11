@@ -37,6 +37,10 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
 
         $id_vendor = $this->context->smarty->getTemplateVars('id_vendor');
         $id_supplier = $this->context->smarty->getTemplateVars('id_supplier');
+        // Get Vendor Address 
+        $address_list = $this->getVendorAddress($id_vendor);
+        
+        $this->getVendorAddress($id_vendor);
 
         // Handle status update submission
         if (Tools::isSubmit('submitStatusUpdate')) {
@@ -62,7 +66,7 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
         ]);
         $total_pages = ceil($total_lines / $per_page);
         $changeableStatusInfo = $this->getChangeableStatusInfo($orderLines, $id_vendor);
-      
+
         // Get available line statuses (only ones that vendor can use)
         $vendorStatuses = [];
         $allStatuses = [];
@@ -87,7 +91,6 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
         $this->context->controller->addCSS($this->module->getPathUri() . 'views/css/dashboard.css');
         $this->context->controller->addCSS($this->module->getPathUri() . 'views/css/orders.css');
         $this->context->controller->addJS($this->module->getPathUri() . 'views/js/orders.js');
-
         // Add JS definitions for AJAX
         Media::addJsDef([
             'ordersAjaxUrl' => $this->context->link->getModuleLink('multivendor', 'ajax'),
@@ -95,8 +98,8 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
         ]);
 
         // Assign data to template
-
         $this->context->smarty->assign([
+            'addresses' => $address_list,
             'per_page' => $per_page,
             'filter_status' => $filter_status,
             'order_lines' => $orderLines,
@@ -118,6 +121,21 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
         ]);
 
         $this->setTemplate('module:multivendor/views/templates/front/orders.tpl');
+    }
+
+    protected function getVendorAddress($id_vendor)
+    {
+        $vendor = new Vendor($id_vendor);
+        $addressses = $vendor->getVendorAddress();
+        $addressList = [];
+        foreach ($addressses  as  $address) {
+            $vendorAddress = new Address($address['id_address']);
+            $addressList[] = [
+                'id_address' => $address['id_address'],
+                'address' => AddressFormat::generateAddress($vendorAddress, [], ' - ', ' ')
+            ];
+        }
+        return $addressList;
     }
 
     /**
@@ -181,7 +199,7 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
             $allowedStatuses = array();
             if ($isChangeable) {
                 $allVendorStatuses = OrderLineStatusType::getAllActiveStatusTypes(true, false);
-            
+
                 foreach ($allVendorStatuses as $statusType) {
                     $statusId = $statusType['id_order_line_status_type'];
                     $statusName = $statusType['name'];

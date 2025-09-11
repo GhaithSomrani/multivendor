@@ -178,11 +178,6 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
         return '<span class="badge" style="background-color: ' . $color . '; color: white; padding: 4px 8px; border-radius: 3px;">' .
             htmlspecialchars($status) . '</span>';
     }
-
-
-
-
-
     /**
      * Process bulk status update for selected checkboxes
      */
@@ -454,39 +449,17 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
         }
     }
 
-    /**
-     * Override getList to add custom range filter
-     */
-    public function getList($id_lang, $order_by = null, $order_way = null, $start = 0, $limit = null, $id_lang_shop = false)
-    {
-        // Handle vendor amount range filter
-        $vendor_amount_min = Tools::getValue('vendor_amount_min');
-        $vendor_amount_max = Tools::getValue('vendor_amount_max');
-
-        if ($vendor_amount_min !== false && $vendor_amount_min !== '') {
-            $this->_where .= ' AND a.vendor_amount >= ' . (float)$vendor_amount_min;
-        }
-
-        if ($vendor_amount_max !== false && $vendor_amount_max !== '') {
-            $this->_where .= ' AND a.vendor_amount <= ' . (float)$vendor_amount_max;
-        }
-
-        parent::getList($id_lang, $order_by, $order_way, $start, $limit, $id_lang_shop);
-    }
 
     /**
      * Render export card using template
      */
     protected function renderExportCard()
     {
-        // Get all active vendors
         $vendors = Vendor::getAllVendors();
-
-        // Get all active order line status types
         $statusTypes = OrderLineStatusType::getAllActiveStatusTypes();
-
-        // Assign variables to Smarty
+        $manifestTypes = ManifestType::getAll();
         $this->context->smarty->assign([
+            'manifest_types' => $manifestTypes,
             'vendors' => $vendors,
             'status_types' => $statusTypes,
             'current_index' => self::$currentIndex,
@@ -505,43 +478,12 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
         // Add the mass update panel at the top
         $massUpdatePanel = $this->renderMassUpdatePanel();
 
-        // Add the export card
         $exportCard = $this->renderExportCard();
 
-        // Get the original list content
         $content = parent::renderList();
 
-        // Add custom range filter form
-        $vendor_amount_min = Tools::getValue('vendor_amount_min');
-        $vendor_amount_max = Tools::getValue('vendor_amount_max');
 
-        $filter_form = '
-        <div class="panel">             
-            <div class="panel-heading">                 
-                <i class="icon-filter"></i> ' . $this->l('Filtre montant vendeur') . '             
-            </div>             
-            <div class="panel-body">                 
-                <form method="get" class="form-inline" id="vendor-amount-filter">                     
-                    <input type="hidden" name="controller" value="' . Tools::getValue('controller') . '" />                     
-                    <input type="hidden" name="token" value="' . Tools::getValue('token') . '" />                                          
-                    <div class="form-group" style="margin-right: 15px;">                         
-                        <label for="vendor_amount_min" style="margin-right: 5px;">' . $this->l('Montant min :') . '</label>                         
-                        <input type="number" step="0.01" name="vendor_amount_min" id="vendor_amount_min"                                
-                            value="' . htmlspecialchars($vendor_amount_min) . '" class="form-control" style="width: 120px;" />                     
-                    </div>                                          
-                    <div class="form-group" style="margin-right: 15px;">                         
-                        <label for="vendor_amount_max" style="margin-right: 5px;">' . $this->l('Montant max :') . '</label>                         
-                        <input type="number" step="0.01" name="vendor_amount_max" id="vendor_amount_max"                                
-                            value="' . htmlspecialchars($vendor_amount_max) . '" class="form-control" style="width: 120px;" />                     
-                    </div>                                          
-                    <button type="submit" class="btn btn-primary">' . $this->l('Filtrer') . '</button>                     
-                    <a href="' . self::$currentIndex . '&token=' . $this->token . '" class="btn btn-default">' . $this->l('Réinitialiser') . '</a>                 
-                </form>             
-            </div>         
-        </div>';
-
-        // Combine them all
-        return  $exportCard . $filter_form . $massUpdatePanel . $content;
+        return  $exportCard  . $massUpdatePanel . $content;
     }
 
     /**
@@ -549,33 +491,25 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
      */
     protected function processExportFilteredPDF()
     {
-        $id_vendor = (int)Tools::getValue('export_vendor');
+        $id_vendor = (int)Tools::getValue('export_vendor') > 0 ? (int)Tools::getValue('export_vendor') : null;
         $id_status_type = (int)Tools::getValue('export_status_type');
         $export_type = Tools::getValue('export_type');
-
-        // Validation
-        // if (empty($id_vendor) || empty($id_status_type) || empty($export_type)) {
-        //     $this->errors[] = $this->l('All fields are required for export.');
-        //     return;
-        // }
-
-        // Get filtered order details using same logic as pickup manifest
         $orderDetailIds = $this->getFilteredOrderDetails($id_vendor, $id_status_type, $export_type);
 
         if (empty($orderDetailIds)) {
             $this->errors[] = $this->l('No order lines found with the specified criteria.');
             return;
         }
-
+        Manifest::generateMulipleManifestPDF($orderDetailIds,$export_type, $id_vendor);
         // Generate PDF using same logic as pickup manifest
-        $this->generateFilteredManifest($orderDetailIds, $id_vendor, $export_type);
+        // $this->generateFilteredManifest($orderDetailIds, $id_vendor, $export_type);
     }
     public function ajaxProcesseExportSelectedIds()
     {
 
         $ids = Tools::getValue('ids', []);
-        $id_vendor = Tools::getValue('vendor_id', 0) ?? null;
-        $export_type = Tools::getValue('export_type', 'default') ?? 'retour';
+
+        $export_type = Tools::getValue('export_type');
         $orderDetailIds = [];
         foreach ($ids as $id) {
             $ordervendor =  new VendorOrderDetail((int)$id);
@@ -584,7 +518,7 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
             }
         }
 
-        $this->generateFilteredManifest($orderDetailIds, $id_vendor, $export_type);
+        Manifest::generateMulipleManifestPDF($orderDetailIds,$export_type);
     }
 
 
@@ -620,31 +554,7 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
         return $orderDetailIds;
     }
 
-    /**
-     * Generate filtered manifest PDF
-     */
-    protected function generateFilteredManifest($orderDetailIds, $id_vendor = null, $export_type)
-    {
-        try {
 
-
-            $pdfData = [
-                'vendor' => $id_vendor,
-                'orderDetailIds' => $orderDetailIds,
-                'export_type' => $export_type,
-                'filename' => 'Export_' . $export_type . '_' . date('YmdHis') . '.pdf'
-            ];
-
-            // Use same PDF generation logic as pickup manifest
-            $pdf = new PDF([$pdfData], 'VendorManifestPDF', Context::getContext()->smarty);
-            $pdf->render(true);
-
-            exit;
-        } catch (Exception $e) {
-            $this->errors[] = $this->l('Error generating PDF: ') . $e->getMessage();
-            PrestaShopLogger::addLog('Export PDF Error: ' . $e->getMessage(), 3, null, 'AdminVendorOrderDetails');
-        }
-    }
 
     /**
      * Handle POST actions including export and mass update

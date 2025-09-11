@@ -11,21 +11,7 @@ if (!defined('_PS_VERSION_')) {
 
 class TransactionHelper
 {
-    /**
-     * Get vendor ID from order detail ID
-     * @param int $orderDetailId
-     * @return int|false
-     */
-    public static function getVendorIdFromOrderDetail($orderDetailId)
-    {
-        $sql = 'SELECT id_vendor
-                FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail
-                WHERE id_order_detail = ' . (int)$orderDetailId;
-        $result = Db::getInstance()->getValue($sql);
-
-        return $result ? (int)$result : false;
-    }
-
+   
 
     /**
      * Create or update transaction only when transaction_type or status changes
@@ -109,7 +95,7 @@ class TransactionHelper
     public static function processCommissionTransaction($id_order_detail, $commission_action)
     {
         try {
-            $id_vendor = self::getVendorIdFromOrderDetail($id_order_detail);
+            $id_vendor = Vendor::getVendorIdFromOrderDetail($id_order_detail);
             if (!$id_vendor) {
                 PrestaShopLogger::addLog(
                     'TransactionHelper::processCommissionTransaction - No vendor found for order detail: ' . $id_order_detail,
@@ -231,24 +217,7 @@ class TransactionHelper
         return Db::getInstance()->executeS($query);
     }
 
-    /**
-     * Get vendor pending commission amount
-     *
-     * @param int $id_vendor Vendor ID
-     * @return float Pending commission amount
-     */
-    public static function getVendorPendingCommission($id_vendor)
-    {
-        $query = new DbQuery();
-        $query->select('COALESCE(SUM(vt.vendor_amount), 0)');
-        $query->from('mv_vendor_transaction', 'vt');
-        $query->leftJoin('mv_vendor_order_detail', 'vod', 'vod.id_order_detail = vt.order_detail_id');
-        $query->where('vod.id_vendor = ' . (int)$id_vendor);
-        $query->where('vt.status = "pending"');
-        $query->where('vt.transaction_type = "commission"');
 
-        return (float)Db::getInstance()->getValue($query);
-    }
 
     /**
      * Pay vendor commissions - optimized version
@@ -340,24 +309,7 @@ class TransactionHelper
         }
     }
 
-    /**
-     * Get total vendor earnings (all time)
-     *
-     * @param int $id_vendor Vendor ID
-     * @return float Total earnings
-     */
-    public static function getVendorTotalEarnings($id_vendor)
-    {
-        $query = new DbQuery();
-        $query->select('COALESCE(SUM(vt.vendor_amount), 0)');
-        $query->from('mv_vendor_transaction', 'vt');
-        $query->leftJoin('mv_vendor_order_detail', 'vod', 'vod.id_order_detail = vt.order_detail_id');
-        $query->where('vod.id_vendor = ' . (int)$id_vendor);
-        $query->where('vt.status IN ("pending", "paid")');
-        $query->where('vt.transaction_type = "commission"');
 
-        return (float)Db::getInstance()->getValue($query);
-    }
 
     public static function isOrderDetailPaid($id_order_detail)
     {

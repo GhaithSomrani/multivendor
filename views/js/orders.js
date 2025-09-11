@@ -534,13 +534,11 @@ function addToManifest(orderDetailId, itemData = null) {
     let orderRef, productName, productMpn, quantity;
 
     if (itemData) {
-        // Data from AJAX
         orderRef = '#' + itemData.id_order + '#' + itemData.id_order_detail;
         productName = itemData.product_name;
         productMpn = itemData.product_mpn;
         quantity = itemData.product_quantity;
     } else {
-        // Data from current page table row
         const $row = $('tr[data-id="' + orderDetailId + '"]');
         orderRef = $row.find('td:nth-child(2) a').text();
         productName = $row.find('td:nth-child(3)').text();
@@ -551,7 +549,6 @@ function addToManifest(orderDetailId, itemData = null) {
     const timestamp = new Date().toLocaleTimeString();
     verifiedOrderDetails.add(orderDetailId);
 
-    // Add to desktop manifest
     $('#manifest-items').append(`
         <tr data-order-detail-id="${orderDetailId}">
           <td>${orderRef}</td>
@@ -562,10 +559,16 @@ function addToManifest(orderDetailId, itemData = null) {
         </tr>
     `);
 
-    $('#manifest-count').text(verifiedOrderDetails.size);
+    // Calculate total quantity
+    let totalQty = 0;
+    $('#manifest-items tr').each(function() {
+        const qty = parseInt($(this).find('td:nth-child(4)').text()) || 0;
+        totalQty += qty;
+    });
+
+    $('#manifest-count').text(totalQty);
     $('#pickup-manifest-block').show();
 
-    // Add to mobile manifest
     addToMobileManifest(orderDetailId, {
         order_reference: orderRef,
         product_name: productName,
@@ -574,14 +577,9 @@ function addToManifest(orderDetailId, itemData = null) {
         timestamp: timestamp
     });
 
-    // Update mobile count and show mobile block
     const mobileManifestCount = document.getElementById('mobile-manifest-count');
-    const mobileManifestBlock = document.getElementById('mobile-pickup-manifest-block');
     if (mobileManifestCount) {
-        mobileManifestCount.textContent = verifiedOrderDetails.size;
-    }
-    if (mobileManifestBlock) {
-        mobileManifestBlock.style.display = 'block';
+        mobileManifestCount.textContent = totalQty;
     }
 }
 /**
@@ -773,10 +771,11 @@ function printPickupManifest() {
         showNotification('error', 'No items in manifest to print');
         return;
     }
-
+    var id_address = $('#address-selection').val() ?? 0;
+    console.log(id_address);
     // Generate the URL for the single manifest controller
     const manifestUrl = window.location.origin + window.location.pathname +
-        '?fc=module&module=multivendor&controller=manifest&details=' +
+        '?fc=module&module=multivendor&controller=manifest&id_address=' + id_address + '&details=' +
         Array.from(verifiedOrderDetails).join(',');
 
     // Open in a new tab/window
@@ -1519,14 +1518,16 @@ function syncMobileManifest() {
 
     if (!mobileManifestItems) return;
 
-    // Clear existing mobile manifest
     mobileManifestItems.innerHTML = '';
+    let totalQty = 0;
 
-    // Sync with desktop manifest data
     if (verifiedOrderDetails && verifiedOrderDetails.size > 0) {
         verifiedOrderDetails.forEach(orderDetailId => {
             const desktopRow = document.querySelector(`#manifest-items tr[data-order-detail-id="${orderDetailId}"]`);
             if (desktopRow) {
+                const qty = parseInt(desktopRow.cells[3].textContent) || 0;
+                totalQty += qty;
+                
                 addToMobileManifest(orderDetailId, {
                     order_reference: desktopRow.cells[0].textContent,
                     product_name: desktopRow.cells[1].textContent,
@@ -1537,15 +1538,13 @@ function syncMobileManifest() {
             }
         });
 
-        // Update count and show block
         if (mobileManifestCount) {
-            mobileManifestCount.textContent = verifiedOrderDetails.size;
+            mobileManifestCount.textContent = totalQty;
         }
         if (mobileManifestBlock) {
             mobileManifestBlock.style.display = 'block';
         }
     } else {
-        // Hide mobile manifest block if empty
         if (mobileManifestBlock) {
             mobileManifestBlock.style.display = 'none';
         }
@@ -1592,15 +1591,20 @@ function removeFromMobileManifest(orderDetailId) {
         existingItem.remove();
     }
 
-    // Update count
+    // Calculate total quantity
+    let totalQty = 0;
+    $('#manifest-items tr').each(function() {
+        const qty = parseInt($(this).find('td:nth-child(4)').text()) || 0;
+        totalQty += qty;
+    });
+
     const mobileManifestCount = document.getElementById('mobile-manifest-count');
-    if (mobileManifestCount && verifiedOrderDetails) {
-        mobileManifestCount.textContent = verifiedOrderDetails.size;
+    if (mobileManifestCount) {
+        mobileManifestCount.textContent = totalQty;
     }
 
-    // Hide block if empty
     const mobileManifestBlock = document.getElementById('mobile-pickup-manifest-block');
-    if (mobileManifestBlock && (!verifiedOrderDetails || verifiedOrderDetails.size === 0)) {
+    if (mobileManifestBlock && totalQty === 0) {
         mobileManifestBlock.style.display = 'none';
     }
 }

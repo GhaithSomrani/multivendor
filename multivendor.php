@@ -555,56 +555,9 @@ class multivendor extends Module
         return in_array((int)$id_order_line_status_type, $hiddenArray);
     }
 
-    /**
-     * Get status types available for vendors (not hidden)
-     * 
-     * @return array
-     */
-    public static function getVendorAvailableStatusTypes()
-    {
-        $sql = 'SELECT ost.id_order_line_status_type, ost.name, ost.color 
-                FROM ' . _DB_PREFIX_ . 'mv_order_line_status_type ost 
-                WHERE ost.active = 1 
-                ORDER BY ost.name ASC';
 
-        $allStatuses = Db::getInstance()->executeS($sql);
-        $hiddenStatusTypes = Configuration::get('MV_HIDE_FROM_VENDOR');
 
-        if (empty($hiddenStatusTypes)) {
-            return $allStatuses;
-        }
 
-        $hiddenArray = array_map('intval', explode(',', $hiddenStatusTypes));
-
-        // Filter out hidden status types
-        return array_filter($allStatuses, function ($status) use ($hiddenArray) {
-            return !in_array((int)$status['id_order_line_status_type'], $hiddenArray);
-        });
-    }
-
-    /**
-     * Get status types available for admin only
-     * 
-     * @return array
-     */
-    public static function getAdminOnlyStatusTypes()
-    {
-        $hiddenStatusTypes = Configuration::get('MV_HIDE_FROM_VENDOR');
-        if (empty($hiddenStatusTypes)) {
-            return [];
-        }
-
-        $hiddenArray = array_map('intval', explode(',', $hiddenStatusTypes));
-        $placeholders = str_repeat('?,', count($hiddenArray) - 1) . '?';
-
-        $sql = 'SELECT ost.id_order_line_status_type, ost.name, ost.color 
-                FROM ' . _DB_PREFIX_ . 'mv_order_line_status_type ost 
-                WHERE ost.active = 1 
-                AND ost.id_order_line_status_type IN (' . $placeholders . ')
-                ORDER BY ost.name ASC';
-
-        return Db::getInstance()->executeS($sql, $hiddenArray);
-    }
 
     /**
      * Hook: When a new order is validated

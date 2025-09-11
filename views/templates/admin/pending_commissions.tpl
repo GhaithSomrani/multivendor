@@ -28,13 +28,13 @@
                             {foreach from=$pending_commissions item=commission}
                                 <tr>
                                     <td>{$commission.shop_name}</td>
-                                    <td>{$commission.pending_amount|string_format:"%.2f"}{$currency->sign}</td>
+                                    <td>{$commission.pending_amount|string_format:"%.3f"}{$currency->sign}</td>
                                     <td>{$commission.transaction_count}</td>
                                     <td>
                                         <button class="btn btn-success btn-sm pay-commission-btn" 
                                                 data-toggle="modal" 
                                                 data-target="#payCommissionModal-{$commission.id_vendor}" 
-                                                data-amount="{$commission.pending_amount|string_format:"%.2f"}{$currency->sign}"
+                                                data-amount="{$commission.pending_amount|string_format:"%.3f"}{$currency->sign}"
                                                 data-vendor="{$commission.shop_name}">
                                             <i class="icon-credit-card"></i> {l s='Pay Commission' mod='multivendor'}
                                         </button>

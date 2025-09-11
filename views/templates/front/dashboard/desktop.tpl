@@ -53,7 +53,7 @@
                                         </td>
                                         <td class="mv-product-name">{$line.product_name|truncate:30:'...'}</td>
                                         <td class="mv-text-center">{$line.product_quantity}</td>
-                                        <td>{$line.vendor_amount|number_format:2} TND</td>
+                                        <td>{$line.vendor_amount|number_format:3} TND</td>
                                         <td>
                                             <span class="mv-status-badge" style="background-color: {$line.status_color};">
                                                 {$line.line_status|default:'En attente'|capitalize}
@@ -100,7 +100,7 @@
                                     <tr>
                                         <td>{$product.product_name}</td>
                                         <td>{$product.quantity_sold}</td>
-                                        <td>{$product.total_sales|number_format:2} TND</td>
+                                        <td>{$product.total_sales|number_format:3} TND</td>
                                     </tr>
                                 {/foreach}
                             </tbody>

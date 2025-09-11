@@ -6,29 +6,13 @@
 <div class="panel" id="mass-update-panel">
     <div class="panel-heading">
         <i class="icon-edit"></i> {l s='Mise à jour en masse des statuts' mod='multivendor'}
-        <span class="panel-heading-action">
-            <a class="list-toolbar-btn" href="#" onclick="$('#mass-update-content').toggle(); return false;">
-                <span title="" data-toggle="tooltip" class="label-tooltip"
-                    data-original-title="{l s='Afficher/Masquer' mod='multivendor'}" data-html="true">
-                    <i class="process-icon-expand"></i>
-                </span>
-            </a>
-        </span>
-    </div>
-    <div class="panel-body" id="mass-update-content" style="display: none;">
-        <div class="alert alert-info">
-            <i class="icon-info-circle"></i>
-            {l s='Vous pouvez utiliser cette section de deux façons :' mod='multivendor'}
-            <ul>
-                <li>{l s='Sélectionner des lignes avec les cases à cocher et utiliser "Mise à jour par sélection"' mod='multivendor'}</li>
-                <li>{l s='Utiliser les filtres ci-dessous pour "Mise à jour par critères"' mod='multivendor'}</li>
-            </ul>
-        </div>
 
-        {* Checkbox-based update *}
+    </div>
+    <div class="panel-body" id="mass-update-content" >
+    
+
         <div class="row" id="checkbox-update-section">
             <div class="col-md-12">
-                <h4>{l s='Mise à jour par sélection' mod='multivendor'}</h4>
                 <div class="form-horizontal">
                     <div class="row">
                         <div class="col-md-4">

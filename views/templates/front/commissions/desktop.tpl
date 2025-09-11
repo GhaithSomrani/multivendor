@@ -46,9 +46,9 @@
                                
                                 <td>
                                     {if $transaction.commission_action == 'refund'}
-                                        -{$transaction.vendor_amount|number_format:2}
+                                        -{$transaction.vendor_amount|number_format:3}
                                     {else}
-                                        {$transaction.vendor_amount|number_format:2}
+                                        {$transaction.vendor_amount|number_format:3}
                                     {/if}
                                 </td>
                                 <td>
@@ -125,7 +125,7 @@
                         <div class="mv-payment-header">
                             <div class="mv-payment-info">
                                 <span class="mv-payment-date">{$payment.date_add|date_format:'%Y-%m-%d'}</span>
-                                <span class="mv-payment-amount">{$payment.amount|number_format:2} TND</span>
+                                <span class="mv-payment-amount">{$payment.amount|number_format:3} TND</span>
                                 <span class="mv-payment-method">{$payment.payment_method|capitalize}</span>
                                 <span class="mv-payment-reference">{l s='Réf :' mod='multivendor'} {$payment.reference}</span>
                                 <span class="mv-status-badge mv-status-{$payment.status}">
@@ -172,7 +172,7 @@
                                                 </td>
                                                 <td>{$detail.product_reference|default:'-'}</td>
                                                 <td class="mv-text-center">{$detail.product_quantity|default:'-'}</td>
-                                                <td>{$detail.vendor_amount|number_format:2} TND</td>
+                                                <td>{$detail.vendor_amount|number_format:3} TND</td>
                                                 <td>
                                                     {if $detail.order_date}
                                                         {$detail.order_date|date_format:'%Y-%m-%d'}
@@ -186,7 +186,7 @@
                                     <tfoot>
                                         <tr>
                                             <td colspan="4" class="mv-text-right"><strong>{l s='Total :' mod='multivendor'}</strong></td>
-                                            <td><strong>{$payment.amount|number_format:2} TND</strong></td>
+                                            <td><strong>{$payment.amount|number_format:3} TND</strong></td>
                                             <td></td>
                                         </tr>
                                     </tfoot>

@@ -210,6 +210,7 @@
             cursor: pointer;
             z-index: 1000;
         }
+
         .logo {
             margin-bottom: 20px;
         }
@@ -277,7 +278,7 @@
                 <strong>Total Articles :</strong>
                 {if $transaction_details}{$transaction_details|@count}{else}0{/if}
             </div>
-          
+
         </div>
 
         <!-- Transactions Table -->
@@ -296,12 +297,13 @@
                 <tbody>
                     {foreach from=$transaction_details item=detail}
                         <tr>
-                            <td>#{$detail.order_reference|default:'N/A'}</td>
+                            <td>{$detail.id_order|default:'N/A'}<br>{$detail.id_order_detail|default:'N/A'}
+                            </td>
                             <td>{$detail.product_name|default:'N/A'}</td>
                             <td>{$detail.product_reference|default:'-'}</td>
                             <td class="center">-</td>
                             <td class="center">{$detail.product_quantity|default:'1'}</td>
-                            <td class="right">{($detail.vendor_amount*0.81)|number_format:2} TND</td>
+                            <td class="right">{($detail.vendor_amount*0.81)|number_format:3} TND</td>
                         </tr>
                     {/foreach}
                 </tbody>
@@ -311,19 +313,19 @@
                         <td class="center">
                             <strong>{if $transaction_details}{$transaction_details|@count}{else}0{/if}</strong>
                         </td>
-                        <td class="right"><strong>{($payment->amount*0.81)|number_format:2} TND</strong></td>
+                        <td class="right"><strong>{($payment->amount*0.81)|number_format:3} TND</strong></td>
                     </tr>
                     <tr>
                         <td colspan="4"><strong>TVA :</strong></td>
                         <td class="center">19%</td>
-                        <td class="right">{($payment->amount*0.19)|number_format:2} TND</td>
+                        <td class="right">{($payment->amount*0.19)|number_format:3} TND</td>
                     </tr>
                     <tr class="totals-row">
                         <td colspan="4"><strong>Montant Total TTC :</strong></td>
                         <td class="center">
                             <strong>{if $transaction_details}{$transaction_details|@count}{else}0{/if}</strong>
                         </td>
-                        <td class="right"><strong>{$payment->amount|number_format:2} TND</strong></td>
+                        <td class="right"><strong>{$payment->amount|number_format:3} TND</strong></td>
                     </tr>
                 </tfoot>
             </table>

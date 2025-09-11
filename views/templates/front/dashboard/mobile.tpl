@@ -26,7 +26,7 @@
                         <div class="mv-mobile-order-item">
                             <div class="mv-mobile-order-header">
                                 <span class="mv-mobile-order-ref">#{$line.order_reference}</span>
-                                <span class="mv-mobile-order-amount">{$line.vendor_amount|number_format:2} TND</span>
+                                <span class="mv-mobile-order-amount">{$line.vendor_amount|number_format:3} TND</span>
                             </div>
                             <div class="mv-mobile-order-product">{$line.product_name|truncate:30:'...'}</div>
                             <div class="mv-mobile-order-footer">
@@ -63,7 +63,7 @@
                             <div class="mv-mobile-product-name">{$product.product_name}</div>
                             <div class="mv-mobile-product-details">
                                 <span class="mv-mobile-product-qty">{$product.quantity_sold} vendus</span>
-                                <span class="mv-mobile-product-sales">{$product.total_sales|number_format:2} TND</span>
+                                <span class="mv-mobile-product-sales">{$product.total_sales|number_format:3} TND</span>
                             </div>
                         </div>
                     {/foreach}

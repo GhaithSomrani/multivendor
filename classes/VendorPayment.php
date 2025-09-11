@@ -35,7 +35,7 @@ class VendorPayment extends ObjectModel
         'fields' => [
             'id_vendor' => ['type' => self::TYPE_INT, 'validate' => 'isUnsignedId', 'required' => true],
             'amount' => ['type' => self::TYPE_FLOAT, 'validate' => 'isFloat', 'required' => true],
-            'payment_method' => ['type' => self::TYPE_STRING, 'validate' => 'isGenericName', 'required' => true, 'size' => 64],
+            'payment_method' => ['type' => self::TYPE_STRING, 'validate' => 'isGenericName', 'required' => false, 'size' => 64],
             'reference' => ['type' => self::TYPE_STRING, 'validate' => 'isGenericName', 'required' => true, 'size' => 64],
             'status' => ['type' => self::TYPE_STRING, 'validate' => 'isGenericName', 'required' => true, 'size' => 32],
             'date_add' => ['type' => self::TYPE_DATE, 'validate' => 'isDate']
@@ -70,22 +70,6 @@ class VendorPayment extends ObjectModel
         return Db::getInstance()->executeS($query);
     }
 
-    /**
-     * Get total paid amount for a vendor
-     *
-     * @param int $id_vendor Vendor ID
-     * @return float Total paid amount
-     */
-    public static function getVendorTotalPaid($id_vendor)
-    {
-        $query = new DbQuery();
-        $query->select('SUM(amount)');
-        $query->from('mv_vendor_payment');
-        $query->where('id_vendor = ' . (int)$id_vendor);
-        $query->where('status = "completed"');
-
-        return (float)Db::getInstance()->getValue($query);
-    }
 
 
     /**

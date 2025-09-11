@@ -40,13 +40,25 @@ class ManifestType extends ObjectModel
      */
     public static function getAll()
     {
-        $sql = 'SELECT id_manifest_type as id, name FROM `' . _DB_PREFIX_ . 'mv_manifest_type` ORDER BY name';
-        return Db::getInstance()->executeS($sql);
+        $query = new DbQuery();
+        $query->select('id_manifest_type as id, name');
+        $query->from('mv_manifest_type');
+        $query->orderBy('id_manifest_type ASC');
+
+        return Db::getInstance()->executeS($query);
     }
-    
-    public static function getDefaultType()
+
+
+    public function delete()
     {
-        $sql = 'SELECT id_manifest_type FROM `' . _DB_PREFIX_ . 'mv_manifest_type` WHERE active = 1 LIMIT 1';
-        return Db::getInstance()->getValue($sql);
+        // Check if type is linked to any manifest status
+        $sql = 'SELECT COUNT(*) FROM `' . _DB_PREFIX_ . 'mv_manifest_status_type` 
+            WHERE id_manifest_type = ' . (int)$this->id;
+
+        if (Db::getInstance()->getValue($sql)) {
+            throw new PrestaShopException('Cannot remove a manifest type linked to a manifest status');
+        }
+
+        return parent::delete();
     }
 }

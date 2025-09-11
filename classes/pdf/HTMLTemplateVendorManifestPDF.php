@@ -33,8 +33,11 @@ class HTMLTemplateVendorManifestPDF extends HTMLTemplate
         $pdf_title = ($export_type === 'retour') ? 'BON DE RETOUR' : 'BON DE RAMASSAGE';
         $pdf_subtitle = ($export_type === 'retour') ? 'Document de Retour Multi-Articles' : 'Document de Collecte Multi-Articles';
         $commissionRate = (float)VendorCommission::getCommissionRate($id_vendor) / 100;
-
+        $totalQty = $this->getTotalQty($this->data['orderDetailIds']);
         $this->smarty->assign([
+            'total_qty' => $totalQty,
+            'maniefest_reference' => $this->data['maniefest_reference'] ?? '',
+            'manifest_type' => $this->data['manifest_type'],
             'commissionRate' => $commissionRate,
             'manifests' => $manifestData['manifests'],
             'current_date' => date('Y-m-d'),
@@ -50,7 +53,8 @@ class HTMLTemplateVendorManifestPDF extends HTMLTemplate
         ]);
 
         $template_path = _PS_MODULE_DIR_ . 'multivendor/views/templates/pdf/VendorManifestPDF.tpl';
-        echo ($this->smarty->fetch($template_path));
+
+        return $this->smarty->fetch($template_path);
     }
 
     protected function getPdfData($orderDetailIds, $vendor, $id_address)
@@ -85,7 +89,9 @@ class HTMLTemplateVendorManifestPDF extends HTMLTemplate
                     'city' => $Address->city,
                     'postcode' => $Address->postcode,
                     'country' => $Address->country,
-                    'phone' => $Address->phone
+                    'phone' => $Address->phone,
+                    'vat_number' => $Address->vat_number,
+                    'dni' => $Address->dni
                 ] : [],
                 'order' => [
                     'id' => $order->id,
@@ -103,9 +109,8 @@ class HTMLTemplateVendorManifestPDF extends HTMLTemplate
                     'total_price_tax_incl' => (float)$orderDetail->total_price_tax_incl,
                     'product_weight' => (float)($orderDetail->product_weight ?: 0.5),
                     'product_mpn' => $orderDetail->product_mpn ?: '',
-                   // 'barcode' => $orderDetail->product_mpn,
                     'vendor_amount' => $vendorOrderDetail,
-                    'barcode' =>  $this->generateBarCode($orderDetail->product_mpn)
+                    'barcode' =>  $this->generateBarCode($orderDetail->product_mpn ?? '')
                 ],
                 'pickup_id' => 'PU-' . $order->reference . '-' . $id_order_detail,
                 'date' => date('Y-m-d'),
@@ -130,10 +135,30 @@ class HTMLTemplateVendorManifestPDF extends HTMLTemplate
         ];
     }
 
+
+    //get the total qty of the order details
+    private function getTotalQty($orderDetailIds)
+    {
+        $totalQty = 0;
+        foreach ($orderDetailIds as $id_order_detail) {
+            $orderDetail = new OrderDetail($id_order_detail);
+            $totalQty += (int)$orderDetail->product_quantity;
+        }
+        return $totalQty;
+    }
     private function generateBarCode($data)
     {
-        $barcodeobj  = new TCPDFBarcode($data, 'C128');
-        return $barcodeobj->getBarcodeHTML(2, 40, 'black');
+        if (empty($data)) {
+            return '';
+        }
+
+        $barcodeobj = new TCPDFBarcode($data, 'C128');
+
+        // Generate PNG raw data
+        $pngData = $barcodeobj->getBarcodePngData(2, 40, [0, 0, 0]);
+
+        // Encode to base64 for embedding in <img src="...">
+        return 'data:image/png;base64,' . base64_encode($pngData);
     }
 
     protected function getShopAddress()

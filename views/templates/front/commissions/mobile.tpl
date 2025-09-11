@@ -18,9 +18,9 @@
                                 <span class="mv-mobile-transaction-ref">#{$transaction.order_reference}#{$transaction.id_order_detail}</span>
                                 <span class="mv-mobile-transaction-amount">
                                     {if $transaction.commission_action == 'refund'}
-                                        -{$transaction.vendor_amount|number_format:2}
+                                        -{$transaction.vendor_amount|number_format:3}
                                     {else}
-                                        {$transaction.vendor_amount|number_format:2}
+                                        {$transaction.vendor_amount|number_format:3}
                                     {/if}
                                 </span>
                             </div>
@@ -85,7 +85,7 @@
                         <div class="mv-mobile-payment-item">
                             <div class="mv-mobile-payment-header">
                                 <div class="mv-mobile-payment-main">
-                                    <span class="mv-mobile-payment-amount">{$payment.amount|number_format:2} TND</span>
+                                    <span class="mv-mobile-payment-amount">{$payment.amount|number_format:3} TND</span>
                                     <span class="mv-status-badge mv-status-{$payment.status}">
                                         {$payment.status|capitalize}
                                     </span>
@@ -111,7 +111,7 @@
                                                     {else}
                                                         <span class="mv-mobile-order-ref">Commande #{$detail.id_order}</span>
                                                     {/if}
-                                                    <span class="mv-mobile-order-amount">{$detail.vendor_amount|number_format:2} TND</span>
+                                                    <span class="mv-mobile-order-amount">{$detail.vendor_amount|number_format:3} TND</span>
                                                 </div>
                                                 <div class="mv-mobile-order-product">
                                                     {if $detail.product_name}
@@ -130,7 +130,7 @@
                                             </div>
                                         {/foreach}
                                         <div class="mv-mobile-payment-total">
-                                            <strong>{l s='Total :' mod='multivendor'} {$payment.amount|number_format:2} TND</strong>
+                                            <strong>{l s='Total :' mod='multivendor'} {$payment.amount|number_format:3} TND</strong>
                                         </div>
                                     </div>
                                 {else}
