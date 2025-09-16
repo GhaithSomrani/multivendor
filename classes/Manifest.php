@@ -95,7 +95,15 @@ class Manifest extends ObjectModel
         return parent::update($null_values);
     }
 
-
+    // functio that selecte the last id
+    public static function getLastId()
+    {
+        $query = new DbQuery();
+        $query->select(' count(id_manifest) as max_id ');
+        $query->from('mv_manifest', 'm');
+        $query->orderBy('id_manifest DESC');
+        return Db::getInstance()->getValue($query);
+    }
 
     /**
      * Add order detail to manifest
@@ -195,12 +203,9 @@ class Manifest extends ObjectModel
             $noVowelsType = preg_replace('/[aeiouAEIOU]/', '', $cleanTypeName);
             $parts[] = strtoupper(substr($noVowelsType, 3, 2));
         }
-
         $parts[] = date('ymd');
-
-        $vendorCount = (int)Db::getInstance()->getValue('SELECT COUNT(*) FROM `' . _DB_PREFIX_ . 'mv_manifest` WHERE id_vendor = ' . (int)$vendor) + 1;
-        $parts[] = str_pad($vendorCount, 4, '0', STR_PAD_LEFT);
-
+        $id = Manifest::getLastId();
+        $parts[] = str_pad($id, 4, '0', STR_PAD_LEFT);
         return implode('-', $parts);
     }
 
@@ -218,6 +223,7 @@ class Manifest extends ObjectModel
     {
         try {
             $existingManifest = self::getModifiableManifest($id_vendor, $id_manifest_status, $type);
+            $existedOrderDetails = self::getOrderDetailsByType($type);
             if ($existingManifest) {
                 $manifest = new Manifest($existingManifest['id_manifest']);
                 $manifest->id_address = $id_address;
@@ -225,8 +231,8 @@ class Manifest extends ObjectModel
                 $manifest->update();
             } else {
                 $manifest = new Manifest();
-                $manifest->reference = self::generateReference($id_vendor, $type);
                 $manifest->id_vendor = (int)$id_vendor;
+                $manifest->reference = self::generateReference($id_vendor, $type);
                 $manifest->id_address = $id_address;
                 $manifest->id_manifest_status = $id_manifest_status ?? 1;
                 $manifest->id_manifest_type = $type;
@@ -238,7 +244,12 @@ class Manifest extends ObjectModel
                 if (!Validate::isUnsignedId($id_order_detail)) {
                     continue;
                 }
-                $manifest->addOrderDetail($id_order_detail);
+                if (!in_array($id_order_detail, $existedOrderDetails)) {
+
+                    $manifest->addOrderDetail($id_order_detail);
+                } else {
+                    throw new Exception('Le détail de commande ' . $id_order_detail . ' existe déjà dans ce manifeste.');
+                }
             }
             return $manifest;
         } catch (Exception $e) {
@@ -293,6 +304,15 @@ class Manifest extends ObjectModel
         return ['checked' => false, 'disabled' => true];
     }
 
+    public static function getOrderDetailsByType($id_manifest_type)
+    {
+        $query = new DbQuery();
+        $query->select('id_order_details');
+        $query->from('mv_manifest_details md');
+        $query->leftJoin('mv_manifest m', 'm.id_manifest = md.id_manifest');
+        $query->where('m.id_manifest_type = ' . (int)$id_manifest_type);
+        return Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS($query);
+    }
     public static function getManifestTypeByOrderDetail($id_order_detail)
     {
         if (!Validate::isUnsignedId($id_order_detail)) {
@@ -340,6 +360,7 @@ class Manifest extends ObjectModel
     public static function generateMulipleManifestPDF($orderDetails, $type, $vendorId = null)
     {
         if ($vendorId) {
+
             self::generateNewManifestPDF($orderDetails, $vendorId, $type);
         } else {
             $Data = [];
@@ -413,6 +434,7 @@ class Manifest extends ObjectModel
 
 
 
+
     public static function getModifiableManifest($id_vendor, $id_manifest_status, $type)
     {
         $sql = 'SELECT m.* 
@@ -430,10 +452,14 @@ class Manifest extends ObjectModel
 
     public static function getOrderdetailsIDs($id_manifest)
     {
+        $manifest = new Manifest($id_manifest);
+        $id_manifest_type = $manifest->id_manifest_type;
         $query = new DbQuery();
         $query->select('md.id_order_details');
         $query->from('mv_manifest_details', 'md');
+        $query->leftJoin('mv_manifest', 'm', 'm.id_manifest = md.id_manifest');
         $query->where('md.id_manifest = ' . $id_manifest);
+        $query->where('m.id_manifest_type = ' . $id_manifest_type);
         return Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS($query);
     }
 
@@ -457,10 +483,21 @@ class Manifest extends ObjectModel
 
     public static function IsEditable($id_manifest)
     {
-        $sql = 'SELECT ms.allowed_modification FROM `' . _DB_PREFIX_ . 'mv_manifest` m
-            LEFT JOIN `' . _DB_PREFIX_ . 'mv_manifest_status_type` ms ON (m.id_manifest_status = ms.id_manifest_status_type)
-            WHERE m.id_manifest = ' . $id_manifest;
-        return Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue($sql);
+        $query = new DbQuery();
+        $query->select('ms.allowed_modification');
+        $query->from('mv_manifest', 'm');
+        $query->leftJoin('mv_manifest_status_type', 'ms', 'm.id_manifest_status = ms.id_manifest_status_type');
+        $query->where('m.id_manifest = ' . (int)$id_manifest);
+        return Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue($query);
+    }
+    public static function isDeletable($id_manifest)
+    {
+        $query = new DbQuery();
+        $query->select('ms.allowed_delete');
+        $query->from('mv_manifest', 'm');
+        $query->leftJoin('mv_manifest_status_type', 'ms', 'm.id_manifest_status = ms.id_manifest_status_type');
+        $query->where('m.id_manifest = ' . (int)$id_manifest);
+        return Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue($query);
     }
     public function getTransactionType()
     {

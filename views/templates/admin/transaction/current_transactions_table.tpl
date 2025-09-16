@@ -26,8 +26,8 @@
                         {foreach from=$current_transactions item=transaction}
                             <tr>
                                 <td>
-                                    <strong>#{$transaction.order_reference}</strong><br>
-                                    <small>Order #{$transaction.id_order}</small>
+                                    <strong>{$transaction.id_order}</strong><br>
+                                    <small>{$transaction.id_order_detail}</small>
                                 </td>
                                 <td>
                                     <strong>{$transaction.product_name|escape:'html':'UTF-8'}</strong><br>

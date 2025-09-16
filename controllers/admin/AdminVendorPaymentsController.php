@@ -575,6 +575,7 @@ class AdminVendorPaymentsController extends ModuleAdminController
         vt.status, 
         vt.date_add as transaction_date, 
         vod.product_name, 
+        vod.id_order_detail,
         vod.product_reference, 
         vod.product_quantity, 
         vod.id_order, 

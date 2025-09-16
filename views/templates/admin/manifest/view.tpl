@@ -1,12 +1,12 @@
-<!-- Manifest View Template -->
+<!-- Template de vue du manifeste -->
 <div class="panel">
     <div class="panel-heading">
-        <i class="icon-list"></i> {l s='Manifest Details' mod='multivendor'}
+        <i class="icon-list"></i> {l s='Détails du manifeste' mod='multivendor'}
         <span class="badge manifest-count">{$total_items}</span>
     </div>
     <div class="row" style="margin-top: 20px;">
         <div class="col-md-12">
-            <h4>{l s='Manifest Status' mod='multivendor'}</h4>
+            <h4>{l s='Statut du manifeste' mod='multivendor'}</h4>
             <form method="post" action="{$smarty.server.REQUEST_URI}">
                 <div class="row">
                     <div class="col-md-4">
@@ -21,7 +21,8 @@
                     </div>
                     <div class="col-md-8">
                         <p class="help-block">
-                            {l s='Select status to update manifest and associated order lines' mod='multivendor'}</p>
+                            {l s='Sélectionnez le statut pour mettre à jour le manifeste et les lignes de commande associées' mod='multivendor'}
+                        </p>
                     </div>
                 </div>
                 <input type="hidden" name="submitUpdateManifestStatus" value="1">
@@ -33,12 +34,12 @@
     <div class="panel-body">
         <div class="row">
             <div class="col-md-6">
-                <h4>{l s='Manifest Information' mod='multivendor'}</h4>
+                <h4>{l s='Informations du manifeste' mod='multivendor'}</h4>
                 <dl class="dl-horizontal">
-                    <dt>{l s='Reference:' mod='multivendor'}</dt>
+                    <dt>{l s='Référence:' mod='multivendor'}</dt>
                     <dd>{$manifest->reference}</dd>
 
-                    <dt>{l s='Vendor:' mod='multivendor'}</dt>
+                    <dt>{l s='Vendeur:' mod='multivendor'}</dt>
                     <dd>{$vendor_name}</dd>
 
                     <dt>{l s='Type:' mod='multivendor'}</dt>
@@ -46,39 +47,39 @@
                         {$manifestType}
                     </dd>
 
-                    <dt>{l s='Status:' mod='multivendor'}</dt>
+                    <dt>{l s='Statut:' mod='multivendor'}</dt>
                     {* <dd>
                         <span class="badge badge-info">{$manifest->status}</span>
                     </dd> *}
 
-                    <dt>{l s='Created:' mod='multivendor'}</dt>
+                    <dt>{l s='Créé:' mod='multivendor'}</dt>
                     <dd>{$manifest->date_add}</dd>
                 </dl>
             </div>
 
             <div class="col-md-6">
-                <h4>{l s='Pickup Address' mod='multivendor'}</h4>
+                <h4>{l s='Adresse de récupération' mod='multivendor'}</h4>
                 {if $address}
                     <address>
                         {$address->firstname} {$address->lastname}<br>
                         {$address->address1}<br>
                         {if $address->address2}{$address->address2}<br>{/if}
                         {$address->postcode} {$address->city}<br>
-                        {if $address->phone}{l s='Phone:' mod='multivendor'} {$address->phone}<br>{/if}
+                        {if $address->phone}{l s='Téléphone:' mod='multivendor'} {$address->phone}<br>{/if}
                     </address>
                 {else}
-                    <p class="text-muted">{l s='No address specified' mod='multivendor'}</p>
+                    <p class="text-muted">{l s='Aucune adresse spécifiée' mod='multivendor'}</p>
                 {/if}
             </div>
         </div>
         {if $manifest_details && count($manifest_details) > 0}
-            <h4>{l s='Items in Manifest' mod='multivendor'}</h4>
+            <h4>{l s='Articles dans le manifeste' mod='multivendor'}</h4>
             <div class="table-responsive">
                 <table class="table table-striped" id="manifest-details-table">
                     <thead>
                         <tr>
                             <th class="fixed-width-xs center">{l s='ID' mod='multivendor'}</th>
-                            <th>{l s='ID Order' mod='multivendor'}</th>
+                            <th>{l s='ID Commande' mod='multivendor'}</th>
                             <th class="fixed-width-sm center">{l s='ID Détail' mod='multivendor'}</th>
                             <th>{l s='Vendeur' mod='multivendor'}</th>
                             <th>{l s='Nom' mod='multivendor'}</th>
@@ -172,29 +173,38 @@
         {else}
             <div class="alert alert-info">
                 <i class="icon-info-circle"></i>
-                {l s='No items in this manifest.' mod='multivendor'}
+                {l s='Aucun article dans ce manifeste.' mod='multivendor'}
             </div>
         {/if}
     </div>
 
     <div class="panel-footer">
         <a href="{$back_url}" class="btn btn-default">
-            <i class="process-icon-back"></i> {l s='Back to list' mod='multivendor'}
+            <i class="process-icon-back"></i> {l s='Retour à la liste' mod='multivendor'}
         </a>
         {assign var='isEditable' value=Manifest::isEditable($manifest->id)}
         {if $isEditable}
             <a href="{$link->getAdminLink('AdminManifest')}&id_manifest={$manifest->id}&updatemv_manifest"
                 class="btn btn-primary">
-                <i class="process-icon-edit"></i> {l s='Edit manifest' mod='multivendor'}
+                <i class="process-icon-edit"></i> {l s='Modifier le manifeste' mod='multivendor'}
             </a>
         {/if}
+
+        {assign var='isDeletible' value=Manifest::isDeletable($manifest->id)}
+        {if $isDeletible}
+            <a href="{$link->getAdminLink('AdminManifest')}&id_manifest={$manifest->id}&deletemv_manifest&token={$token}"
+                class="btn btn-danger" onclick="return confirm('{l s='Êtes-vous sûr ?' mod='multivendor'}')">
+                <i class="process-icon-delete"></i> {l s='Supprimer le manifeste' mod='multivendor'}
+            </a>
+        {/if}
+
         <button type="button" class="btn btn-info" id="print-manifest">
-            <i class="icon-print"></i> {l s='Print manifest' mod='multivendor'}
+            <i class="icon-print"></i> {l s='Imprimer le manifeste' mod='multivendor'}
         </button>
     </div>
 </div>
 <script type="text/javascript">
-    // Update the print manifest button handler
+    // Mise à jour du gestionnaire du bouton d'impression du manifeste
     $('#print-manifest').on('click', function() {
         var manifestId = {$manifest->id|intval};
 
@@ -204,3 +214,18 @@
         );
     });
 </script>
+
+
+<style>
+    .icon-print {
+        background: transparent;
+        background-position: 50%;
+        background-size: 26px;
+        display: block;
+        font-size: 28px;
+        height: 30px;
+        margin: 0 auto;
+        width: 30px;
+
+    }
+</style>

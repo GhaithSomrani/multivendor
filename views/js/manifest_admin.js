@@ -187,7 +187,7 @@ function initializeOrderDetailsHandlers() {
 
     $('#select-all-order-details').off('change').on('change', function () {
         var isChecked = $(this).is(':checked');
-        $('.order-detail-checkbox').prop('checked', isChecked).trigger('change');
+        $('.order-detail-checkbox:not(:disabled)').prop('checked', isChecked).trigger('change');
     });
 }
 

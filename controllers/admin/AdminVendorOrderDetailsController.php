@@ -500,7 +500,7 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
             $this->errors[] = $this->l('No order lines found with the specified criteria.');
             return;
         }
-        Manifest::generateMulipleManifestPDF($orderDetailIds,$export_type, $id_vendor);
+        Manifest::generateMulipleManifestPDF($orderDetailIds, $export_type, $id_vendor);
         // Generate PDF using same logic as pickup manifest
         // $this->generateFilteredManifest($orderDetailIds, $id_vendor, $export_type);
     }
@@ -508,8 +508,14 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
     {
 
         $ids = Tools::getValue('ids', []);
-
+        $vendor_id = null;
         $export_type = Tools::getValue('export_type');
+        if ($export_type == 1) {
+            $vendor_id = (int)Tools::getValue('export_vendor');
+            if ($vendor_id <= 0) {
+                die(json_encode(['success' => false, 'message' => 'le vendeur est requis pour le bon de ramassage.']));
+            }
+        }
         $orderDetailIds = [];
         foreach ($ids as $id) {
             $ordervendor =  new VendorOrderDetail((int)$id);
@@ -518,7 +524,7 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
             }
         }
 
-        Manifest::generateMulipleManifestPDF($orderDetailIds,$export_type);
+        Manifest::generateMulipleManifestPDF($orderDetailIds, $export_type, $vendor_id);
     }
 
 
@@ -750,7 +756,6 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
         // Get the template content and return it directly
         $this->content = $this->context->smarty->fetch($this->module->getLocalPath() . 'views/templates/admin/vendor_order_detail_view.tpl');
 
-        return $this->content;
     }
 
     public function processDelete()

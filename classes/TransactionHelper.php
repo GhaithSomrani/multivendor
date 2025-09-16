@@ -11,7 +11,7 @@ if (!defined('_PS_VERSION_')) {
 
 class TransactionHelper
 {
-   
+
 
     /**
      * Create or update transaction only when transaction_type or status changes
@@ -316,13 +316,29 @@ class TransactionHelper
         $query = new DbQuery();
         $query->select('COUNT(*)');
         $query->from('mv_vendor_transaction', 'vt');
-        $query->leftJoin('mv_vendor_payment','vp','vt.id_vendor_payment = vp.id_vendor_payment');
+        $query->leftJoin('mv_vendor_payment', 'vp', 'vt.id_vendor_payment = vp.id_vendor_payment');
         $query->where('vt.order_detail_id = ' . (int)$id_order_detail);
         $query->where('vt.status = "paid"');
         $query->where('vt.transaction_type = "commission"');
         $query->where('vt.transaction_type = "commission"');
         $query->where('vp.status = "completed"');
-
         return (bool)Db::getInstance()->getValue($query);
+    }
+
+    public static function getAvailableTransaction($OrderDetailIds, $transactionType)
+    {
+        $availableTransactions = [];
+        foreach ($OrderDetailIds as $id_order_detail) {
+            try {
+                $transactionsRow = self::getExistingTransaction($id_order_detail, $transactionType);
+                if ($transactionsRow && $transactionsRow['id_vendor_payment'] == 0) {
+                    $availableTransactions[] = $transactionsRow;
+                }
+            } catch (Exception $e) {
+                throw new Exception('Transaction non trouvée pour le détail de commande : ' . $id_order_detail . ' et le type de transaction : ' . $transactionType);
+            }
+        }
+
+        return $availableTransactions;
     }
 }

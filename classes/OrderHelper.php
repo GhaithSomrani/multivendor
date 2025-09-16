@@ -145,6 +145,7 @@ class OrderHelper
         LEFT JOIN `' . _DB_PREFIX_ . 'mv_order_line_status_type` olst ON (olst.id_order_line_status_type = ols.id_order_line_status_type)
         LEFT JOIN `' . _DB_PREFIX_ . 'mv_vendor_transaction` vt ON (vt.order_detail_id = vod.id_order_detail )
         LEFT JOIN `' . _DB_PREFIX_ . 'mv_manifest_details` md ON (md.id_order_details = vod.id_order_detail ) 
+        LEFT JOIN `' . _DB_PREFIX_ . 'mv_manifest` m ON (m.id_manifest = md.id_manifest )
         WHERE vod.id_vendor = ' . (int)$id_vendor;
 
         // Order ID filter
@@ -266,6 +267,11 @@ class OrderHelper
                 $sql .= ' AND md.id_manifest IS NULL';
             }
         }
+        // Manifest Type filter
+        if (!empty($filters['id_manifest_type'])) {
+            $manifest_type_id = (int)$filters['id_manifest_type'];
+            $sql .= ' AND m.id_manifest_type = ' . $manifest_type_id;
+        }
 
         if (!empty($filters['allowed_order_line_status_types'])) {
             $allowedStatusTypes = $filters['allowed_order_line_status_types'];
@@ -274,7 +280,7 @@ class OrderHelper
 
         // Group by 
         $sql .= ' GROUP BY vod.id_order_detail';
-
+        
         // Order by
         $orderBy = !empty($filters['order_by']) ? pSQL($filters['order_by']) : 'vod.date_add';
         $orderWay = !empty($filters['order_way']) && strtoupper($filters['order_way']) === 'ASC' ? 'ASC' : 'DESC';

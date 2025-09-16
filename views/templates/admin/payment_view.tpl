@@ -1,20 +1,20 @@
 {*
-* Multi-vendor Payment Details Template with Print Button
+* Template des détails de paiement multi-vendeur avec bouton d'impression
 *}
 
 <div class="panel">
     <div class="panel-heading">
         <i class="icon-money"></i>
-        {l s='Payment Transaction Details' mod='multivendor'}
+        {l s='Détails de la transaction de paiement' mod='multivendor'}
         {if isset($payment)}
-            - Payment #{$payment->id}
+            - Paiement #{$payment->id}
         {/if}
 
-        {* Print Button *}
+        {* Bouton d'impression *}
         {if isset($print_url)}
             <div class="pull-right">
                 <a href="{$print_url}" target="_blank" class="btn btn-default">
-                    <i class="icon-print"></i> {l s='Print Payment' mod='multivendor'}
+                    <i class="icon-print"></i> {l s='Imprimer le paiement' mod='multivendor'}
                 </a>
             </div>
         {/if}
@@ -22,21 +22,21 @@
 
     <div class="panel-body">
         {if isset($payment)}
-            {* Payment Information *}
+            {* Informations de paiement *}
             <div class="row">
                 <div class="col-md-6">
-                    <h4>{l s='Payment Information' mod='multivendor'}</h4>
+                    <h4>{l s='Informations de paiement' mod='multivendor'}</h4>
                     <table class="table table-bordered">
                         <tr>
-                            <td><strong>{l s='Payment ID:' mod='multivendor'}</strong></td>
+                            <td><strong>{l s='ID Paiement:' mod='multivendor'}</strong></td>
                             <td>#{$payment->id}</td>
                         </tr>
                         <tr>
-                            <td><strong>{l s='Amount:' mod='multivendor'}</strong></td>
+                            <td><strong>{l s='Montant:' mod='multivendor'}</strong></td>
                             <td class="text-success"><strong>{$payment->amount|number_format:3} TND</strong></td>
                         </tr>
                         <tr>
-                            <td><strong>{l s='Status:' mod='multivendor'}</strong></td>
+                            <td><strong>{l s='Statut:' mod='multivendor'}</strong></td>
                             <td>
                                 <span
                                     class="badge badge-{if $payment->status == 'completed'}success{elseif $payment->status == 'pending'}warning{elseif $payment->status == 'cancelled'}danger{else}default{/if}">
@@ -45,29 +45,29 @@
                             </td>
                         </tr>
                         <tr>
-                            <td><strong>{l s='Payment Method:' mod='multivendor'}</strong></td>
+                            <td><strong>{l s='Méthode de paiement:' mod='multivendor'}</strong></td>
                             <td>{$payment->payment_method|default:'N/A'|ucfirst}</td>
                         </tr>
                         <tr>
-                            <td><strong>{l s='Reference:' mod='multivendor'}</strong></td>
+                            <td><strong>{l s='Référence:' mod='multivendor'}</strong></td>
                             <td>{$payment->reference|default:'N/A'}</td>
                         </tr>
                         <tr>
-                            <td><strong>{l s='Date Created:' mod='multivendor'}</strong></td>
+                            <td><strong>{l s='Date de création:' mod='multivendor'}</strong></td>
                             <td>{dateFormat date=$payment->date_add full=1}</td>
                         </tr>
                     </table>
                 </div>
 
                 <div class="col-md-6">
-                    <h4>{l s='Vendor Information' mod='multivendor'}</h4>
+                    <h4>{l s='Informations du vendeur' mod='multivendor'}</h4>
                     <table class="table table-bordered">
                         <tr>
-                            <td><strong>{l s='Vendor ID:' mod='multivendor'}</strong></td>
+                            <td><strong>{l s='ID Vendeur:' mod='multivendor'}</strong></td>
                             <td>#{$vendor->id}</td>
                         </tr>
                         <tr>
-                            <td><strong>{l s='Shop Name:' mod='multivendor'}</strong></td>
+                            <td><strong>{l s='Nom de la boutique:' mod='multivendor'}</strong></td>
                             <td>{$vendor->shop_name|default:'N/A'}</td>
                         </tr>
                         <tr>
@@ -75,11 +75,11 @@
                             <td>{$vendor->email|default:'N/A'}</td>
                         </tr>
                         <tr>
-                            <td><strong>{l s='Phone:' mod='multivendor'}</strong></td>
+                            <td><strong>{l s='Téléphone:' mod='multivendor'}</strong></td>
                             <td>{$vendor->phone|default:'N/A'}</td>
                         </tr>
                         <tr>
-                            <td><strong>{l s='Status:' mod='multivendor'}</strong></td>
+                            <td><strong>{l s='Statut:' mod='multivendor'}</strong></td>
                             <td>
                                 <span
                                     class="badge badge-{if $vendor->status == 'approved'}success{elseif $vendor->status == 'pending'}warning{else}danger{/if}">
@@ -91,21 +91,21 @@
                 </div>
             </div>
 
-            {* Transaction Details *}
+            {* Détails de la transaction *}
             {if isset($transaction_details) && $transaction_details}
                 <div class="row">
                     <div class="col-md-12">
-                        <h4>{l s='Transaction Details' mod='multivendor'}</h4>
+                        <h4>{l s='Détails de la transaction' mod='multivendor'}</h4>
                         <div class="table-responsive">
                             <table class="table table-striped">
                                 <thead>
                                     <tr>
-                                        <th>{l s='Order' mod='multivendor'}</th>
-                                        <th>{l s='Product' mod='multivendor'}</th>
-                                        <th>{l s='Vendor Amount' mod='multivendor'}</th>
+                                        <th>{l s='Commande' mod='multivendor'}</th>
+                                        <th>{l s='Produit' mod='multivendor'}</th>
+                                        <th>{l s='Montant vendeur' mod='multivendor'}</th>
                                         <th>{l s='Type' mod='multivendor'}</th>
-                                        <th>{l s='Order Date' mod='multivendor'}</th>
-                                        <th>{l s='Status' mod='multivendor'}</th>
+                                        <th>{l s='Date de commande' mod='multivendor'}</th>
+                                        <th>{l s='Statut' mod='multivendor'}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -120,10 +120,10 @@
                                             <td>
                                                 {$detail.product_name|default:'N/A'}
                                                 {if isset($detail.product_reference) && $detail.product_reference}
-                                                    <br><small class="text-muted">Ref: {$detail.product_reference}</small>
+                                                    <br><small class="text-muted">Réf: {$detail.product_reference}</small>
                                                 {/if}
                                                 {if isset($detail.product_quantity) && $detail.product_quantity}
-                                                    <br><small class="text-info">Qty: {$detail.product_quantity}</small>
+                                                    <br><small class="text-info">Qté: {$detail.product_quantity}</small>
                                                 {/if}
                                             </td>
                                             <td class="text-info"><strong>{$detail.vendor_amount|number_format:3} TND</strong></td>
@@ -141,7 +141,7 @@
                                 <tfoot>
                                     <tr class="info">
                                         <td colspan="3" class="text-right">
-                                            <strong>{l s='Total Payment Amount:' mod='multivendor'}</strong>
+                                            <strong>{l s='Montant total du paiement:' mod='multivendor'}</strong>
                                         </td>
                                         <td><strong class="text-success">{$payment->amount|number_format:3} TND</strong></td>
                                         <td colspan="3"></td>
@@ -155,30 +155,30 @@
                 <div class="row">
                     <div class="col-md-12">
                         <div class="alert alert-info">
-                            {l s='No transaction details found for this payment.' mod='multivendor'}
+                            {l s='Aucun détail de transaction trouvé pour ce paiement.' mod='multivendor'}
                         </div>
                     </div>
                 </div>
             {/if}
 
-            {* Quick Actions *}
+            {* Actions rapides *}
             <div class="row">
                 <div class="col-md-12">
                     <div class="panel panel-default">
                         <div class="panel-heading">
-                            <h4 class="panel-title">{l s='Quick Actions' mod='multivendor'}</h4>
+                            <h4 class="panel-title">{l s='Actions rapides' mod='multivendor'}</h4>
                         </div>
                         <div class="panel-body">
                             <a href="{$print_url}" target="_blank" class="btn btn-default">
-                                <i class="icon-print"></i> {l s='Print Payment Receipt' mod='multivendor'}
+                                <i class="icon-print"></i> {l s='Imprimer le reçu de paiement' mod='multivendor'}
                             </a>
                             <a href="{$link->getAdminLink('AdminVendorPayments')}" class="btn btn-default">
-                                <i class="icon-arrow-left"></i> {l s='Back to Payments List' mod='multivendor'}
+                                <i class="icon-arrow-left"></i> {l s='Retour à la liste des paiements' mod='multivendor'}
                             </a>
                             {if $payment->status == 'pending'}
-                                <a href="{$link->getAdminLink('AdminVendorPayments')}&id_vendor_payment={$payment->id}&updatevendor_payment"
+                                <a href="{$link->getAdminLink('AdminVendorPayments')}&id_vendor_payment={$payment->id}&updatemv_vendor_payment"
                                     class="btn btn-primary">
-                                    <i class="icon-edit"></i> {l s='Edit Payment' mod='multivendor'}
+                                    <i class="icon-edit"></i> {l s='Modifier le paiement' mod='multivendor'}
                                 </a>
                             {/if}
                         </div>
@@ -187,7 +187,7 @@
             </div>
         {else}
             <div class="alert alert-warning">
-                {l s='Payment information not found.' mod='multivendor'}
+                {l s='Informations de paiement non trouvées.' mod='multivendor'}
             </div>
         {/if}
     </div>

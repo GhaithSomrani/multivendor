@@ -36,7 +36,7 @@
                         <label for="export_type">Export Type:</label>
                         <select name="export_type" id="export_type" class="form-control" required>
                             {foreach from=$manifest_types item=type}
-                                <option value="{$type.id}">{$type.name}</option>
+                            {if $type.id != 1}  <option value="{$type.id}">{$type.name}</option> {/if}
                             {/foreach}
                         </select>
                     </div>

@@ -1,8 +1,19 @@
-<!-- Vendor Order Details Table -->
 <div class="panel" id="vendor-order-details-panel">
     <div class="panel-heading">
         <i class="icon-list-ol"></i> {l s='Vendor Order Details' mod='multivendor'}
         <span class="badge" id="items-count">0 {l s='items' mod='multivendor'}</span>
+
+        <!-- Per Page Selection -->
+        <div class="pull-right">
+            <label for="per-page-select">{l s='Lignes par page' mod='multivendor'}:</label>
+            <select id="per-page-select" class="form-control input-sm" style="width: auto; display: inline-block;">
+                <option value="10">10</option>
+                <option value="20" selected>20</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+                <option value="200">200</option>
+            </select>
+        </div>
     </div>
     <div class="panel-body">
         <div class="table-responsive">
@@ -38,7 +49,7 @@
                         <th>
                             <select class="filter-input" name="payment_status">
                                 <option value="">{l s='Tous' mod='multivendor'}</option>
-                                <option value="completed">{l s='Payé' mod='multivendor'}</option>
+                                <option value="paid">{l s='Payé' mod='multivendor'}</option>
                                 <option value="pending">{l s='En attente' mod='multivendor'}</option>
                                 <option value="cancelled">{l s='Annulé' mod='multivendor'}</option>
                             </select>
@@ -49,7 +60,6 @@
                                 {foreach $orderStatuses as $orderStatus}
                                     <option value="{$orderStatus.id_order_state}">{$orderStatus.name}</option>
                                 {/foreach}
-
                             </select>
                         </th>
                         <th>
@@ -63,13 +73,30 @@
                         <th>
                             <input type="date" class="filter-input date-input form-control" name="date_from">
                             <input type="date" class="filter-input date-input form-control" name="date_to">
-
                         </th>
                     </tr>
                 </thead>
                 <tbody id="order-details-tbody">
                 </tbody>
             </table>
+        </div>
+
+        <!-- Pagination Controls -->
+        <div class="row" id="pagination-container" style="display: none;">
+            <div class="col-sm-6">
+                <div class="dataTables_info">
+                    {l s='Affichage de' mod='multivendor'} <span id="showing-from">0</span> {l s='à' mod='multivendor'}
+                    <span id="showing-to">0</span> {l s='de' mod='multivendor'} <span id="total-records">0</span>
+                    {l s='entrées' mod='multivendor'}
+                </div>
+            </div>
+            <div class="col-sm-6">
+                <div class="dataTables_paginate paging_simple_numbers pull-right">
+                    <ul class="pagination" id="pagination-list">
+                        <!-- Pagination buttons will be inserted here -->
+                    </ul>
+                </div>
+            </div>
         </div>
     </div>
 </div>

@@ -21,8 +21,8 @@
                 {foreach from=$transactions item=transaction}
                     <tr>
                         <td>
-                            <strong>#{$transaction.order_reference}</strong><br>
-                            <small>Order #{$transaction.id_order}</small>
+                            <strong>{$transaction.id_order}</strong><br>
+                            <small>{$transaction.id_order_detail}</small>
                         </td>
                         <td>
                             <strong>{$transaction.product_name|escape:'html':'UTF-8'}</strong><br>
@@ -84,7 +84,7 @@
                 {/foreach}
             </tbody>
         </table>
-        
+
         <div class="alert alert-info">
             <i class="icon-info-circle"></i>
             <strong>{l s='Found %d available transactions' sprintf=[$transactions|count] mod='multivendor'}</strong>
@@ -105,18 +105,23 @@
     .badge-warning {
         background-color: #f0ad4e;
     }
+
     .badge-success {
         background-color: #5cb85c;
     }
+
     .badge-info {
         background-color: #5bc0de;
     }
+
     .badge-default {
         background-color: #777;
     }
+
     .text-danger {
         color: #d9534f;
     }
+
     .text-success {
         color: #5cb85c;
     }

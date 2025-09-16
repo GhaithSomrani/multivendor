@@ -102,9 +102,8 @@ class AdminManifestController extends ModuleAdminController
         $this->_group = 'GROUP BY a.id_manifest';
         $this->bulk_actions = array(
             'merge' => array(
-                'text' => $this->l('merge'),
-                'icon' => 'icon-trash',
-                'confirm' => $this->l('Are you sure?'),
+                'text' => $this->l('Generer paiement'),
+                'confirm' => $this->l('Êtes-vous sûr de vouloir fusionner les manifestes sélectionnés en un paiement ?'),
                 'action' => 'merge'
             )
         );
@@ -367,9 +366,11 @@ class AdminManifestController extends ModuleAdminController
 
 
         if (!Tools::getValue('reference')) {
-            $_POST['reference'] = Manifest::generateReference($_POST['id_vendor'], $_POST['id_manifest_type']);
+            $_POST['reference'] = Manifest::generateReference(
+                (int)Tools::getValue('id_vendor'),
+                (int)Tools::getValue('id_manifest_type')
+            );
         }
-
         $result = parent::processSave();
 
         if ($this->object->id) {
@@ -381,7 +382,7 @@ class AdminManifestController extends ModuleAdminController
             $manifest->update();
         }
 
-        // Add selected order details
+
         $selectedOrderDetails = Tools::getValue('selected_order_details');
         if ($selectedOrderDetails) {
             $orderDetailIds = array_map('intval', explode(',', $selectedOrderDetails));
@@ -519,8 +520,13 @@ class AdminManifestController extends ModuleAdminController
             return null;
         }
         if (Tools::isSubmit('submitBulkmergemv_manifest')) {
+            if (!Tools::getValue('manifestBox')) {
+                $this->errors[] = 'Veuillez sélectionner au moins un manifeste à fusionner.';
+                return false;
+            }
             try {
                 $this->mergeManifestIntoPayment(Tools::getValue('manifestBox'));
+                $this->confirmations[] = 'La fusion a été effectuée avec succès pour les manifestes : ' . implode(', ', Tools::getValue('manifestBox'));
             } catch (Exception $e) {
                 $this->errors[] = $e->getMessage();
             }
@@ -533,80 +539,132 @@ class AdminManifestController extends ModuleAdminController
     }
 
 
-    public function mergeManifestIntoPayment($manifestIds)
+    public function mergeManifestIntoPayment(array $manifestIds)
     {
-        $manifestsData = [];
-        $totalAmount = 0;
-        $reference = 'M';
+        $validatedManifests = $this->validateManifests($manifestIds);
+        $allTransactions = $this->collectTransactions($validatedManifests);
+        $this->validateTransactionRequirements($allTransactions);
+
+        $vendorId = $validatedManifests[0]['vendor_id'];
+        $reference = $this->buildReference($manifestIds);
+        $totalAmount = array_sum(array_column($allTransactions, 'vendor_amount'));
+
+        $paymentId = $this->createPayment($vendorId, $totalAmount, $reference);
+        $this->linkTransactionsToPayment($allTransactions, $paymentId);
+
+        return $paymentId;
+    }
+
+    private function validateManifests(array $manifestIds)
+    {
+        if (empty($manifestIds)) {
+            throw new Exception('Aucun manifeste fourni pour la fusion.');
+        }
+
+        $manifests = [];
+        $vendorIds = [];
+
         foreach ($manifestIds as $id_manifest) {
-            $reference .=  '-' . $id_manifest;
-
-            try {
-                $manifest = new Manifest($id_manifest);
-                $orderDetailIds = array_column(Manifest::getOrderdetailsIDs($id_manifest), 'id_order_details');
-                $transactionType = $manifest->getTransactionType();
-                $Amount = $this->getAmounts($orderDetailIds, $transactionType, $id_manifest);
-                $manifestsData[] = [
-                    'id_vendor' => $manifest->id_vendor,
-                    'id_manifest' => $id_manifest,
-                    'Manifest_type' => $manifest->id_manifest_type,
-                    'orderDetailIds' => $orderDetailIds,
-                    'amount' => $Amount,
-                ];
-                $totalAmount += $Amount;
-            } catch (Exception $e) {
-                $this->errors[] = $e->getMessage();
+            $manifest = new Manifest((int)$id_manifest);
+            if (!$manifest->id) {
+                throw new Exception("Manifeste introuvable (ID: {$id_manifest}).");
             }
-        }
-        $vendorArray = array_column($manifestsData, 'id_vendor');
 
-        if (count(array_unique($vendorArray)) != 1) {
-            throw new Exception('Vous ne pouvez fusionner que les manifestes du même fournisseur');
+            $orderDetailIds = array_column(Manifest::getOrderdetailsIDs($id_manifest), 'id_order_details');
+            if (empty($orderDetailIds)) {
+                throw new Exception("Aucune ligne de commande trouvée pour le manifeste (ID: {$id_manifest}).");
+            }
+
+            $manifests[] = [
+                'id' => $id_manifest,
+                'vendor_id' => $manifest->id_vendor,
+                'transaction_type' => $manifest->getTransactionType(),
+                'order_detail_ids' => $orderDetailIds
+            ];
+
+            $vendorIds[] = $manifest->id_vendor;
         }
 
+        if (count(array_unique($vendorIds)) !== 1) {
+            throw new Exception('Tous les manifestes doivent appartenir au même fournisseur.');
+        }
+
+        return $manifests;
+    }
+
+    private function collectTransactions(array $manifests)
+    {
+        $allTransactions = [];
+
+        foreach ($manifests as $manifest) {
+            $manifestTransactions = TransactionHelper::getAvailableTransaction(
+                $manifest['order_detail_ids'],
+                $manifest['transaction_type']
+            );
+
+            if (empty($manifestTransactions)) {
+                throw new Exception("Aucune transaction disponible pour le manifeste (ID: {$manifest['id']}).");
+            }
+
+            $allTransactions = array_merge($allTransactions, $manifestTransactions);
+        }
+
+        return $allTransactions;
+    }
+
+    private function validateTransactionRequirements(array $transactions)
+    {
+        if (empty($transactions)) {
+            throw new Exception('Aucune transaction valide trouvée pour la fusion.');
+        }
+    }
+
+    private function buildReference(array $manifestIds)
+    {
+        return 'M-' . implode('-', $manifestIds);
+    }
+
+    private function createPayment($vendorId, $totalAmount, $reference)
+    {
         $vendorPaymentObj = new VendorPayment();
-        $vendorPaymentObj->id_vendor = $vendorArray[0];
+        $vendorPaymentObj->id_vendor = $vendorId;
         $vendorPaymentObj->amount = $totalAmount;
         $vendorPaymentObj->reference = $reference;
         $vendorPaymentObj->status = 'pending';
-        $vendorPaymentObj->save();
 
-        $id_payment = $vendorPaymentObj->id;
-        dump($id_payment);
-        foreach ($manifestsData as $manifestData) {
-            $manifest = new Manifest($manifestData['id_manifest']);
-            $transactionType = $manifest->getTransactionType();
-            $this->updateTransaction($manifestData['orderDetailIds'], $transactionType, $id_payment);
+        if (!$vendorPaymentObj->save()) {
+            throw new Exception("Échec de l'enregistrement du paiement du fournisseur.");
         }
+
+        return $vendorPaymentObj->id;
     }
-    private function getAmounts($orderDetailIds, $transactionType, $id_manifest): float
+
+    private function linkTransactionsToPayment(array $transactions, $paymentId)
     {
-        $totalAmount = 0;
-        foreach ($orderDetailIds as $id_order_detail) {
-            $transactionsRow = TransactionHelper::getExistingTransaction($id_order_detail, $transactionType);
-            if (!$transactionsRow) {
-                throw new Exception('Transaction non trouvée pour le détail de commande : ' . $id_order_detail . ' et le type de transaction : ' . $transactionType . ' dans le manifeste : ' . $id_manifest);
+        foreach ($transactions as $transaction) {
+            $transactionObj = new VendorTransaction($transaction['id_vendor_transaction']);
+
+            if (!$transactionObj->id) {
+                throw new Exception("Transaction introuvable (ID: {$transaction['id_vendor_transaction']}).");
             }
-            $totalAmount += (float)$transactionsRow['vendor_amount'];
-        }
-        return $totalAmount;
-    }
 
+            if ($transactionObj->id_vendor_payment > 0) {
+                throw new Exception(
+                    "La transaction {$transactionObj->id} est déjà associée au paiement #{$transactionObj->id_vendor_payment}."
+                );
+            }
 
-    private function updateTransaction($orderDetailIds, $transactionType, $id_payment)
-    {
+            $transactionObj->id_vendor_payment = $paymentId;
 
-        foreach ($orderDetailIds as $id_order_detail) {
-            $transactionsRow = TransactionHelper::getExistingTransaction($id_order_detail, $transactionType);
-            if ($transactionsRow['id_vendor_payment'] == 0) {
-                $transactionsObj = new VendorTransaction($transactionsRow['id_vendor_transaction']);
-                $transactionsObj->id_vendor_payment = (int)$id_payment;
-                $transactionsObj->save();
-            } else {
-                throw new Exception('order detail ' . $id_order_detail . ' already has a payment :' . $transactionsRow['id_vendor_payment']);
+            if (!$transactionObj->save()) {
+                throw new Exception("Impossible de mettre à jour la transaction (ID: {$transactionObj->id}).");
             }
         }
     }
+
+
+
+
 
     public function ajaxProcessLoadVendorAddress()
     {
@@ -683,13 +741,15 @@ class AdminManifestController extends ModuleAdminController
 
 
         $AllowedOrderLineStatusTypes = ManifestStatusType::getAllowedOrderLineStatusTypes($manifesTypeStatusId);
+        $currentManifestId = (int)Tools::getValue('id_manifest') ? (int)Tools::getValue('id_manifest') : null;
 
         $filters = Tools::getValue('filters', []);
         $filters['allowed_order_line_status_types'] =  $AllowedOrderLineStatusTypes;
 
         $filters['id_vendor'] = $vendorId;
+
         $details = OrderHelper::getVendorOrderDetails($vendorId, $filters);
-        $currentManifestId = (int)Tools::getValue('id_manifest') ? (int)Tools::getValue('id_manifest') : null;
+
         $isEditMode = $currentManifestId > 0 ? true : false;
 
         $selected_ids = [];
@@ -716,8 +776,6 @@ class AdminManifestController extends ModuleAdminController
             $detail['checkbox_checked'] = $checkboxState['checked'];
             $detail['checkbox_disabled'] = $checkboxState['disabled'];
         }
-
-
         $this->context->smarty->assign([
             'manifest_id' => $currentManifestId,
             'is_edit_mode' => $isEditMode,
