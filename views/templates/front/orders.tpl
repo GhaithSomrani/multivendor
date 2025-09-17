@@ -23,6 +23,10 @@
                                 <i class="mv-icon">🛒</i>
                                 <span>{l s='Commandes' mod='multivendor'}</span>
                             </a>
+                            <a class="mv-nav-link mv-nav-link" href="{$vendor_manifest_url}">
+                                <i class="mv-icon">📋</i>
+                                <span>{l s='Manifests' mod='multivendor'}</span>
+                            </a>
                             <a class="mv-nav-link" href="{$vendor_commissions_url}">
                                 <i class="mv-icon">💰</i>
                                 <span>{l s='Commissions' mod='multivendor'}</span>
@@ -123,17 +127,17 @@
                 </div>
                 <div class="mv-form-group">
                     <label for="statusComment" class="mv-form-label">{l s='Commentaire' mod='multivendor'}</label>
-                    <textarea id="statusComment" 
-                              class="mv-form-control" 
-                              placeholder="{l s='Ajoutez un commentaire sur ce changement de statut...' mod='multivendor'}"
-                              rows="4"></textarea>
+                    <textarea id="statusComment" class="mv-form-control"
+                        placeholder="{l s='Ajoutez un commentaire sur ce changement de statut...' mod='multivendor'}"
+                        rows="4"></textarea>
                 </div>
             </div>
             <div class="mv-status-comment-footer">
                 <button type="button" class="mv-btn mv-btn-secondary" onclick="closeStatusCommentModal()">
                     {l s='Annuler' mod='multivendor'}
                 </button>
-                <button type="button" class="mv-btn mv-btn-primary" id="submitStatusComment" onclick="submitStatusWithComment()">
+                <button type="button" class="mv-btn mv-btn-primary" id="submitStatusComment"
+                    onclick="submitStatusWithComment()">
                     {l s='Mettre à jour le statut' mod='multivendor'}
                 </button>
             </div>

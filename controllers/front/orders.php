@@ -114,6 +114,7 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
             'vendor_profile_url' => $this->context->link->getModuleLink('multivendor', 'profile'),
             'vendor_orders_url' => $this->context->link->getModuleLink('multivendor', 'orders'),
             'vendor_manage_orders_url' => $this->context->link->getModuleLink('multivendor', 'manageorders', []),
+            'vendor_manifest_url' => $this->context->link->getModuleLink('multivendor', 'manifestmanager', []),
             'changeable_info' => $changeableStatusInfo['changeable_info'],
             'allowed_status_transitions' => $changeableStatusInfo['allowed_transitions'],
             'currency_sign' => $this->context->currency->sign,

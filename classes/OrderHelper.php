@@ -111,7 +111,6 @@ class OrderHelper
     public static function getVendorOrderDetails($id_vendor, $filters = [], $limit = null, $offset = 0)
     {
         $defaultStatusTypeId = OrderLineStatus::getDefaultStatusTypeId();
-        $defaultStatusType = new OrderLineStatusType($defaultStatusTypeId);
 
         $sql = 'SELECT ' . ($limit ? 'SQL_CALC_FOUND_ROWS ' : '') . '
             vod.id_order_detail,
@@ -257,10 +256,16 @@ class OrderHelper
             $sql .= ' AND vod.vendor_amount <= ' . (float)$filters['vendor_amount_max'];
         }
 
+
+        // Available for manifest filter
+        if (!empty($filters['available_for_manifest'])) {
+            $allowedStatusTypes = $filters['available_for_manifest'];
+            $sql .= ' AND ols.id_order_line_status_type IN (' . $allowedStatusTypes . ')';
+        }
         // Manifest filter
         if (!empty($filters['manifest'])) {
             $manifest_id = (int)$filters['manifest'];
-            
+
             if ($manifest_id > 0) {
                 $sql .= ' AND md.id_manifest = ' . $manifest_id;
             } else {
@@ -280,7 +285,7 @@ class OrderHelper
 
         // Group by 
         $sql .= ' GROUP BY vod.id_order_detail';
-        
+
         // Order by
         $orderBy = !empty($filters['order_by']) ? pSQL($filters['order_by']) : 'vod.date_add';
         $orderWay = !empty($filters['order_way']) && strtoupper($filters['order_way']) === 'ASC' ? 'ASC' : 'DESC';
