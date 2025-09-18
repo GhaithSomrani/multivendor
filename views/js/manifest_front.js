@@ -292,21 +292,45 @@ function renderManifestTable() {
         var deleteButton = manifest.editable ?
             '<button class="action-btn delete-btn" onclick="deleteManifest(' + manifest.id + ')" title="Delete">×</button>' : '';
 
-        var row = $('<tr>' +
-            '<td>' + manifest.reference + '</td>' +
-            '<td>' + manifest.address + '</td>' +
-            '<td>' + manifest.date + '</td>' +
-            '<td>' + manifest.nbre + '</td>' +
-            '<td>' + manifest.qty + '</td>' +
-            '<td>' + parseFloat(manifest.total).toFixed(2)+'</td>' +
-            '<td>' + manifest.status + '</td>' +
-            '<td>' +
-            '<button class="action-btn load-btn" onclick="loadManifest(' + manifest.id + ')" title="Load Manifest" ' +
-            (!manifest.editable ? 'disabled' : '') + '>↑</button>' +
-            '<button class="action-btn view-btn" onclick="viewManifest(' + manifest.id + ')" title="View Details">👁</button>' +
-            deleteButton +
-            '</td>' +
-            '</tr>');
+        var row = $('<tr>');
+
+        $('<td>', { text: manifest.reference }).appendTo(row);
+        $('<td>', { text: manifest.address }).appendTo(row);
+        $('<td>', { text: manifest.date }).appendTo(row);
+        $('<td>', { text: manifest.nbre }).appendTo(row);
+        $('<td>', { text: manifest.qty }).appendTo(row);
+        $('<td>', { text: parseFloat(manifest.total).toFixed(2) }).appendTo(row);
+        $('<td>', { text: manifest.status }).appendTo(row);
+
+        var actionTd = $('<td>');
+
+        $('<button>', {
+            class: 'action-btn load-btn',
+            title: 'Load Manifest',
+            text: '↑',
+            click: () => loadManifest(manifest.id),
+            disabled: !manifest.editable
+        }).appendTo(actionTd);
+
+        $('<button>', {
+            class: 'action-btn view-btn',
+            title: 'View Details',
+            text: '👁',
+            click: () => viewManifest(manifest.id)
+        }).appendTo(actionTd);
+
+        $('<button>', {
+            class: 'action-btn print-btn',
+            title: 'Print Manifest',
+            text: '👁',
+            click: () => printExistingManifest(manifest.id)
+        }).appendTo(actionTd);
+
+
+        // assuming deleteButton is HTML string
+        actionTd.append(deleteButton);
+
+        row.append(actionTd);
         tbody.append(row);
     });
 }
@@ -460,7 +484,7 @@ function executeManifestPrint(addressId, orderDetailIds) {
 }
 function printExistingManifest(manifestId) {
     window.open(
-        window.manifestConfig.ajaxUrl + '?action=printManifest&id_manifest=' + manifestId,
+        window.manifestConfig.ajaxUrl + '?ajax=1&action=printManifest&id_manifest=' + manifestId,
         '_blank'
     );
 }

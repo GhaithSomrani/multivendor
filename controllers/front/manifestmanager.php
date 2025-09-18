@@ -109,14 +109,16 @@ class MultivendorManifestManagerModuleFrontController extends ModuleFrontControl
 
         $manifest = new Manifest($id_manifest);
         if ($manifest->id_vendor != $this->vendor['id_vendor']) {
-            $this->ajaxResponse(['error' => 'Access denied'], 403);
-            return;
+            echo 'Access denied';
+            exit;
         }
 
         try {
-            echo Manifest::generatePrintablePDF($id_manifest);
+            Manifest::generatePrintablePDF($id_manifest);
+            exit;
         } catch (Exception $e) {
-            $this->ajaxResponse(['error' => $e->getMessage()], 400);
+            echo 'Error: ' . $e->getMessage();
+            exit;
         }
     }
 
