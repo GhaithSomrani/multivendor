@@ -526,4 +526,14 @@ class Manifest extends ObjectModel
             return "refund";
         }
     }
+
+    public static function getManifestAddress($id_manifest)
+    {
+        $manifest = new Manifest($id_manifest);
+        if (!$manifest->id_address) {
+            return '';
+        }
+        $addressobj = new Address($manifest->id_address);
+        return  AddressFormat::generateAddress($addressobj, [], ' - ', ' ');
+    }
 }

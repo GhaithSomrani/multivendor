@@ -35,6 +35,7 @@ class MultivendorManifestManagerModuleFrontController extends ModuleFrontControl
         $this->context->controller->addJS($this->module->getPathUri() . 'views/js/manifest_front.js');
         $this->context->controller->addCSS($this->module->getPathUri() . 'views/css/manifest_front.css');
         $this->context->controller->addCSS($this->module->getPathUri() . 'views/css/dashboard.css');
+        $this->context->controller->addCSS($this->module->getPathUri() . 'views/css/commissions.css');
         $this->context->controller->addCSS($this->module->getPathUri() . 'views/css/orders.css');
 
         $VendorObj = new Vendor($this->vendor['id_vendor']);
@@ -171,6 +172,7 @@ class MultivendorManifestManagerModuleFrontController extends ModuleFrontControl
                 'public_price' => $order['unit_price'],
                 'price' => $order['product_price'],
                 'total' => $order['vendor_amount'],
+                'add_date' => $order['order_date'],
                 'disabled' => $checkboxState['disabled'],
                 'checked' => $checkboxState['checked']
             ];
@@ -220,19 +222,21 @@ class MultivendorManifestManagerModuleFrontController extends ModuleFrontControl
     private function getManifestList()
     {
         $manifests = $this->getVendorManifests();
-
         $result = [];
         foreach ($manifests as $manifest) {
+            $address = Manifest::getManifestAddress($manifest['id_manifest']);
             $result[] = [
                 'id' => $manifest['id_manifest'],
-                'reference' => '#' . str_pad($manifest['id_manifest'], 6, '0', STR_PAD_LEFT),
-                'address' => $manifest['address_alias'] ?: 'N/A',
+                'reference' => $manifest['reference'],
+                'address' =>  substr($address, 0, 25) . (strlen($address) > 25 ? '...' : ''),
                 'date' => date('d/m/Y', strtotime($manifest['date_add'])),
                 'nbre' => $manifest['item_count'],
                 'qty' => $manifest['total_quantity'],
                 'total' => $manifest['total_amount'],
                 'status' => $manifest['status_name'],
-                'editable' => $manifest['allowed_modification']
+                'editable' => $manifest['allowed_modification'],
+                'deletable' => $manifest['allowed_delete'],
+                'orderdetails' => OrderHelper::getVendorOrderDetails($this->vendor['id_vendor'], ['manifest' => $manifest['id_manifest']])
             ];
         }
 
@@ -361,6 +365,7 @@ class MultivendorManifestManagerModuleFrontController extends ModuleFrontControl
     {
         $sql = 'SELECT m.*, a.alias as address_alias, mst.name as status_name, 
                        mst.allowed_modification,
+                       mst.allowed_delete,
                        COUNT(md.id_order_details) as item_count,
                        SUM(od.product_quantity) as total_quantity,
                        SUM(od.total_price_tax_incl) as total_amount
@@ -375,6 +380,7 @@ class MultivendorManifestManagerModuleFrontController extends ModuleFrontControl
 
         return Db::getInstance()->executeS($sql);
     }
+
 
     private function validateVendorAddress($id_address)
     {

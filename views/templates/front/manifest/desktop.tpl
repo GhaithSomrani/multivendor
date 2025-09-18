@@ -4,8 +4,10 @@
         {* Panneau Gauche - Commandes Disponibles *}
         <div class="left-panel">
             <div class="panel-header">
-                <button class="btn btn-primary" id="selectAllBtn">{l s='Sélectionner TOUT' mod='multivendor'}</button>
-                {* <div class="filter-icon" onclick="toggleFilter()"></div> *}
+                <button class="mv-btn mv-btn-primary"
+                    id="selectAllBtn">{l s='Sélectionner TOUT' mod='multivendor'}</button>
+                <input type="text" class="mv-form-control" placeholder="Scannez le code-barres MPN ici..."
+                    autocomplete="off" />
             </div>
             <div class="order-list" id="availableOrders">
                 <div class="loading">{l s='Chargement des commandes disponibles...' mod='multivendor'}</div>
@@ -15,10 +17,21 @@
         {* Panneau Droit - Commandes Sélectionnées *}
         <div class="right-panel">
             <div class="right-panel-header">
-                <button class="btn btn-secondary" id="cancelBtn">{l s='Annuler' mod='multivendor'}</button>
-                <button class="btn btn-success" id="saveBtn">{l s='Enregistrer' mod='multivendor'}</button>
-                <button class="btn btn-primary" id="printBtn">{l s='Imprimer' mod='multivendor'}</button>
+                <div class="button-row">
+                    <button class="mv-btn btn-secondary" id="cancelBtn">{l s='Annuler' mod='multivendor'}</button>
+                    <button class="mv-btn btn-success" id="saveBtn">{l s='Enregistrer' mod='multivendor'}</button>
+                    <button class="mv-btn btn-primary" id="printBtn">{l s='Imprimer' mod='multivendor'}</button>
+                </div>
+                <div>
+                    <select id="addressSelect" class="mv-form-control">
+                        <option value="">{l s='-- Sélectionner une adresse --' mod='multivendor'}</option>
+                        {foreach from=$address_list item=address key=inde}
+                            <option value="{$address.id_address}"> {$address.address}</option>
+                        {/foreach}
+                    </select>
+                </div>
             </div>
+
             <div class="order-list" id="selectedOrders">
                 <div class="no-orders">{l s='Aucune commande sélectionnée' mod='multivendor'}</div>
             </div>
@@ -30,24 +43,10 @@
 
     {* Section Liste des Manifestes *}
     <div class="manifest-section">
-        <div class="manifest-title">{l s='Liste des Manifestes' mod='multivendor'}</div>
         <table class="manifest-table" id="manifestTable">
-            <thead>
-                <tr>
-                    <th>{l s='Référence' mod='multivendor'}</th>
-                    <th>{l s='Adresse' mod='multivendor'}</th>
-                    <th>{l s='Date' mod='multivendor'}</th>
-                    <th>{l s='Articles' mod='multivendor'}</th>
-                    <th>{l s='QTÉ' mod='multivendor'}</th>
-                    <th>{l s='Total' mod='multivendor'}</th>
-                    <th>{l s='Statut' mod='multivendor'}</th>
-                    <th>{l s='Action' mod='multivendor'}</th>
-                </tr>
-            </thead>
+
             <tbody id="manifestTableBody">
-                <tr>
-                    <td colspan="8" class="loading">{l s='Chargement des manifestes...' mod='multivendor'}</td>
-                </tr>
+
             </tbody>
         </table>
     </div>

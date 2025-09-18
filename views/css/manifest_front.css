@@ -4,7 +4,7 @@
     background: white;
     border-radius: 8px;
     overflow: hidden;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
 
 .top-section {
@@ -13,7 +13,8 @@
     min-height: 400px;
 }
 
-.left-panel, .right-panel {
+.left-panel,
+.right-panel {
     flex: 1;
     display: flex;
     flex-direction: column;
@@ -28,8 +29,9 @@
     padding: 10px 15px;
     border-bottom: 1px solid #ddd;
     display: flex;
-    align-items: center;
+    align-items: baseline;
     gap: 10px;
+    flex-direction: column;
 }
 
 .btn {
@@ -140,11 +142,12 @@
     border-bottom: 1px solid #ddd;
     display: flex;
     gap: 10px;
+    flex-direction: column;
     justify-content: flex-end;
 }
 
 .total-section {
-    background-color: #25b9d7;
+    background-color: #34d399;
     color: white;
     padding: 15px;
     text-align: center;
@@ -198,8 +201,13 @@
     justify-content: center;
     font-size: 12px;
     color: white;
-    background-color: #666;
     transition: background-color 0.2s;
+}
+
+.button-row {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
 }
 
 .action-btn:hover:not(:disabled) {
@@ -237,7 +245,7 @@
     top: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0,0,0,0.5);
+    background-color: rgba(0, 0, 0, 0.5);
 }
 
 .modal-content {
@@ -249,7 +257,7 @@
     max-width: 600px;
     max-height: 80vh;
     overflow: hidden;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
 }
 
 .modal-header {
@@ -350,25 +358,25 @@
         flex-direction: column;
         height: auto;
     }
-    
+
     .left-panel {
         border-right: none;
         border-bottom: 2px solid #e0e0e0;
     }
-    
+
     .order-list {
         max-height: 200px;
     }
-    
+
     .manifest-table {
         font-size: 12px;
     }
-    
+
     .manifest-table th,
     .manifest-table td {
         padding: 8px;
     }
-    
+
     .modal-content {
         width: 95%;
         margin: 10% auto;
@@ -465,7 +473,7 @@
 }
 
 .mv-mobile-order-item:hover {
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .mv-mobile-order-item.selected {
@@ -625,6 +633,7 @@
 
 /* Hide mobile elements on desktop */
 @media (min-width: 769px) {
+
     .mv-mobile-actions-card,
     .mv-mobile-counter-card,
     .mv-mobile-orders-card,
@@ -636,6 +645,7 @@
 
 /* Print styles */
 @media print {
+
     .panel-header,
     .right-panel-header,
     .modal,

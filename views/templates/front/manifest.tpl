@@ -37,31 +37,6 @@
             </aside>
 
             <main class="mv-main-content">
-                {* Toujours afficher les KPI en premier *}
-                <div class="mv-stats-grid">
-                    <div class="mv-stat-card">
-                        <div class="mv-stat-content">
-                            <h6 class="mv-stat-label">{l s='Total des Manifestes' mod='multivendor'}</h6>
-                            <h3 class="mv-stat-value" id="totalManifests">0</h3>
-                            <p class="mv-stat-description">{l s='Depuis toujours' mod='multivendor'}</p>
-                        </div>
-                    </div>
-                    <div class="mv-stat-card">
-                        <div class="mv-stat-content">
-                            <h6 class="mv-stat-label">{l s='Manifestes Brouillons' mod='multivendor'}</h6>
-                            <h3 class="mv-stat-value" id="draftManifests">0</h3>
-                            <p class="mv-stat-description">{l s='Prêt à traiter' mod='multivendor'}</p>
-                        </div>
-                    </div>
-                    <div class="mv-stat-card">
-                        <div class="mv-stat-content">
-                            <h6 class="mv-stat-label">{l s='Articles en Cours' mod='multivendor'}</h6>
-                            <h3 class="mv-stat-value" id="itemsInProgress">0</h3>
-                            <p class="mv-stat-description">{l s='En cours de traitement' mod='multivendor'}</p>
-                        </div>
-                    </div>
-                </div>
-
                 {* Détection Mobile/Bureau pour le Contenu *}
                 {if Context::getContext()->isMobile() == 1}
                     {* Charger le Modèle Mobile *}
@@ -83,15 +58,7 @@
                 <button class="mv-modal-close" onclick="closeAddressModal()">×</button>
             </div>
             <div class="mv-modal-body">
-                <div class="mv-form-group">
-                    <label for="addressSelect">{l s='Sélectionner l\'Adresse :' mod='multivendor'}</label>
-                    <select id="addressSelect" class="mv-form-control">
-                        <option value="">{l s='-- Sélectionner une adresse --' mod='multivendor'}</option>
-                        {foreach from=$address_list item=address}
-                            <option value="{$address.id_address}"> {$address.address}</option>
-                        {/foreach}
-                    </select>
-                </div>
+
             </div>
             <div class="mv-modal-footer">
                 <button class="mv-btn mv-btn-secondary"

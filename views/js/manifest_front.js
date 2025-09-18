@@ -264,8 +264,8 @@ function renderSelectedOrders(total) {
         }).appendTo(orderDiv);
 
         $('<button>', {
-            class: 'btn btn-sm remove-btn',
-            text: '×',
+            class: 'action-btn delete-btn',
+            text: '🗑️',
             click: () => removeSelectedItem(index)
         }).appendTo(orderDiv);
 
@@ -280,59 +280,176 @@ function renderSelectedOrders(total) {
 }
 
 function renderManifestTable() {
-    var tbody = $('#manifestTableBody');
-    tbody.empty();
+    var container = $('#manifestTableBody').parent().parent();
+    container.empty();
 
     if (manifests.length === 0) {
-        tbody.html('<tr><td colspan="8">No manifests found</td></tr>');
+        container.html('<div class="mv-empty-state">No manifests found</div>');
         return;
     }
 
+    var manifestList = $('<div>', { class: 'mv-payments-list' });
+
     $.each(manifests, function (index, manifest) {
-        var deleteButton = manifest.editable ?
-            '<button class="action-btn delete-btn" onclick="deleteManifest(' + manifest.id + ')" title="Delete">×</button>' : '';
+        var manifestItem = $('<div>', { class: 'mv-payment-item' });
 
-        var row = $('<tr>');
+        // Header
+        var header = $('<div>', { class: 'mv-payment-header' });
 
-        $('<td>', { text: manifest.reference }).appendTo(row);
-        $('<td>', { text: manifest.address }).appendTo(row);
-        $('<td>', { text: manifest.date }).appendTo(row);
-        $('<td>', { text: manifest.nbre }).appendTo(row);
-        $('<td>', { text: manifest.qty }).appendTo(row);
-        $('<td>', { text: parseFloat(manifest.total).toFixed(2) }).appendTo(row);
-        $('<td>', { text: manifest.status }).appendTo(row);
+        var info = $('<div>', { class: 'mv-payment-info' });
 
-        var actionTd = $('<td>');
+        $('<span>', {
+            class: 'mv-payment-date',
+            text: manifest.date
+        }).appendTo(info);
 
-        $('<button>', {
-            class: 'action-btn load-btn',
-            title: 'Load Manifest',
-            text: '↑',
-            click: () => loadManifest(manifest.id),
-            disabled: !manifest.editable
-        }).appendTo(actionTd);
+        $('<span>', {
+            class: 'mv-payment-amount',
+            text: parseFloat(manifest.total).toFixed(2) + ' TND'
+        }).appendTo(info);
 
-        $('<button>', {
-            class: 'action-btn view-btn',
-            title: 'View Details',
-            text: '👁',
-            click: () => viewManifest(manifest.id)
-        }).appendTo(actionTd);
+        $('<span>', {
+            class: 'mv-payment-method',
+            text: manifest.reference
+        }).appendTo(info);
+
+        $('<span>', {
+            class: 'mv-payment-reference',
+            text: manifest.address
+        }).appendTo(info);
+
+        $('<span>', {
+            class: 'mv-payment-reference',
+            text: 'Articles: ' + manifest.nbre
+        }).appendTo(info);
+
+        $('<span>', {
+            class: 'mv-payment-reference',
+            text: 'QTÉ: ' + manifest.qty
+        }).appendTo(info);
+
+        $('<span>', {
+            class: 'mv-status-badge mv-status-completed',
+            text: manifest.status
+        }).appendTo(info);
+
+        // Actions in header
+        var actionButtons = $('<div>', { style: 'display: flex; gap: 8px; margin-left: auto;' });
+
+        if (manifest.editable == 1) {
+            $('<button>', {
+                class: 'action-btn load-btn',
+                title: 'Load Manifest',
+                text: '✏️',
+                click: () => loadManifest(manifest.id),
+            }).appendTo(actionButtons);
+        }
+
+
 
         $('<button>', {
             class: 'action-btn print-btn',
             title: 'Print Manifest',
-            text: '👁',
+            text: '🖨️',
             click: () => printExistingManifest(manifest.id)
-        }).appendTo(actionTd);
+        }).appendTo(actionButtons);
 
+        if (manifest.deletable == 1) {
+            $('<button>', {
+                class: 'action-btn delete-btn',
+                title: 'Delete',
+                text: '🗑️',
+                click: () => deleteManifest(manifest.id)
+            }).appendTo(actionButtons);
+        }
 
-        // assuming deleteButton is HTML string
-        actionTd.append(deleteButton);
+        info.appendTo(header);
+        actionButtons.appendTo(header);
 
-        row.append(actionTd);
-        tbody.append(row);
+        var toggle = $('<button>', {
+            class: 'mv-btn-toggle',
+            click: () => toggleManifestDetails('manifest-' + manifest.id)
+        });
+
+        $('<i>', {
+            class: 'mv-icon-chevron',
+            text: '▼'
+        }).appendTo(toggle);
+
+        toggle.appendTo(header);
+        header.appendTo(manifestItem);
+
+        // Details - Order Details Table
+        var details = $('<div>', {
+            class: 'mv-payment-details',
+            id: 'manifest-' + manifest.id,
+            css: { display: 'none' }
+        });
+
+        if (manifest.orderdetails && manifest.orderdetails.length > 0) {
+            var table = $('<table>', { class: 'mv-table mv-payment-details-table' });
+
+            var thead = $('<thead>');
+            var headerRow = $('<tr>');
+
+            ['Commande', 'Produit', 'SKU', 'Qté', 'Montant', 'Date'].forEach(function (header) {
+                $('<th>', { text: header }).appendTo(headerRow);
+            });
+
+            headerRow.appendTo(thead);
+            thead.appendTo(table);
+
+            var tbody = $('<tbody>');
+
+            $.each(manifest.orderdetails, function (i, order) {
+                var row = $('<tr>');
+
+                $('<td>').html('<a href="#" class="mv-link">#' + order.id_order + '</a>').appendTo(row);
+                $('<td>', { text: order.product_name }).appendTo(row);
+                $('<td>', { text: order.product_reference }).appendTo(row);
+                $('<td>', { class: 'mv-text-center', text: order.product_quantity }).appendTo(row);
+                $('<td>', { text: parseFloat(order.vendor_amount).toFixed(3) + ' TND' }).appendTo(row);
+                $('<td>', { text: order.order_date ? new Date(order.order_date).toLocaleDateString() : '' }).appendTo(row);
+
+                row.appendTo(tbody);
+            });
+
+            tbody.appendTo(table);
+
+            var tfoot = $('<tfoot>');
+            var totalRow = $('<tr>');
+            $('<td>', { colspan: '4', class: 'mv-text-right', html: '<strong>Total :</strong>' }).appendTo(totalRow);
+            $('<td>', { html: '<strong>' + parseFloat(manifest.total).toFixed(3) + ' TND</strong>' }).appendTo(totalRow);
+            $('<td>').appendTo(totalRow);
+            totalRow.appendTo(tfoot);
+            tfoot.appendTo(table);
+
+            table.appendTo(details);
+        } else {
+            $('<p>', { text: 'No order details available', style: 'text-align: center; color: #666; padding: 20px;' }).appendTo(details);
+        }
+
+        details.appendTo(manifestItem);
+        manifestItem.appendTo(manifestList);
     });
+
+    manifestList.appendTo(container);
+}
+
+function toggleManifestDetails(detailsId) {
+    var details = $('#' + detailsId);
+    var toggle = details.prev().find('.mv-btn-toggle');
+    var icon = toggle.find('.mv-icon-chevron');
+
+    if (details.is(':visible')) {
+        details.hide();
+        toggle.removeClass('expanded');
+        icon.text('▼');
+    } else {
+        details.show();
+        toggle.addClass('expanded');
+        icon.text('▲');
+    }
 }
 
 function toggleOrderSelection(orderId) {
