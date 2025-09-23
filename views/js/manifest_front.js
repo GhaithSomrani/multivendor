@@ -5,6 +5,7 @@ var manifests = [];
 var currentManifestId = null;
 var vendorAddresses = [];
 var currentAction = null;
+var currentManifestType = null;
 
 // Initialize when document is ready
 $(document).ready(function () {
@@ -23,7 +24,20 @@ function bindEvents() {
     $('#cancelBtn').on('click', cancelSelection);
     $('#saveBtn').on('click', saveManifest);
     $('#printBtn').on('click', printManifest);
-    $('#confirmAddressBtn').on('click', confirmAddress);
+
+    // MPN barcode scanner
+    $('.mv-form-control[placeholder*="Scannez"]').on('input keypress', function (e) {
+        if (e.type === 'keypress' && e.which === 13) {
+            e.preventDefault();
+            processMpnScan($(this).val().trim());
+        } else if (e.type === 'input' && $(this).val().length > 0) {
+            setTimeout(() => {
+                if ($(this).val().trim().length > 0) {
+                    processMpnScan($(this).val().trim());
+                }
+            }, 1000);
+        }
+    });
 
     // Close modals when clicking outside
     $(window).on('click', function (event) {
@@ -51,7 +65,9 @@ function loadAvailableOrders() {
                 return;
             }
             availableOrders = response.orders;
-            renderAvailableOrders();
+            if (currentManifestType != 2) {
+                renderAvailableOrders();
+            }
         },
         error: function () {
             showError('Failed to load available orders');
@@ -125,7 +141,7 @@ function renderAvailableOrders() {
     container.empty();
 
     if (availableOrders.length === 0) {
-        container.html('<div class="no-orders">No available orders</div>');
+        container.html('<div class="no-orders">Aucune commande disponible</div>');
         return;
     }
 
@@ -134,7 +150,7 @@ function renderAvailableOrders() {
             var orderDiv = $('<div>')
                 .addClass('order-item')
                 .toggleClass('selected', order.checked)
-                .attr('data-id', order.id);
+                .attr('data-id', order.id).attr('data-mpn', order.mpn);
 
             // --- Left ID block
             var id = $('<span>');
@@ -156,7 +172,7 @@ function renderAvailableOrders() {
             var productInfo = $('<span>', { class: 'item-name' });
 
             $('<span>', {
-                text: order.name
+                text: order.name + ' (X' + order.quantity + ')'
             }).appendTo(productInfo);
             $('<br>').appendTo(productInfo);
             $('<p>', {
@@ -210,9 +226,8 @@ function renderSelectedOrders(total) {
         $('#totalAmount').text('0');
         return;
     }
-    console.log(selectedOrders);
     $.each(selectedOrders, function (index, order) {
-        var orderDiv = $('<div>', { class: 'order-item' });
+        var orderDiv = $('<div>', { class: 'order-item', 'data-id': order.id, 'data-mpn': order.mpn });
 
         var id = $('<span>');
 
@@ -233,7 +248,7 @@ function renderSelectedOrders(total) {
         var productInfo = $('<span>', { class: 'item-name' });
 
         $('<span>', {
-            text: order.name
+            text: order.name + ' (X' + order.quantity + ')'
         }).appendTo(productInfo);
         $('<br>').appendTo(productInfo);
         $('<p>', {
@@ -314,8 +329,8 @@ function renderManifestTable() {
         }).appendTo(info);
 
         $('<span>', {
-            class: 'mv-payment-reference',
-            text: manifest.address
+            class: manifest.type == 1 ? 'mv-manifest-rm' : 'mv-manifest-rt',
+            text: manifest.type_name
         }).appendTo(info);
 
         $('<span>', {
@@ -335,13 +350,12 @@ function renderManifestTable() {
 
         // Actions in header
         var actionButtons = $('<div>', { style: 'display: flex; gap: 8px; margin-left: auto;' });
-
         if (manifest.editable == 1) {
             $('<button>', {
                 class: 'action-btn load-btn',
                 title: 'Load Manifest',
                 text: '✏️',
-                click: () => loadManifest(manifest.id),
+                click: () => loadManifest(manifest.id, manifest.type),
             }).appendTo(actionButtons);
         }
 
@@ -464,7 +478,9 @@ function toggleOrderSelection(orderId) {
     }
 
     order.checked = true;
-    renderAvailableOrders();
+    if (currentManifestType != 2) {
+        renderAvailableOrders();
+    }
     renderSelectedOrders();
 }
 
@@ -477,7 +493,9 @@ function removeSelectedItem(index) {
         availableOrder.checked = false;
     }
 
-    renderAvailableOrders();
+    if (currentManifestType != 2) {
+        renderAvailableOrders();
+    }
     renderSelectedOrders();
 }
 
@@ -490,13 +508,16 @@ function selectAll() {
             selectedOrders.push(newOrder);
         }
     });
-    renderAvailableOrders();
+    if (currentManifestType != 2) {
+        renderAvailableOrders();
+    }
     renderSelectedOrders();
 }
 
 function cancelSelection() {
     selectedOrders = [];
     currentManifestId = null;
+    currentManifestType = null;
     $.each(availableOrders, function (index, order) {
         order.checked = false;
     });
@@ -508,36 +529,40 @@ function updateTotal() {
     var total = selectedOrders.reduce(function (sum, order) {
         return parseFloat(sum) + parseFloat(order.total);
     }, 0);
+    var totalQty = selectedOrders.reduce(function (sum, order) {
 
+        return parseInt(sum) + parseInt(order.quantity);
+    }, 0);
+    console.log(totalQty);
     $('#totalAmount').text(total.toFixed(2));
+    $('#totalQty').text(totalQty);
 }
-
 function saveManifest() {
     if (selectedOrders.length === 0) {
-        alert(window.manifestConfig.translations.noItemsSelected);
+
+        showNotification('info', window.manifestConfig.translations.noItemsSelected);
         return;
     }
-    showAddressModal('save');
+
+    var addressId = $('#addressSelect').val();
+    if (!addressId) {
+        showNotification('info', window.manifestConfig.translations.selectAddress);
+        return;
+    }
+
+    var orderDetailIds = selectedOrders.map(function (order) {
+        return order.id;
+    });
+
+    executeManifestSave(addressId, orderDetailIds);
 }
 
 function printManifest() {
     if (selectedOrders.length === 0) {
-        alert(window.manifestConfig.translations.noItemsSelected);
+        showNotification('info', window.manifestConfig.translations.noItemsSelected);
         return;
     }
-    showAddressModal('print');
-}
 
-function showAddressModal(action) {
-    currentAction = action;
-
-    var select = $('#addressSelect');
-
-    $('#confirmAddressBtn').text(action === 'save' ? 'Save Manifest' : 'Print Manifest');
-    $('#addressModal').show();
-}
-
-function confirmAddress() {
     var addressId = $('#addressSelect').val();
     if (!addressId) {
         alert(window.manifestConfig.translations.selectAddress);
@@ -548,14 +573,26 @@ function confirmAddress() {
         return order.id;
     });
 
-    if (currentAction === 'save') {
-        executeManifestSave(addressId, orderDetailIds);
-    } else if (currentAction === 'print') {
-        executeManifestPrint(addressId, orderDetailIds);
-    }
-
-    closeAddressModal();
+    executeManifestPrint(addressId, orderDetailIds);
 }
+
+function loadVendorAddresses() {
+    var select = $('#addressSelect');
+    var currentAddressId = select.data('current-address-id');
+
+    var matchFound = false;
+    select.find('option').each(function () {
+        if ($(this).val() == currentAddressId) {
+            $(this).prop('selected', true);
+            matchFound = true;
+        }
+    });
+
+    if (!matchFound && select.find('option').length > 0) {
+        select.find('option:first').prop('selected', true);
+    }
+}
+
 
 function executeManifestSave(addressId, orderDetailIds) {
     var ajaxData = {
@@ -566,6 +603,7 @@ function executeManifestSave(addressId, orderDetailIds) {
 
     if (currentManifestId) {
         ajaxData.id_manifest = currentManifestId;
+        ajaxData.id_manifest_type = currentManifestType;
     } else {
         ajaxData.id_address = addressId;
     }
@@ -580,9 +618,12 @@ function executeManifestSave(addressId, orderDetailIds) {
                 showError(response.error);
                 return;
             }
-            alert(window.manifestConfig.translations.manifestSaved);
-            cancelSelection();
-            loadManifestList();
+            if (response.success) {
+                showNotification('success', window.manifestConfig.translations.manifestSaved);
+                cancelSelection();
+                loadManifestList();
+                location.reload();
+            }
         },
         error: function () {
             showError('Failed to save manifest');
@@ -627,6 +668,10 @@ function createAndPrintManifest(addressId, orderDetailIds) {
                 cancelSelection();
                 loadManifestList();
             }
+            if (response.success) {
+                location.reload();
+
+            }
         },
         error: function () {
             showError('Failed to create and print manifest');
@@ -634,9 +679,26 @@ function createAndPrintManifest(addressId, orderDetailIds) {
     });
 }
 
-function loadManifest(manifestId) {
+function loadManifest(manifestId, manifestsTypes) {
+    currentManifestType = manifestsTypes
+
     currentManifestId = manifestId;
-    loadAvailableOrders();
+    if (currentManifestType == 2) {
+        var availableOrders = $('#availableOrders');
+        availableOrders.empty();
+        var add = $('<div>', {
+            class: 'manifestrefund',
+        })
+        $('<Strong>', {
+            text: 'Impossible d\'ajouter des articles au bon de retour'
+        }).appendTo(add);
+        add.appendTo(availableOrders);
+
+    } else {
+        loadAvailableOrders();
+
+    }
+
     loadManifestOrders(manifestId);
     alert('Manifest #' + manifestId + ' loaded successfully');
 }
@@ -660,8 +722,12 @@ function deleteManifest(manifestId) {
                 showError(response.error);
                 return;
             }
-            alert(window.manifestConfig.translations.manifestDeleted);
+            showNotification('success', window.manifestConfig.translations.manifestDeleted);
             loadManifestList();
+            if (response.success) {
+                location.reload();
+
+            }
         },
         error: function () {
             showError('Failed to delete manifest');
@@ -691,16 +757,54 @@ function viewManifest(manifestId) {
     $('#manifestModal').show();
 }
 
-function closeAddressModal() {
-    $('#addressModal').hide();
-    currentAction = null;
-}
 
-function closeModal() {
-    $('#manifestModal').hide();
+function processMpnScan(mpnValue) {
+    if (!mpnValue) return;
+
+    // Find order by MPN in available orders   
+    var foundOrder = availableOrders.find(order =>
+        order.mpn && order.mpn.toLowerCase() == mpnValue.toLowerCase() && !order.checked && !order.disabled
+    );
+
+    if (foundOrder && !foundOrder.checked) {
+        toggleOrderSelection(foundOrder.id);
+
+        var orderElement = $('.order-item[data-mpn="' + mpnValue + '"]');
+        orderElement.css('background-color', '#d4edda');
+        setTimeout(function () {
+            orderElement.css('background-color', '');
+        }, 3000);
+
+    }
 }
 
 function showError(message) {
     console.error(message);
     alert(message);
+}
+
+/**
+ * Show notification message
+ * @param {string} type - The notification type (success, error, info, warning)
+ * @param {string} message - The notification message
+ */
+function showNotification(type, message) {
+    $('.temp-notification').remove();
+
+    const alertClass = type === 'success' ? 'mv-alert-success' :
+        type === 'info' ? 'mv-alert-info' :
+            type === 'warning' ? 'mv-alert-warning' : 'mv-alert-danger';
+
+    const $notification = $(`
+    <div class="mv-alert ${alertClass} temp-notification" style="position: fixed; top: 20px; right: 20px; z-index: 9999; max-width: 350px;">
+      ${message}
+    </div>
+  `);
+
+    $('body').append($notification);
+
+    const removeDelay = (type === 'error' || type === 'warning') ? 5000 : 3000;
+    setTimeout(() => {
+        $notification.fadeOut(() => $notification.remove());
+    }, removeDelay);
 }

@@ -18,15 +18,14 @@
         <div class="right-panel">
             <div class="right-panel-header">
                 <div class="button-row">
-                    <button class="mv-btn btn-secondary" id="cancelBtn">{l s='Annuler' mod='multivendor'}</button>
-                    <button class="mv-btn btn-success" id="saveBtn">{l s='Enregistrer' mod='multivendor'}</button>
-                    <button class="mv-btn btn-primary" id="printBtn">{l s='Imprimer' mod='multivendor'}</button>
+                    <button class="mv-btn mv-btn-secondary" id="cancelBtn">{l s='Annuler' mod='multivendor'}</button>
+                    <button class="mv-btn mv-btn-success" id="saveBtn">{l s='Valider' mod='multivendor'}</button>
+                    {* <button class="mv-btn mv-btn-primary" id="printBtn">{l s='Imprimer' mod='multivendor'}</button> *}
                 </div>
                 <div>
                     <select id="addressSelect" class="mv-form-control">
-                        <option value="">{l s='-- Sélectionner une adresse --' mod='multivendor'}</option>
-                        {foreach from=$address_list item=address key=inde}
-                            <option value="{$address.id_address}"> {$address.address}</option>
+                        {foreach from=$address_list item=address key=index}
+                            <option value="{$address.id_address}" {if index == 1}selected {/if}> {$address.address}</option>
                         {/foreach}
                     </select>
                 </div>
@@ -36,7 +35,8 @@
                 <div class="no-orders">{l s='Aucune commande sélectionnée' mod='multivendor'}</div>
             </div>
             <div class="total-section">
-                <span>{l s='Total :' mod='multivendor'} </span><span id="totalAmount">0</span>
+                <span>{l s='Total :' mod='multivendor'} <span id="totalAmount">0</span></span>
+                <span>{l s='Quantité :' mod='multivendor'} <span id="totalQty">0</span></span>
             </div>
         </div>
     </div>

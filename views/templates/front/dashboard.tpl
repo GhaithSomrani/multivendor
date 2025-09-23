@@ -19,7 +19,7 @@
                 {/if}
             </div>
         {/if}
-        
+
         <div class="mv-container">
             <aside class="mv-sidebar">
                 <div class="mv-card">
@@ -33,6 +33,10 @@
                                 <i class="mv-icon">🛒</i>
                                 <span>{l s='Commandes' mod='multivendor'}</span>
                             </a>
+                            <a class="mv-nav-link" href="{$vendor_manifest_url}">
+                                <i class="mv-icon">📋</i>
+                                <span>{l s='Manifestes' mod='multivendor'}</span>
+                            </a>
                             <a class="mv-nav-link" href="{$vendor_commissions_url}">
                                 <i class="mv-icon">💰</i>
                                 <span>{l s='Commissions' mod='multivendor'}</span>
@@ -41,7 +45,7 @@
                     </div>
                 </div>
             </aside>
-            
+
             <main class="mv-main-content">
                 {* Date Filter Form *}
                 <div class="mv-card mv-date-filter-card">
@@ -53,31 +57,34 @@
                         <form action="{$vendor_dashboard_url}" method="post" class="mv-date-filter-form">
                             <div class="mv-date-filter-options">
                                 <div class="mv-date-option">
-                                    <input type="radio" id="filter-this-month" name="date_filter_type" value="this_month" {if $date_filter_type == 'this_month'}checked{/if}>
+                                    <input type="radio" id="filter-this-month" name="date_filter_type" value="this_month"
+                                        {if $date_filter_type == 'this_month'}checked{/if}>
                                     <label for="filter-this-month">{l s='Ce mois' mod='multivendor'}</label>
                                 </div>
-                                
+
                                 <div class="mv-date-option">
-                                    <input type="radio" id="filter-custom" name="date_filter_type" value="custom" {if $date_filter_type == 'custom'}checked{/if}>
+                                    <input type="radio" id="filter-custom" name="date_filter_type" value="custom"
+                                        {if $date_filter_type == 'custom'}checked{/if}>
                                     <label for="filter-custom">{l s='Plage personnalisée' mod='multivendor'}</label>
                                 </div>
                             </div>
-                            
-                            <div class="mv-custom-date-range" id="customDateRange" style="{if $date_filter_type != 'custom'}display: none;{/if}">
+
+                            <div class="mv-custom-date-range" id="customDateRange"
+                                style="{if $date_filter_type != 'custom'}display: none;{/if}">
                                 <div class="mv-date-inputs">
                                     <div class="mv-date-field">
                                         <label for="custom-start-date">{l s='Du' mod='multivendor'}</label>
-                                        <input type="date" id="custom-start-date" name="custom_start_date" 
-                                               max="{$current_date}" value="{$start_date|default:$current_date}">
+                                        <input type="date" id="custom-start-date" name="custom_start_date"
+                                            max="{$current_date}" value="{$start_date|default:$current_date}">
                                     </div>
                                     <div class="mv-date-field">
                                         <label for="custom-end-date">{l s='Au' mod='multivendor'}</label>
-                                        <input type="date" id="custom-end-date" name="custom_end_date" 
-                                               max="{$current_date}" value="{$end_date|default:$current_date}">
+                                        <input type="date" id="custom-end-date" name="custom_end_date" max="{$current_date}"
+                                            value="{$end_date|default:$current_date}">
                                     </div>
                                 </div>
                             </div>
-                            
+
                             <div class="mv-filter-actions">
                                 <button type="submit" name="submitDateFilter" class="mv-btn mv-btn-primary">
                                     <i class="mv-icon">🔍</i> {l s='Appliquer le filtre' mod='multivendor'}
@@ -86,7 +93,7 @@
                         </form>
                     </div>
                 </div>
-            
+
                 <div class="mv-stats-grid">
                     <div class="mv-stat-card">
                         <div class="mv-stat-content">
@@ -129,7 +136,7 @@
             // Date filter toggle for custom date range
             const customRadio = document.getElementById('filter-custom');
             const customDateRange = document.getElementById('customDateRange');
-            
+
             function toggleCustomDateRange() {
                 if (customRadio.checked) {
                     customDateRange.style.display = 'block';
@@ -137,15 +144,15 @@
                     customDateRange.style.display = 'none';
                 }
             }
-            
+
             customRadio.addEventListener('change', toggleCustomDateRange);
             document.querySelectorAll('input[name="date_filter_type"]').forEach(function(radio) {
                 radio.addEventListener('change', toggleCustomDateRange);
             });
-            
+
             // Initialize custom date range display
             toggleCustomDateRange();
-            
+
             // Daily Filtered Sales Chart
             var ctxFilteredDays = document.getElementById('filteredDaysChart');
             if (ctxFilteredDays) {
@@ -169,7 +176,7 @@
                         fill: true
                     }]
                 };
-                
+
                 var filteredDaysChart = new Chart(ctxFilteredDays.getContext('2d'), {
                     type: 'line',
                     data: filteredDaysData,
@@ -207,7 +214,7 @@
                     }
                 });
             }
-            
+
             // Monthly Sales Chart - Bar Chart 
             var ctxMonthly = document.getElementById('salesChart');
             if (ctxMonthly) {
@@ -232,7 +239,7 @@
                         categoryPercentage: 0.7
                     }]
                 };
-                
+
                 var salesChart = new Chart(ctxMonthly.getContext('2d'), {
                     type: 'bar',
                     data: monthlyData,

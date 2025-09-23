@@ -58,6 +58,7 @@ class MultivendorManifestManagerModuleFrontController extends ModuleFrontControl
             'vendor_id' => $this->vendor['id_vendor'],
             'manifest_ajax_url' => $this->context->link->getModuleLink('multivendor', 'manifestmanager'),
             'vendor_dashboard_url' => $this->context->link->getModuleLink('multivendor', 'dashboard'),
+            
             'vendor_commissions_url' => $this->context->link->getModuleLink('multivendor', 'commissions'),
             'vendor_profile_url' => $this->context->link->getModuleLink('multivendor', 'profile'),
             'vendor_orders_url' => $this->context->link->getModuleLink('multivendor', 'orders'),
@@ -225,18 +226,23 @@ class MultivendorManifestManagerModuleFrontController extends ModuleFrontControl
         $result = [];
         foreach ($manifests as $manifest) {
             $address = Manifest::getManifestAddress($manifest['id_manifest']);
+            $manifestTypeObj = new ManifestType($manifest['id_manifest_type']);
+            $orderdetails = OrderHelper::getVendorOrderDetails($this->vendor['id_vendor'], ['manifest' => $manifest['id_manifest']]);
+            $total = array_sum(array_column($orderdetails, 'vendor_amount'));
             $result[] = [
                 'id' => $manifest['id_manifest'],
                 'reference' => $manifest['reference'],
                 'address' =>  substr($address, 0, 25) . (strlen($address) > 25 ? '...' : ''),
                 'date' => date('d/m/Y', strtotime($manifest['date_add'])),
+                'type' => $manifest['id_manifest_type'],
+                'type_name' => $manifestTypeObj->name,
                 'nbre' => $manifest['item_count'],
                 'qty' => $manifest['total_quantity'],
-                'total' => $manifest['total_amount'],
+                'total' =>  $total,
                 'status' => $manifest['status_name'],
                 'editable' => $manifest['allowed_modification'],
                 'deletable' => $manifest['allowed_delete'],
-                'orderdetails' => OrderHelper::getVendorOrderDetails($this->vendor['id_vendor'], ['manifest' => $manifest['id_manifest']])
+                'orderdetails' => $orderdetails,
             ];
         }
 
@@ -281,23 +287,34 @@ class MultivendorManifestManagerModuleFrontController extends ModuleFrontControl
     {
         $id_manifest = (int)Tools::getValue('id_manifest');
         $orderDetails = Tools::getValue('order_details', []);
-
+        $id_manifest_type = (int)Tools::getValue('id_manifest_type');
         $manifest = new Manifest($id_manifest);
         if ($manifest->id_vendor != $this->vendor['id_vendor']) {
             $this->ajaxResponse(['error' => 'Access denied'], 403);
             return;
         }
 
+
         if (!Manifest::IsEditable($id_manifest)) {
             $this->ajaxResponse(['error' => 'Manifest cannot be modified'], 400);
             return;
         }
 
-        try {
-            // Clear existing order details
-            $manifest->clearOrderDetails();
+        if ($manifest->id_manifest_type != $id_manifest_type) {
+            $this->ajaxResponse(['error' => 'Manifest type cannot be changed'], 400);
+            return;
+        }
 
-            // Add new order details
+        try {
+            if ($manifest->id_manifest_type == Manifest::TYPE_PICKUP) {
+                $manifest->id_manifest_status = Configuration::get('mv_pickup');
+                $manifest->update();
+            } elseif ($manifest->id_manifest_type == Manifest::TYPE_RETURNS) {
+                $manifest->id_manifest_status = configuration::get('mv_returns');
+                $manifest->update();
+            }
+
+            $manifest->clearOrderDetails();
             foreach ($orderDetails as $id_order_detail) {
                 $manifest->addOrderDetail($id_order_detail);
             }

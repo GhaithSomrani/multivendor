@@ -232,6 +232,9 @@ $sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'mv_manifest_type` (
 
 
 // Execute all SQL queries
+
+Configuration::updateValue('mv_pickup', 0);
+Configuration::updateValue('mv_returns', 0);
 foreach ($sql as $query) {
     if (!Db::getInstance()->execute($query)) {
         return false;

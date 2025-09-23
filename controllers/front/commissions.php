@@ -88,6 +88,7 @@ class MultivendorCommissionsModuleFrontController extends ModuleFrontController
             'pages_nb' => $totalPages,
             'current_page' => $page,
             'vendor_dashboard_url' => $this->context->link->getModuleLink('multivendor', 'dashboard'),
+            'vendor_manifest_url' => $this->context->link->getModuleLink('multivendor', 'manifestmanager', []),
             'vendor_orders_url' => $this->context->link->getModuleLink('multivendor', 'orders'),
             'vendor_profile_url' => $this->context->link->getModuleLink('multivendor', 'profile'),
             'vendor_manage_orders_url' => $this->context->link->getModuleLink('multivendor', 'manageorders'),

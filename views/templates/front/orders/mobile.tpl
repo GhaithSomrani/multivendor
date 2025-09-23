@@ -200,18 +200,3 @@
     </div>
 </div>
 
-{* Mobile Pickup Manifest *}
-<div id="mobile-pickup-manifest-block" class="mv-card">
-    <div class="mv-card-header">
-        <h5 class="mv-card-title">{l s='Manifeste de collecte' mod='multivendor'} (<span
-                id="mobile-manifest-count">0</span>)</h5>
-        <button id="mobile-print-manifest-btn" class="mv-btn-mobile mv-btn-primary-mobile">
-            <i class="mv-icon">🖨️</i>
-            {l s='Imprimer' mod='multivendor'}
-        </button>
-    </div>
-    <div class="mv-card-body">
-        <div class="mv-mobile-manifest-items" id="mobile-manifest-items">
-        </div>
-    </div>
-</div>

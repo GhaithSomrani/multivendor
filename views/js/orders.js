@@ -50,7 +50,6 @@ $(document).ready(function () {
                     const color = selectedOption.css('background-color');
                     $select.css('background-color', color);
 
-                    // Check if we should add this to the manifest using status type ID
                     checkAndAddToManifestIfNeeded(orderDetailId, newStatusTypeId);
                 } else {
                     // Revert to original status
@@ -134,10 +133,6 @@ $(document).ready(function () {
     // Handle bulk actions for order selection
     initBulkActions();
 
-    // Handle print manifest button click
-    $('#print-manifest-btn').on('click', function () {
-        printPickupManifest();
-    });
 
     // Close modal when clicking outside or on close button
     $(document).on('click', '.mv-modal-backdrop, .mv-modal-close', function () {
@@ -175,8 +170,6 @@ function initGlobalMpnVerification() {
         }
     });
 
-    // Add existing order lines with "add commission" status to manifest
-    checkExistingOrderLinesForManifest();
 }
 
 /**
@@ -431,8 +424,6 @@ function updateOrderLineStatus(orderDetailId) {
 
                             updateStatusInUI(orderDetailId, response.status.name, response.status.color);
 
-                            // Add to manifest
-                            addToManifest(orderDetailId);
 
                             // Mark as verified
                             $(`tr[data-id="${orderDetailId}"]`).addClass('mv-mpn-verified');
@@ -520,68 +511,7 @@ function updateStatusInUI(orderDetailId, newStatus, statusColor) {
     }, 1000);
 }
 
-/**
- * Add verified order line to manifest
- * @param {number} orderDetailId - The order detail ID to add
- */
-function addToManifest(orderDetailId, itemData = null) {
-    orderDetailId = parseInt(orderDetailId);
 
-    if (verifiedOrderDetails.has(orderDetailId)) {
-        return;
-    }
-
-    let orderRef, productName, productMpn, quantity;
-
-    if (itemData) {
-        orderRef = '#' + itemData.id_order + '#' + itemData.id_order_detail;
-        productName = itemData.product_name;
-        productMpn = itemData.product_mpn;
-        quantity = itemData.product_quantity;
-    } else {
-        const $row = $('tr[data-id="' + orderDetailId + '"]');
-        orderRef = $row.find('td:nth-child(2) a').text();
-        productName = $row.find('td:nth-child(3)').text();
-        productMpn = $row.data('product-mpn');
-        quantity = $row.find('td:nth-child(4)').text();
-    }
-
-    const timestamp = new Date().toLocaleTimeString();
-    verifiedOrderDetails.add(orderDetailId);
-
-    $('#manifest-items').append(`
-        <tr data-order-detail-id="${orderDetailId}">
-          <td>${orderRef}</td>
-          <td>${productName}</td>
-          <td>${productMpn}</td>
-          <td>${quantity}</td>
-          <td>${timestamp}</td>
-        </tr>
-    `);
-
-    // Calculate total quantity
-    let totalQty = 0;
-    $('#manifest-items tr').each(function() {
-        const qty = parseInt($(this).find('td:nth-child(4)').text()) || 0;
-        totalQty += qty;
-    });
-
-    $('#manifest-count').text(totalQty);
-    $('#pickup-manifest-block').show();
-
-    addToMobileManifest(orderDetailId, {
-        order_reference: orderRef,
-        product_name: productName,
-        product_mpn: productMpn,
-        product_quantity: quantity,
-        timestamp: timestamp
-    });
-
-    const mobileManifestCount = document.getElementById('mobile-manifest-count');
-    if (mobileManifestCount) {
-        mobileManifestCount.textContent = totalQty;
-    }
-}
 /**
  * Check and add to manifest if needed based on status
  */
@@ -600,20 +530,10 @@ function checkAndAddToManifestIfNeeded(orderDetailId, newStatus) {
                 console.log('response.status', response.status)
                 console.log('response.status', newStatus)
 
-                // If the selected status matches the "add commission" status
                 if (newStatus === response.status.id_order_line_status_type) {
-                    // Check if this order detail is already in the manifest
                     if (!verifiedOrderDetails.has(parseInt(orderDetailId))) {
-                        // Add it to the manifest
-                        addToManifest(orderDetailId);
 
-                        // Show a notification
                         showNotification('success', 'Added to pickup manifest');
-                    }
-                } else {
-                    // If the status was changed to something else, remove from manifest if present
-                    if (verifiedOrderDetails.has(parseInt(orderDetailId))) {
-                        removeFromManifest(orderDetailId);
                     }
                 }
             }
@@ -621,52 +541,7 @@ function checkAndAddToManifestIfNeeded(orderDetailId, newStatus) {
     });
 }
 
-/**
- * Remove an order line from the manifest
- * @param {number} orderDetailId - The order detail ID to remove
- */
-function removeFromManifest(orderDetailId) {
-    // Remove from the set
-    verifiedOrderDetails.delete(parseInt(orderDetailId));
 
-    // Remove from desktop UI
-    $('#manifest-items tr[data-order-detail-id="' + orderDetailId + '"]').remove();
-
-    // Update desktop count
-    $('#manifest-count').text(verifiedOrderDetails.size);
-
-    // Hide desktop manifest block if empty
-    if (verifiedOrderDetails.size === 0) {
-        $('#pickup-manifest-block').hide();
-    }
-
-    // Remove from mobile manifest
-    removeFromMobileManifest(orderDetailId);
-}
-
-/**
- * Check existing order lines on page load
- * and add those with the appropriate status to the manifest
- */
-function checkExistingOrderLinesForManifest() {
-    // Get ALL order details with "add commission" status via AJAX
-    $.ajax({
-        url: ordersAjaxUrl,
-        type: 'POST',
-        data: {
-            action: 'getAllManifestItems',
-            token: ordersAjaxToken
-        },
-        dataType: 'json',
-        success: function (response) {
-            if (response.success && response.items) {
-                response.items.forEach(function (item) {
-                    addToManifest(item.id_order_detail, item);
-                });
-            }
-        }
-    });
-}
 
 /**
  * Load status history
@@ -761,25 +636,6 @@ function exportTableToCSV() {
     setTimeout(function () {
         document.body.removeChild(form);
     }, 1000);
-}
-
-/**
- * Print pickup manifest - Updated for single manifest generation
- */
-function printPickupManifest() {
-    if (verifiedOrderDetails.size === 0) {
-        showNotification('error', 'No items in manifest to print');
-        return;
-    }
-    var id_address = $('#address-selection').val() ?? 0;
-    console.log(id_address);
-    // Generate the URL for the single manifest controller
-    const manifestUrl = window.location.origin + window.location.pathname +
-        '?fc=module&module=multivendor&controller=manifest&id_address=' + id_address + '&details=' +
-        Array.from(verifiedOrderDetails).join(',');
-
-    // Open in a new tab/window
-    window.open(manifestUrl, '_blank');
 }
 
 /**
@@ -1211,7 +1067,6 @@ function initializeMobileFunctionality() {
         initializeMobileMPNScanner();
         initializeMobileStatusSelects();
         initializeMobileHistoryButtons();
-        initializeMobileManifest();
     }
 }
 
@@ -1492,134 +1347,12 @@ function updateMobileOrderLineStatus(orderDetailId, newStatusId, selectElement) 
     }
 }
 
-/**
- * Initialize mobile manifest functionality
- */
-function initializeMobileManifest() {
-    const printButton = document.getElementById('mobile-print-manifest-btn');
-    if (printButton) {
-        printButton.addEventListener('click', function () {
-            // Call the same function as desktop version
-            if (typeof printPickupManifest === 'function') {
-                printPickupManifest();
-            } else {
-                showMobileNotification('Fonction d\'impression non disponible', 'warning');
-            }
-        });
-    }
-
-    syncMobileManifest();
-}
-
-function syncMobileManifest() {
-    const mobileManifestItems = document.getElementById('mobile-manifest-items');
-    const mobileManifestCount = document.getElementById('mobile-manifest-count');
-    const mobileManifestBlock = document.getElementById('mobile-pickup-manifest-block');
-
-    if (!mobileManifestItems) return;
-
-    mobileManifestItems.innerHTML = '';
-    let totalQty = 0;
-
-    if (verifiedOrderDetails && verifiedOrderDetails.size > 0) {
-        verifiedOrderDetails.forEach(orderDetailId => {
-            const desktopRow = document.querySelector(`#manifest-items tr[data-order-detail-id="${orderDetailId}"]`);
-            if (desktopRow) {
-                const qty = parseInt(desktopRow.cells[3].textContent) || 0;
-                totalQty += qty;
-                
-                addToMobileManifest(orderDetailId, {
-                    order_reference: desktopRow.cells[0].textContent,
-                    product_name: desktopRow.cells[1].textContent,
-                    product_mpn: desktopRow.cells[2].textContent,
-                    product_quantity: desktopRow.cells[3].textContent,
-                    timestamp: desktopRow.cells[4].textContent
-                });
-            }
-        });
-
-        if (mobileManifestCount) {
-            mobileManifestCount.textContent = totalQty;
-        }
-        if (mobileManifestBlock) {
-            mobileManifestBlock.style.display = 'block';
-        }
-    } else {
-        if (mobileManifestBlock) {
-            mobileManifestBlock.style.display = 'none';
-        }
-        if (mobileManifestCount) {
-            mobileManifestCount.textContent = '0';
-        }
-    }
-}
 
 
-function addToMobileManifest(orderDetailId, itemData) {
-    const mobileManifestItems = document.getElementById('mobile-manifest-items');
-    if (!mobileManifestItems) return;
 
-    // Check if item already exists in mobile manifest
-    const existingItem = mobileManifestItems.querySelector(`[data-order-detail-id="${orderDetailId}"]`);
-    if (existingItem) return;
 
-    const manifestItem = document.createElement('div');
-    manifestItem.className = 'mv-mobile-manifest-item';
-    manifestItem.setAttribute('data-order-detail-id', orderDetailId);
 
-    manifestItem.innerHTML = `
-        <div class="mv-mobile-manifest-header">
-            <span class="mv-mobile-manifest-ref">${itemData.order_reference}</span>
-            <span class="mv-mobile-manifest-qty">Qty: ${itemData.product_quantity}</span>
-        </div>
-        <div class="mv-mobile-manifest-product">${itemData.product_name}</div>
-        <div class="mv-mobile-manifest-mpn">${itemData.product_mpn}</div>
-        <div class="mv-mobile-manifest-time" style="font-size: 12px; color: #999; margin-top: 8px;">
-            Vérifié: ${itemData.timestamp}
-        </div>
-    `;
 
-    mobileManifestItems.appendChild(manifestItem);
-}
-
-function removeFromMobileManifest(orderDetailId) {
-    const mobileManifestItems = document.getElementById('mobile-manifest-items');
-    if (!mobileManifestItems) return;
-
-    const existingItem = mobileManifestItems.querySelector(`[data-order-detail-id="${orderDetailId}"]`);
-    if (existingItem) {
-        existingItem.remove();
-    }
-
-    // Calculate total quantity
-    let totalQty = 0;
-    $('#manifest-items tr').each(function() {
-        const qty = parseInt($(this).find('td:nth-child(4)').text()) || 0;
-        totalQty += qty;
-    });
-
-    const mobileManifestCount = document.getElementById('mobile-manifest-count');
-    if (mobileManifestCount) {
-        mobileManifestCount.textContent = totalQty;
-    }
-
-    const mobileManifestBlock = document.getElementById('mobile-pickup-manifest-block');
-    if (mobileManifestBlock && totalQty === 0) {
-        mobileManifestBlock.style.display = 'none';
-    }
-}
-$(document).ready(function () {
-    if (window.innerWidth <= 768) {
-        initializeMobileManifest();
-    }
-});
-
-// Update mobile manifest when window is resized
-$(window).resize(function () {
-    if (window.innerWidth <= 768) {
-        syncMobileManifest();
-    }
-});
 
 
 

@@ -210,7 +210,10 @@ class multivendor extends Module
 
         return true;
     }
-
+    private function getManifestStatusOptions($id_manifest_type)
+    {
+        return ManifestStatusType::getManifestStatusByAllowedManifestType($id_manifest_type);
+    }
     /**
      * Module configuration page
      */
@@ -265,8 +268,10 @@ class multivendor extends Module
                     $hiddenStatusTypes[] = $status['id_order_line_status_type'];
                 }
             }
+            Configuration::updateValue('mv_pickup', (int)Tools::getValue('mv_pickup'));
+            Configuration::updateValue('mv_returns', (int)Tools::getValue('mv_returns'));
 
-            // Save as comma-separated string
+
             $hiddenStatusTypesString = implode(',', $hiddenStatusTypes);
             Configuration::updateValue('MV_HIDE_FROM_VENDOR', $hiddenStatusTypesString);
 
@@ -354,6 +359,8 @@ class multivendor extends Module
     protected function renderConfigForm()
     {
         $statusTypes = $this->getOrderLineStatusTypes();
+        $pickup_options = $this->getManifestStatusOptions(1); // TYPE_PICKUP
+        $returns_options = $this->getManifestStatusOptions(2); // TYPE_RETURNS
 
         $stats = OrderHelper::getVendorOrderDetailsStats();
         $statusCount = OrderHelper::getStatusTotalCount();
@@ -403,6 +410,28 @@ class multivendor extends Module
                         ]
                     ],
                     [
+                        'type' => 'select',
+                        'label' => $this->l('Pickup Manifest Status'),
+                        'name' => 'mv_pickup',
+                        'desc' => $this->l('Default manifest status for pickup manifests'),
+                        'options' => [
+                            'query' => $pickup_options,
+                            'id' => 'id_manifest_status_type',
+                            'name' => 'name'
+                        ],
+                    ],
+                    [
+                        'type' => 'select',
+                        'label' => $this->l('Returns Manifest Status'),
+                        'name' => 'mv_returns',
+                        'desc' => $this->l('Default manifest status for returns manifests'),
+                        'options' => [
+                            'query' => $returns_options,
+                            'id' => 'id_manifest_status_type',
+                            'name' => 'name'
+                        ],
+                    ],
+                    [
                         'type' => 'checkbox',
                         'label' => $this->l('Hide Order Line Status Types from Vendors'),
                         'name' => 'MV_HIDE_FROM_VENDOR',
@@ -423,51 +452,51 @@ class multivendor extends Module
                         'type' => 'html',
                         'name' => 'stats_display',
                         'html_content' => '
-                        <div class="alert alert-info">
-                            <h4>' . $this->l('Vendor Order Statistics') . '</h4>
-                            <p><strong>' . $this->l('Total Order Details:') . '</strong> ' . (int)$stats['total_order_details'] . '</p>
-                            <p><strong>' . $this->l('Total Commission:') . '</strong> ' . Tools::displayPrice($stats['total_commission']) . '</p>
-                            <p><strong>' . $this->l('Total Vendor Amount:') . '</strong> ' . Tools::displayPrice($stats['total_vendor_amount']) . '</p>
-                            <p><strong>' . $this->l('Average Commission Rate:') . '</strong> ' . number_format($stats['avg_commission_rate'], 2) . '%</p>
-                        </div>
-                        <div class="alert alert-warning">
-                            <h4>' . $this->l('Synchronization') . '</h4>
-                            <p>' . $this->l('If you have existing orders that were created before installing this module, you can synchronize them with vendor order details.') . '</p>
-                            <button type="submit" name="syncOrderDetails" class="btn btn-warning">
-                                <i class="icon-refresh"></i> ' . $this->l('Synchronize Existing Orders') . '
-                            </button>
-                        </div>
-                        '
+                    <div class="alert alert-info">
+                        <h4>' . $this->l('Vendor Order Statistics') . '</h4>
+                        <p><strong>' . $this->l('Total Order Details:') . '</strong> ' . (int)$stats['total_order_details'] . '</p>
+                        <p><strong>' . $this->l('Total Commission:') . '</strong> ' . Tools::displayPrice($stats['total_commission']) . '</p>
+                        <p><strong>' . $this->l('Total Vendor Amount:') . '</strong> ' . Tools::displayPrice($stats['total_vendor_amount']) . '</p>
+                        <p><strong>' . $this->l('Average Commission Rate:') . '</strong> ' . number_format($stats['avg_commission_rate'], 2) . '%</p>
+                    </div>
+                    <div class="alert alert-warning">
+                        <h4>' . $this->l('Synchronization') . '</h4>
+                        <p>' . $this->l('If you have existing orders that were created before installing this module, you can synchronize them with vendor order details.') . '</p>
+                        <button type="submit" name="syncOrderDetails" class="btn btn-warning">
+                            <i class="icon-refresh"></i> ' . $this->l('Synchronize Existing Orders') . '
+                        </button>
+                    </div>
+                    '
                     ],
                     [
                         'type' => 'html',
                         'name' => 'reset_status_section',
                         'html_content' => '
-                        <div class="alert alert-info">
-                            <h4><i class="icon-info"></i> ' . $this->l('Order Status Information') . '</h4>
-                            <p><strong>' . $this->l('Current Status Count:') . '</strong> ' . $statusCount . ' ' . $this->l('status types configured') . '</p>
-                            <p>' . $this->l('You can manage individual statuses in the "Order Line Statuses" tab or reset all to defaults below.') . '</p>
-                        </div>
-                        <div class="alert alert-warning">
-                            <h4><i class="icon-warning"></i> ' . $this->l('Reset Order Status Types') . '</h4>
-                            <p>' . $this->l('Reset all order line statuses to default French statuses with proper commission settings.') . '</p>
-                            <p><strong>' . $this->l('Warning:') . '</strong> ' . $this->l('This action will delete all existing custom statuses and cannot be undone.') . '</p>
-                            <button type="submit" name="resetStatus" class="btn btn-warning" onclick="return confirm(\'' . $this->l('Are you sure you want to reset all order line statuses? This action cannot be undone.') . '\');">
-                                <i class="icon-refresh"></i> ' . $this->l('Reset to Default French Statuses') . '
-                            </button>
-                        </div>
-                        <style>
-                        .btn-warning {
-                            background-color: #f0ad4e !important;
-                            border-color: #eea236 !important;
-                            color: #fff !important;
-                        }
-                        .btn-warning:hover {
-                            background-color: #ec971f !important;
-                            border-color: #d58512 !important;
-                        }
-                        </style>
-                        '
+                    <div class="alert alert-info">
+                        <h4><i class="icon-info"></i> ' . $this->l('Order Status Information') . '</h4>
+                        <p><strong>' . $this->l('Current Status Count:') . '</strong> ' . $statusCount . ' ' . $this->l('status types configured') . '</p>
+                        <p>' . $this->l('You can manage individual statuses in the "Order Line Statuses" tab or reset all to defaults below.') . '</p>
+                    </div>
+                    <div class="alert alert-warning">
+                        <h4><i class="icon-warning"></i> ' . $this->l('Reset Order Status Types') . '</h4>
+                        <p>' . $this->l('Reset all order line statuses to default French statuses with proper commission settings.') . '</p>
+                        <p><strong>' . $this->l('Warning:') . '</strong> ' . $this->l('This action will delete all existing custom statuses and cannot be undone.') . '</p>
+                        <button type="submit" name="resetStatus" class="btn btn-warning" onclick="return confirm(\'' . $this->l('Are you sure you want to reset all order line statuses? This action cannot be undone.') . '\');">
+                            <i class="icon-refresh"></i> ' . $this->l('Reset to Default French Statuses') . '
+                        </button>
+                    </div>
+                    <style>
+                    .btn-warning {
+                        background-color: #f0ad4e !important;
+                        border-color: #eea236 !important;
+                        color: #fff !important;
+                    }
+                    .btn-warning:hover {
+                        background-color: #ec971f !important;
+                        border-color: #d58512 !important;
+                    }
+                    </style>
+                    '
                     ]
                 ],
                 'submit' => [
@@ -492,7 +521,9 @@ class multivendor extends Module
         $hiddenStatusTypes = $this->getHiddenStatusTypesArray();
         $fieldsValue = [
             'MV_DEFAULT_COMMISSION' => Configuration::get('MV_DEFAULT_COMMISSION', 10),
-            'MV_AUTO_APPROVE_VENDORS' => Configuration::get('MV_AUTO_APPROVE_VENDORS', 0)
+            'MV_AUTO_APPROVE_VENDORS' => Configuration::get('MV_AUTO_APPROVE_VENDORS', 0),
+            'mv_pickup' => Configuration::get('mv_pickup'),
+            'mv_returns' => Configuration::get('mv_returns')
         ];
         foreach ($statusOptions as $option) {
             $fieldsValue['MV_HIDE_FROM_VENDOR_' . $option['value']] = in_array($option['value'], $hiddenStatusTypes);
@@ -506,6 +537,7 @@ class multivendor extends Module
 
         return $helper->generateForm([$fields_form]);
     }
+
 
     /**
      * Get all order line status types for configuration checkboxes
@@ -589,7 +621,7 @@ class multivendor extends Module
                 'vendor_orders_url' => $this->context->link->getModuleLink('multivendor', 'orders', []),
                 'vendor_commissions_url' => $this->context->link->getModuleLink('multivendor', 'commissions', []),
                 'vendor_profile_url' => $this->context->link->getModuleLink('multivendor', 'profile', []),
-                'vendor_manage_orders_url' => $this->context->link->getModuleLink('multivendor', 'manageorders', []),
+                'vendor_manifest_url' => $this->context->link->getModuleLink('multivendor', 'manifestmanager', []),
             ]);
 
             return $this->display(__FILE__, 'views/templates/front/customer_account.tpl');
@@ -642,7 +674,7 @@ class multivendor extends Module
     public function hookActionObjectOrderUpdateAfter($params)
     {
         $order = $params['object'];
-
+        
         if (!Validate::isLoadedObject($order)) {
             return;
         }

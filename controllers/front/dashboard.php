@@ -124,6 +124,7 @@ class multivendorDashboardModuleFrontController extends ModuleFrontController
             'vendor_profile_url' => $this->context->link->getModuleLink('multivendor', 'profile'),
             'vendor_manage_orders_url' => $this->context->link->getModuleLink('multivendor', 'manageorders', []),
             'vendor_dashboard_url' => $this->context->link->getModuleLink('multivendor', 'dashboard'),
+            'vendor_manifest_url' => $this->context->link->getModuleLink('multivendor', 'manifestmanager', []),
             'currency_sign' => $this->context->currency->sign,
             'date_filter_active' => $date_filter_active,
             'filter_label' => $filter_label,
@@ -151,7 +152,7 @@ class multivendorDashboardModuleFrontController extends ModuleFrontController
      */
     protected function getTopSellingProducts($id_vendor, $start_date = null, $end_date = null, $date_filter_active = false, $limit = 5)
     {
-    
+
         $hiddenIdsString = OrderHelper::getHiddenStatusTypeString();
         $hiddenStatusFilter = ' AND (ols.id_order_line_status_type IS NULL OR ols.id_order_line_status_type NOT IN (' . $hiddenIdsString . '))';
 

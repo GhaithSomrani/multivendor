@@ -1,5 +1,5 @@
 .manifest-container {
-    max-width: 1200px;
+    max-width: 100%;
     margin: 0 auto;
     background: white;
     border-radius: 8px;
@@ -9,7 +9,7 @@
 
 .top-section {
     display: flex;
-    height: 400px;
+    height: 800px;
     min-height: 400px;
 }
 
@@ -49,13 +49,22 @@
     cursor: not-allowed;
 }
 
-.btn-primary {
-    background-color: #007cba;
-    color: white;
+
+.mv-manifest-rm {
+    padding: 4px 8px;
+    background-color: #e0ffe8;
+    color: #38ca99;
+    border-radius: 4px;
+    font-size: 12px;
 }
 
-.btn-primary:hover:not(:disabled) {
-    background-color: #005a87;
+
+.mv-manifest-rt {
+    padding: 4px 8px;
+    background-color: #ffe0e0;
+    color: #ca3838;
+    border-radius: 4px;
+    font-size: 12px;
 }
 
 .btn-secondary {
@@ -67,14 +76,17 @@
     background-color: #545b62;
 }
 
-.btn-success {
-    background-color: #28a745;
+.mv-btn-success {
+    background-color: #34d399;
     color: white;
 }
 
-.btn-success:hover:not(:disabled) {
-    background-color: #218838;
+.mv-btn-success:hover:not(:disabled),
+.mv-btn-success:focus {
+    background-color: #2bb180;
 }
+
+
 
 .btn-sm {
     padding: 4px 8px;
@@ -93,7 +105,7 @@
     flex: 1;
     overflow-y: auto;
     padding: 10px;
-    max-height: 340px;
+    max-height: 760px;
 }
 
 .order-item {
@@ -153,6 +165,9 @@
     text-align: center;
     font-weight: bold;
     font-size: 16px;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
 }
 
 .manifest-section {
@@ -626,21 +641,21 @@
 
 /* Hide desktop elements on mobile */
 @media (max-width: 768px) {
-    .manifest-container {
+    /* .manifest-container {
         display: none !important;
-    }
+    } */
 }
 
 /* Hide mobile elements on desktop */
 @media (min-width: 769px) {
-
+/* 
     .mv-mobile-actions-card,
     .mv-mobile-counter-card,
     .mv-mobile-orders-card,
     .mv-mobile-selected-card,
     .mv-mobile-manifests-card {
         display: none !important;
-    }
+    } */
 }
 
 /* Print styles */
@@ -652,4 +667,12 @@
     .mv-mobile-actions-card {
         display: none !important;
     }
+}
+
+.manifestrefund {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    justify-content: center;
+    align-items: center;
 }

@@ -1,80 +1,52 @@
-{*
-* Mobile Manifest Content - Card Layout
-*}
+{* Contenu du Manifeste Bureau - Mise en Page Traditionnelle *}
+<div class="manifest-container">
+    <div class="top-section">
+        {* Panneau Gauche - Commandes Disponibles *}
+        <div class="left-panel">
+            <div class="panel-header">
+                <button class="mv-btn mv-btn-primary"
+                    id="selectAllBtn">{l s='Sélectionner TOUT' mod='multivendor'}</button>
+                <input type="text" class="mv-form-control" placeholder="Scannez le code-barres MPN ici..."
+                    autocomplete="off" />
+            </div>
+            <div class="order-list" id="availableOrders">
+                <div class="loading">{l s='Chargement des commandes disponibles...' mod='multivendor'}</div>
+            </div>
+        </div>
 
-{* Mobile Actions Card *}
-<div class="mv-card mv-mobile-actions-card">
-    <div class="mv-card-header">
-        <h5 class="mv-card-title">{l s='Manifest Actions' mod='multivendor'}</h5>
-    </div>
-    <div class="mv-card-body">
-        <div class="mv-mobile-actions-grid">
-            <button class="mv-btn-mobile mv-btn-select-mobile" id="mobileSelectAllBtn">
-                <i class="mv-icon">☑️</i>
-                {l s='Select All' mod='multivendor'}
-            </button>
-            <button class="mv-btn-mobile mv-btn-save-mobile" id="mobileSaveBtn">
-                <i class="mv-icon">💾</i>
-                {l s='Save Manifest' mod='multivendor'}
-            </button>
-            <button class="mv-btn-mobile mv-btn-print-mobile" id="mobilePrintBtn">
-                <i class="mv-icon">🖨️</i>
-                {l s='Print' mod='multivendor'}
-            </button>
-            <button class="mv-btn-mobile mv-btn-cancel-mobile" id="mobileCancelBtn">
-                <i class="mv-icon">❌</i>
-                {l s='Cancel' mod='multivendor'}
-            </button>
+        {* Panneau Droit - Commandes Sélectionnées *}
+        <div class="right-panel">
+            <div class="right-panel-header">
+                <div class="button-row">
+                    <button class="mv-btn mv-btn-secondary" id="cancelBtn">{l s='Annuler' mod='multivendor'}</button>
+                    <button class="mv-btn mv-btn-success" id="saveBtn">{l s='Valider' mod='multivendor'}</button>
+                    {* <button class="mv-btn mv-btn-primary" id="printBtn">{l s='Imprimer' mod='multivendor'}</button> *}
+                </div>
+                <div>
+                    <select id="addressSelect" class="mv-form-control">
+                        {foreach from=$address_list item=address key=index}
+                            <option value="{$address.id_address}" {if index == 1}selected {/if}> {$address.address}</option>
+                        {/foreach}
+                    </select>
+                </div>
+            </div>
+
+            <div class="order-list" id="selectedOrders">
+                <div class="no-orders">{l s='Aucune commande sélectionnée' mod='multivendor'}</div>
+            </div>
+            <div class="total-section">
+                <span>{l s='Total :' mod='multivendor'} </span><span id="totalAmount">0</span>
+            </div>
         </div>
     </div>
-</div>
 
-{* Mobile Selected Items Counter *}
-<div class="mv-card mv-mobile-counter-card" id="mobileCounterCard" style="display: none;">
-    <div class="mv-card-body">
-        <div class="mv-mobile-selected-info">
-            <span class="mv-selected-count">
-                <span id="mobileSelectedCount">0</span> {l s='items selected' mod='multivendor'}
-            </span>
-            <span class="mv-selected-total">
-                {l s='Total:' mod='multivendor'} <span id="mobileTotalAmount">0</span>
-            </span>
-        </div>
-    </div>
-</div>
+    {* Section Liste des Manifestes *}
+    <div class="manifest-section">
+        <table class="manifest-table" id="manifestTable">
 
-{* Mobile Available Orders *}
-<div class="mv-card mv-mobile-orders-card">
-    <div class="mv-card-header">
-        <h5 class="mv-card-title">{l s='Available Orders' mod='multivendor'}</h5>
-    </div>
-    <div class="mv-card-body">
-        <div class="mv-mobile-orders-grid" id="mobileAvailableOrders">
-            <div class="loading">{l s='Loading available orders...' mod='multivendor'}</div>
-        </div>
-    </div>
-</div>
+            <tbody id="manifestTableBody">
 
-{* Mobile Selected Orders *}
-<div class="mv-card mv-mobile-selected-card" id="mobileSelectedCard" style="display: none;">
-    <div class="mv-card-header">
-        <h5 class="mv-card-title">{l s='Selected for Manifest' mod='multivendor'}</h5>
-    </div>
-    <div class="mv-card-body">
-        <div class="mv-mobile-selected-grid" id="mobileSelectedOrders">
-            {* Selected items will be populated by JavaScript *}
-        </div>
-    </div>
-</div>
-
-{* Mobile Manifest List *}
-<div class="mv-card mv-mobile-manifests-card">
-    <div class="mv-card-header">
-        <h5 class="mv-card-title">{l s='My Manifests' mod='multivendor'}</h5>
-    </div>
-    <div class="mv-card-body">
-        <div class="mv-mobile-manifests-grid" id="mobileManifestList">
-            <div class="loading">{l s='Loading manifests...' mod='multivendor'}</div>
-        </div>
+            </tbody>
+        </table>
     </div>
 </div>

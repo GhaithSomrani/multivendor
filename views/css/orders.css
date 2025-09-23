@@ -155,6 +155,12 @@
     border: 1px solid #f5c6cb;
 }
 
+.mv-alert-info {
+    background-color: #d1ecf1;
+    color: #0c5460;
+    border: 1px solid #bee5eb;
+}
+
 /* Buttons */
 .mv-btn-primary {
     background-color: #6366f1;
@@ -536,16 +542,6 @@ textarea.mv-form-control {
     width: 140px;
 }
 
-/* Pickup Manifest Styles */
-#pickup-manifest-block {
-    margin-top: 30px;
-    border-top: 2px dashed #ddd;
-    padding-top: 20px;
-}
-
-#manifest-items tr {
-    animation: highlight-row 1s ease-in-out;
-}
 
 @keyframes highlight-row {
     0% {

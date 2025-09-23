@@ -250,50 +250,7 @@
             </p>
         {/if}
 
-        {* Pickup Manifest Block *}
-        <div id="pickup-manifest-block" class="mt-4" style="display: none;">
-            <div class="mv-card">
-                <div class="mv-card-header">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <h3 class="mv-card-title">{l s='Manifeste de collecte' mod='multivendor'} (<span
-                                id="manifest-count">0</span>)</h3>
-                        <button id="print-manifest-btn" class="mv-btn mv-btn-primary">
-                            <i class="mv-icon">🖨️</i> {l s='Imprimer/Validé  le manifeste' mod='multivendor'}
-                        </button>
-
-                    </div>
-
-                    <div class="d-flex justify-content-between align-items-center">
-                        <h3 class="mv-card-title address-title">{l s='Sélectionner l\'adresse' mod='multivendor'} </h3>
-                        <select id="address-selection" class="mv-status-select">
-                            {foreach from=$addresses item=address key=key}
-                            <option value="{$address.id_address}"  {if $key == 0} selected {/if}>  {$address.address}</option>
-                            {/foreach}
-                        </select>
-
-                    </div>
-
-
-                </div>
-                <div class="mv-card-body">
-                    <div class="table-responsive">
-                        <table class="mv-table">
-                            <thead>
-                                <tr>
-                                    <th>{l s='Réf. commande' mod='multivendor'}</th>
-                                    <th>{l s='Produit' mod='multivendor'}</th>
-                                    <th>{l s='MPN' mod='multivendor'}</th>
-                                    <th>{l s='Quantité' mod='multivendor'}</th>
-                                    <th>{l s='Vérifié à' mod='multivendor'}</th>
-                                </tr>
-                            </thead>
-                            <tbody id="manifest-items">
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
+        
     </div>
 </div>
 

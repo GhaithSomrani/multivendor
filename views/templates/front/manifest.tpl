@@ -49,37 +49,7 @@
         </div>
     </div>
 
-    {* Modales Partagées *}
-    <div class="mv-modal" id="addressModal">
-        <div class="mv-modal-backdrop" onclick="closeAddressModal()"></div>
-        <div class="mv-modal-content">
-            <div class="mv-modal-header">
-                <h5 class="mv-modal-title">{l s='Sélectionner l\'Adresse' mod='multivendor'}</h5>
-                <button class="mv-modal-close" onclick="closeAddressModal()">×</button>
-            </div>
-            <div class="mv-modal-body">
 
-            </div>
-            <div class="mv-modal-footer">
-                <button class="mv-btn mv-btn-secondary"
-                    onclick="closeAddressModal()">{l s='Annuler' mod='multivendor'}</button>
-                <button class="mv-btn mv-btn-primary" id="confirmAddressBtn">{l s='Confirmer' mod='multivendor'}</button>
-            </div>
-        </div>
-    </div>
-
-    <div class="mv-modal" id="manifestModal">
-        <div class="mv-modal-backdrop" onclick="closeModal()"></div>
-        <div class="mv-modal-content">
-            <div class="mv-modal-header">
-                <h5 class="mv-modal-title" id="modalTitle">{l s='Détails du Manifeste' mod='multivendor'}</h5>
-                <button class="mv-modal-close" onclick="closeModal()">×</button>
-            </div>
-            <div class="mv-modal-body" id="modalBody">
-                {* Le contenu de la modale sera rempli par JavaScript *}
-            </div>
-        </div>
-    </div>
 
     <script>
         // Passer les variables PHP à JavaScript
