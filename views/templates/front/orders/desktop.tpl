@@ -69,22 +69,7 @@
     </div>
 
     {* Global MPN Input *}
-    <div class="mv-global-mpn-container">
-        <div class="mv-input-group">
-            <input type="text" id="global-mpn-input" class="form-control mv-global-mpn-input"
-                placeholder="{l s='Scannez le code-barres MPN ici...' mod='multivendor'}" autocomplete="off">
-            <div class="mv-input-group-append">
-                <span class="mv-input-group-text">
-                    <i class="mv-icon">🔍</i>
-                </span>
-            </div>
-        </div>
-        <div class="mv-mpn-status">
-            <span id="mpn-status-message" class="mv-status-message">
-                {l s='Prêt à scanner le code-barres MPN.' mod='multivendor'}
-            </span>
-        </div>
-    </div>
+   
 
     <div class="mv-card-body">
         {if $order_lines}

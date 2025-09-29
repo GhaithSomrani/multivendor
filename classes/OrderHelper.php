@@ -344,14 +344,14 @@ class OrderHelper
             if ($vendorOrderDetail) {
                 // Recalculate commission based on updated order detail
                 $commission_rate = VendorCommission::getCommissionRate($vendor['id_vendor']);
-                $total_price = $orderDetail->total_price_tax_incl;
+                $total_price = $orderDetail->unit_price_tax_incl * $orderDetail->product_quantity;
                 $commission_amount = $total_price * ($commission_rate / 100);
                 $vendor_amount = $total_price - $commission_amount;
 
                 // Update the vendor order detail with new product info including reference
                 $result = Db::getInstance()->update('mv_vendor_order_detail', [
                     'product_name' => pSQL($orderDetail->product_name),
-                    'product_reference' => pSQL($orderDetail->product_reference), // NEW FIELD
+                    'product_reference' => pSQL($orderDetail->product_reference), 
                     'product_mpn' => pSQL($product->mpn ?: $orderDetail->product_reference),
                     'product_price' => (float)$orderDetail->unit_price_tax_incl,
                     'product_quantity' => (int)$orderDetail->product_quantity,

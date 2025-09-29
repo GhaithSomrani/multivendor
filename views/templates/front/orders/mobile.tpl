@@ -69,17 +69,7 @@
     <div class="mv-card-header">
         <h5 class="mv-card-title">{l s='Scanner MPN' mod='multivendor'}</h5>
     </div>
-    <div class="mv-card-body">
-        <div class="mv-mobile-mpn-container">
-            <input type="text" id="mobile-global-mpn-input" class="mv-mobile-input"
-                placeholder="{l s='Scannez le code-barres MPN...' mod='multivendor'}" autocomplete="off">
-            <div class="mv-mobile-mpn-status">
-                <span id="mobile-mpn-status-message" class="mv-mobile-status-message">
-                    {l s='Prêt à scanner' mod='multivendor'}
-                </span>
-            </div>
-        </div>
-    </div>
+
 </div>
 
 {* Orders Cards *}

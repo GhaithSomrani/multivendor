@@ -18,9 +18,10 @@
         <div class="right-panel">
             <div class="right-panel-header">
                 <div class="button-row">
-                    <button class="mv-btn mv-btn-secondary" id="cancelBtn">{l s='Annuler' mod='multivendor'}</button>
-                    <button class="mv-btn mv-btn-success" id="saveBtn">{l s='Valider' mod='multivendor'}</button>
-                    {* <button class="mv-btn mv-btn-primary" id="printBtn">{l s='Imprimer' mod='multivendor'}</button> *}
+                    <button class="mv-btn mv-btn-secondary" id="cancelBtn">🚫 {l s='Annuler Les modification' mod='multivendor'}</button>
+                    <button class="mv-btn mv-btn-info" id="justSaveBtn">💾 {l s='Sauvegarder en brouillon' mod='multivendor'}</button>
+                    <button class="mv-btn mv-btn-success" id="saveBtn"
+                        data-validation-name="">✅ {l s='Prêt pour ramassage' mod='multivendor'}</button>
                 </div>
                 <div>
                     <select id="addressSelect" class="mv-form-control">

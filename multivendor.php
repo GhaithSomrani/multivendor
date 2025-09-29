@@ -33,7 +33,7 @@ class multivendor extends Module
     {
         $this->name = 'multivendor';
         $this->tab = 'market_place';
-        $this->version = '2.1.0';
+        $this->version = '3.0.0';
         $this->author = 'Ghaith Somrani';
         $this->need_instance = 0;
         $this->ps_versions_compliancy = [

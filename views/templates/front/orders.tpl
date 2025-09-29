@@ -25,7 +25,7 @@
                             </a>
                             <a class="mv-nav-link mv-nav-link" href="{$vendor_manifest_url}">
                                 <i class="mv-icon">📋</i>
-                                <span>{l s='Manifests' mod='multivendor'}</span>
+                                <span>{l s='Manifestes' mod='multivendor'}</span>
                             </a>
                             <a class="mv-nav-link" href="{$vendor_commissions_url}">
                                 <i class="mv-icon">💰</i>

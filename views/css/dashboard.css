@@ -6,6 +6,11 @@
         width: 100%;
         max-width: 100%;
     }
+
+    .content-wrapper-bottom.mb-5.mt-5 {
+        margin: auto;
+        width: 1440px;
+    }
 }
 
 .mv-dashboard {
@@ -237,6 +242,15 @@ span.mv-status-badge {
     cursor: pointer;
     transition: all 0.2s ease;
     border: none;
+}
+
+.mv-btn-info {
+    color: white;
+    background-color: #0079FF;
+}
+
+.mv-btn-info:hover {
+    background-color: #026add;
 }
 
 .mv-btn-outline {

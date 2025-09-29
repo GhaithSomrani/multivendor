@@ -219,17 +219,23 @@ class Manifest extends ObjectModel
      * @param int|null $id_address address id 
      * @param int|null $id_manifest_status manifest status id
      */
-    public static function addNewManifest($orderdetails, $id_vendor, $type, $id_address = null, $id_manifest_status = null)
+    public static function addNewManifest($orderdetails, $id_vendor, $type, $id_address = null, $id_manifest_status = null, $isadmin = false)
     {
         try {
 
-            $existingManifest = self::getModifiableManifest($id_vendor, $id_manifest_status, $type);
+            $existingManifest = self::getModifiableManifest($id_vendor, $type);
             $existedOrderDetails = self::getOrderDetailsByType($type) ?? [];
             if ($existingManifest) {
-                $manifest = new Manifest($existingManifest['id_manifest']);
-                $manifest->id_address = $id_address;
-                $manifest->clearOrderDetails();
-                $manifest->update();
+                if (!$isadmin) {
+                    $vendorObj = new Vendor($existingManifest['id_vendor']);
+                    throw new Exception('Un manifeste pour le fournisseur ' . $vendorObj->shop_name . ' existe deja avec la reference :' . $existingManifest['reference'] . '. <br> Veuillez le compléter ou créer un nouveau manifeste après avoir validé celui en cours.');
+                    return false;
+                } else {
+                    $manifest = new Manifest($existingManifest['id_manifest']);
+                    $manifest->id_address = $id_address;
+                    $manifest->clearOrderDetails();
+                    $manifest->update();
+                }
             } else {
                 $manifest = new Manifest();
                 $manifest->id_vendor = (int)$id_vendor;
@@ -254,6 +260,8 @@ class Manifest extends ObjectModel
             }
             return $manifest;
         } catch (Exception $e) {
+            throw new Exception($e->getMessage());
+
             PrestaShopLogger::addLog('Add New Manifest Error: ' . $e->getMessage(), 3, null, 'AdminVendorOrderDetails');
         }
     }
@@ -305,6 +313,7 @@ class Manifest extends ObjectModel
         return ['checked' => false, 'disabled' => true];
     }
 
+
     public static function getOrderDetailsByType($id_manifest_type)
     {
         try {
@@ -347,7 +356,7 @@ class Manifest extends ObjectModel
             if ($id_manifest_status == null) {
                 $id_manifest_status = ManifestStatusType::getDefaultManifestStatusType($type);
             }
-            $manifest = self::addNewManifest($orderdetails, $id_vendor, $type, $id_address, $id_manifest_status);
+            $manifest = self::addNewManifest($orderdetails, $id_vendor, $type, $id_address, $id_manifest_status , true);
             $manifestTypeObj = new ManifestType($type);
 
             $pdfData = [
@@ -364,54 +373,59 @@ class Manifest extends ObjectModel
             echo $content;
             exit;
         } catch (Exception $e) {
-
             PrestaShopLogger::addLog('Export PDF Error: ' . $e->getMessage(), 3, null, 'AdminVendorOrderDetails');
+            throw new Exception("Error: " . $e->getMessage());
         }
     }
 
     public static function generateMulipleManifestPDF($orderDetails, $type, $vendorId = null)
     {
-        if ($vendorId) {
 
-            self::generateNewManifestPDF($orderDetails, $vendorId, $type);
-        } else {
-            $Data = [];
-            $grouped = [];
-            foreach ($orderDetails as $orderDetail) {
-                $id_vendor = Vendor::getVendorIdFromOrderDetail($orderDetail);
-                $id_order = $orderDetail;
+        try {
+            if ($vendorId) {
+                self::generateNewManifestPDF($orderDetails, $vendorId, $type);
+            } else {
+                $Data = [];
+                $grouped = [];
+                foreach ($orderDetails as $orderDetail) {
+                    $id_vendor = Vendor::getVendorIdFromOrderDetail($orderDetail);
+                    $id_order = $orderDetail;
 
-                if (!isset($grouped[$id_vendor])) {
-                    $grouped[$id_vendor] = [];
+                    if (!isset($grouped[$id_vendor])) {
+                        $grouped[$id_vendor] = [];
+                    }
+
+                    $grouped[$id_vendor][] = $id_order;
                 }
+                foreach ($grouped as $vendorId => $orders) {
+                    $Data[] = [
+                        'vendor' => $vendorId,
+                        'orderids' => array_values(array_unique($orders)),
+                    ];
+                }
+                $id_manifest_status = ManifestStatusType::getDefaultManifestStatusType($type);
+                $manifestTypeObj = new ManifestType($type);
 
-                $grouped[$id_vendor][] = $id_order;
-            }
-            foreach ($grouped as $vendorId => $orders) {
-                $Data[] = [
-                    'vendor' => $vendorId,
-                    'orderids' => array_values(array_unique($orders)),
+                foreach ($Data as $data) {
+                    self::addNewManifest($data['orderids'], $data['vendor'], $type, null,  $id_manifest_status , true);
+                }
+                $pdfData = [
+                    'vendor' => '',
+                    'orderDetailIds' => $orderDetails,
+                    'export_type' => $type,
+                    'id_address' => '',
+                    'filename' => 'Manifest_Muliple_' . date('YmdHis') . '.pdf',
+                    'maniefest_reference' => '',
+                    'manifest_type' => $manifestTypeObj->name
                 ];
+                $template = new HTMLTemplateVendorManifestPDF($pdfData, Context::getContext()->smarty);
+                $content = $template->getContent();
+                echo $content;
+                exit;
             }
-            $id_manifest_status = ManifestStatusType::getDefaultManifestStatusType($type);
-            $manifestTypeObj = new ManifestType($type);
+        } catch (Exception $e) {
 
-            foreach ($Data as $data) {
-                self::addNewManifest($data['orderids'], $data['vendor'], $type, null,  $id_manifest_status);
-            }
-            $pdfData = [
-                'vendor' => '',
-                'orderDetailIds' => $orderDetails,
-                'export_type' => $type,
-                'id_address' => '',
-                'filename' => 'Manifest_Muliple_' . date('YmdHis') . '.pdf',
-                'maniefest_reference' => '',
-                'manifest_type' => $manifestTypeObj->name
-            ];
-            $template = new HTMLTemplateVendorManifestPDF($pdfData, Context::getContext()->smarty);
-            $content = $template->getContent();
-            echo $content;
-            exit;
+            throw new Exception("Error: " . $e->getMessage());
         }
     }
 
@@ -448,14 +462,13 @@ class Manifest extends ObjectModel
 
 
 
-    public static function getModifiableManifest($id_vendor, $id_manifest_status, $type)
+    public static function getModifiableManifest($id_vendor, $type)
     {
         try {
             $sql = 'SELECT m.* 
             FROM `' . _DB_PREFIX_ . 'mv_manifest` m
             LEFT JOIN `' . _DB_PREFIX_ . 'mv_manifest_status_type` ms ON (m.id_manifest_status = ms.id_manifest_status_type)
             WHERE m.id_vendor = ' . (int)$id_vendor . ' 
-            AND m.id_manifest_status = "' . pSQL($id_manifest_status) . '"
             AND m.id_manifest_type = "' . pSQL($type) . '"
             AND ms.allowed_modification = 1
             ORDER BY m.date_add DESC';

@@ -149,96 +149,8 @@ $(document).ready(function () {
 /**
  * Initialize global MPN verification system
  */
-function initGlobalMpnVerification() {
-    const $globalMpnInput = $('#global-mpn-input');
 
-    // Focus on the global input when page loads
-    $globalMpnInput.focus();
 
-    // Handle input event for global MPN input
-    $globalMpnInput.on('keyup', function (e) {
-        // If user presses Enter, process the MPN
-        if (e.keyCode === 13) {
-            processMpnInput();
-        }
-    });
-
-    // On blur, also process the input
-    $globalMpnInput.on('blur', function () {
-        if ($(this).val().trim().length > 0) {
-            processMpnInput();
-        }
-    });
-
-}
-
-/**
- * Process the global MPN input
- */
-function processMpnInput() {
-    const mpnValue = $('#global-mpn-input').val().trim();
-    const $statusMessage = $('#mpn-status-message');
-
-    if (!mpnValue) {
-        return;
-    }
-
-    // Update status to searching
-    $statusMessage.text('Searching for MPN: ' + mpnValue + '...')
-        .removeClass('success error')
-        .addClass('searching');
-    // Find the matching row
-    let found = false;
-    let $matchingRow = null;
-    let orderDetailId = null;
-
-    $('.mv-table tbody tr').each(function () {
-        const rowMpn = $(this).data('product-mpn');
-
-        if (rowMpn == mpnValue) {
-            found = true;
-            $matchingRow = $(this);
-            orderDetailId = $(this).data('id');
-            return false; // Break the loop
-        }
-    });
-
-    if (found && $matchingRow && orderDetailId) {
-        // Remove any previous highlights
-        $('.mv-table tbody tr').removeClass('mv-mpn-found');
-
-        // Show success message
-        $statusMessage.text('MPN found! Processing order line...')
-            .removeClass('searching error')
-            .addClass('success');
-
-        // Highlight the matching row
-        $matchingRow.addClass('mv-mpn-found');
-
-        // Scroll to the matching row
-        $('html, body').animate({
-            scrollTop: $matchingRow.offset().top - 100
-        }, 500);
-
-        // Check if this order is already verified
-        if (verifiedOrderDetails.has(orderDetailId)) {
-            $statusMessage.text('This order line is already verified.')
-                .removeClass('searching')
-                .addClass('success');
-        } else {
-            // Process the verification
-            updateOrderLineStatus(orderDetailId);
-        }
-    } else {
-        // Show error message
-        $statusMessage.text('MPN not found. Please try again.')
-            .removeClass('searching success')
-            .addClass('error');
-    }
-
-    // Clear the input
-    $('#global-mpn-input').val('').focus();
-}
 
 /**
  * Initialize bulk actions
@@ -1238,65 +1150,7 @@ function applyMobileBulkStatus() {
 /**
  * Initialize mobile MPN scanner
  */
-function initializeMobileMPNScanner() {
-    const mpnInput = document.getElementById('mobile-global-mpn-input');
-    if (mpnInput) {
-        mpnInput.addEventListener('input', function () {
-            handleMobileMPNScan(this.value);
-        });
 
-        mpnInput.addEventListener('keypress', function (e) {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                this.blur();
-            }
-        });
-    }
-}
-
-/**
- * Handle mobile MPN scan
- */
-function handleMobileMPNScan(mpnValue) {
-    const statusMessage = document.getElementById('mobile-mpn-status-message');
-
-    if (!mpnValue.trim()) {
-        if (statusMessage) {
-            statusMessage.textContent = 'Prêt à scanner';
-            statusMessage.className = 'mv-mobile-status-message';
-        }
-        return;
-    }
-
-    const orderItems = document.querySelectorAll('.mv-mobile-order-item');
-    let found = false;
-
-    orderItems.forEach(item => {
-        const productMPN = item.dataset.productMpn;
-        if (productMPN && productMPN.toLowerCase().includes(mpnValue.toLowerCase())) {
-            item.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            item.style.border = '3px solid #10b981';
-            item.style.backgroundColor = '#f0fdf4';
-
-            setTimeout(() => {
-                item.style.border = '';
-                item.style.backgroundColor = '';
-            }, 3000);
-
-            found = true;
-        }
-    });
-
-    if (statusMessage) {
-        if (found) {
-            statusMessage.textContent = `Produit trouvé: ${mpnValue}`;
-            statusMessage.className = 'mv-mobile-status-message success';
-        } else {
-            statusMessage.textContent = `Aucun produit trouvé: ${mpnValue}`;
-            statusMessage.className = 'mv-mobile-status-message error';
-        }
-    }
-}
 
 /**
  * Initialize mobile status selects

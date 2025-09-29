@@ -119,7 +119,7 @@ class Vendor extends ObjectModel
         $query = new DbQuery();
         $query->select('*');
         $query->from('address');
-        $query->where('id_customer = ' . (int)$this->id_customer) ;
+        $query->where('id_customer = ' . (int)$this->id_customer);
         $query->where('deleted = 0');
         $query->where('active = 1');
 
@@ -138,29 +138,41 @@ class Vendor extends ObjectModel
     {
 
 
-        $totalCommissionRefunded = Db::getInstance()->getRow(
-            'SELECT SUM(vt.vendor_amount)  as total , count(vod.id_order_detail)  as count_details
-                FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod
-                LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status ols ON ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor
-                LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status_type olst ON olst.id_order_line_status_type = ols.id_order_line_status_type
-                LEFT JOIN ' . _DB_PREFIX_ . 'mv_vendor_transaction vt ON vt.order_detail_id = vod.id_order_detail
-                LEFT JOIN ' . _DB_PREFIX_ . 'mv_vendor_payment vp ON vp.id_vendor_payment = vt.id_vendor_payment
-                WHERE vod.id_vendor = ' . (int)$id_vendor . '
-                AND olst.id_order_line_status_type != 15
-                AND vt.status = "pending"
-                AND vt.transaction_type = "refund"
-                AND vt.id_vendor_payment = 0
-                AND vt.id_vendor_transaction = (
-                    SELECT MAX(vt2.id_vendor_transaction)
-                    FROM ' . _DB_PREFIX_ . 'mv_vendor_transaction vt2
-                    WHERE vt2.order_detail_id = vt.order_detail_id
-                    AND vt2.status = "pending"
-                    AND vt2.id_vendor_payment = 0
-                );'
-        );
+        // $totalCommissionRefunded = Db::getInstance()->getRow(
+        //     'SELECT SUM(vt.vendor_amount)  as total , count(vod.id_order_detail)  as count_details
+        //         FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod
+        //         LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status ols ON ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor
+        //         LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status_type olst ON olst.id_order_line_status_type = ols.id_order_line_status_type
+        //         LEFT JOIN ' . _DB_PREFIX_ . 'mv_vendor_transaction vt ON vt.order_detail_id = vod.id_order_detail
+        //         LEFT JOIN ' . _DB_PREFIX_ . 'mv_vendor_payment vp ON vp.id_vendor_payment = vt.id_vendor_payment
+        //         WHERE vod.id_vendor = ' . (int)$id_vendor . '
+        //         AND olst.id_order_line_status_type != 15
+        //         AND vt.status = "pending"
+        //         AND vt.transaction_type = "refund"
+        //         AND vt.id_vendor_payment = 0
+        //         AND vt.id_vendor_transaction = (
+        //             SELECT MAX(vt2.id_vendor_transaction)
+        //             FROM ' . _DB_PREFIX_ . 'mv_vendor_transaction vt2
+        //             WHERE vt2.order_detail_id = vt.order_detail_id
+        //             AND vt2.status = "pending"
+        //             AND vt2.id_vendor_payment = 0
+        //         );'
+        // );
+        // calculate total commission refunded by the vednor amount and the count of order details from the mv_vendor_order_details table
+        $query = new DbQuery();
+        $query->select('SUM(vod.vendor_amount) * -1 as total, count(vod.id_order_detail) as count_details');
+        $query->from('mv_vendor_order_detail', 'vod');
+        $query->leftJoin('mv_order_line_status', 'ols', 'ols.id_order_detail = vod.id_order_detail');
+        $query->where('vod.id_vendor = ' . (int)$id_vendor);
+        $query->where('ols.id_order_line_status_type = 13');
+        $totalCommissionRefunded = Db::getInstance()->getRow($query);
+
+
+
+
 
         $pendingAmount = Db::getInstance()->getRow(
-            'SELECT SUM(vt.vendor_amount) as total , count(vod.id_order_detail)  as count_details
+            'SELECT SUM(vt.vendor_amount)  as total , count(vod.id_order_detail)  as count_details
                 FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod
                 LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status ols ON ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor
                 LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status_type olst ON olst.id_order_line_status_type = ols.id_order_line_status_type
@@ -227,5 +239,4 @@ class Vendor extends ObjectModel
 
         return $result ? (int)$result : false;
     }
-  
 }

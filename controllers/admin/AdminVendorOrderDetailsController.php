@@ -500,9 +500,13 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
             $this->errors[] = $this->l('No order lines found with the specified criteria.');
             return;
         }
-        Manifest::generateMulipleManifestPDF($orderDetailIds, $export_type, $id_vendor);
-        // Generate PDF using same logic as pickup manifest
-        // $this->generateFilteredManifest($orderDetailIds, $id_vendor, $export_type);
+        try {
+            Manifest::generateMulipleManifestPDF($orderDetailIds, $export_type, $id_vendor);
+        } catch (Exception $e) {
+            PrestaShopLogger::addLog('Export PDF Error: ' . $e->getMessage(), 3, null, 'AdminVendorOrderDetails');
+          
+            $this->errors[] = $this->l('Error generating PDF: ') . $e->getMessage();
+        }
     }
     public function ajaxProcesseExportSelectedIds()
     {
@@ -523,8 +527,12 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
                 $orderDetailIds[] = $ordervendor->id_order_detail;
             }
         }
-
-        Manifest::generateMulipleManifestPDF($orderDetailIds, $export_type, $vendor_id);
+        try {
+            Manifest::generateMulipleManifestPDF($orderDetailIds, $export_type, $vendor_id);
+        } catch (Exception $e) {
+            PrestaShopLogger::addLog('Export PDF Error: ' . $e->getMessage(), 3, null, 'AdminVendorOrderDetails');
+            die(json_encode(['success' => false, 'message' => 'Error generating PDF: ' . $e->getMessage()]));
+        }
     }
 
 
@@ -584,10 +592,7 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
         }
 
         // Handle other POST actions
-        if (Tools::getValue('action') === 'exportFilteredPDF') {
-            $this->processExportFilteredPDF();
-            return;
-        }
+    
 
         if (Tools::getValue('action') === 'massUpdateStatus') {
             $this->processMassUpdateStatus();
@@ -755,7 +760,6 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
 
         // Get the template content and return it directly
         $this->content = $this->context->smarty->fetch($this->module->getLocalPath() . 'views/templates/admin/vendor_order_detail_view.tpl');
-
     }
 
     public function processDelete()

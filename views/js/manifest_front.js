@@ -23,6 +23,7 @@ function bindEvents() {
     $('#selectAllBtn').on('click', selectAll);
     $('#cancelBtn').on('click', cancelSelection);
     $('#saveBtn').on('click', saveManifest);
+    $('#justSaveBtn').on('click', justSaveManifest);
     $('#printBtn').on('click', printManifest);
 
     // MPN barcode scanner
@@ -70,7 +71,6 @@ function loadAvailableOrders() {
             }
         },
         error: function () {
-            showError('Failed to load available orders');
         }
     });
 }
@@ -100,7 +100,6 @@ function loadManifestOrders(manifestId) {
             renderSelectedOrders(response.total);
         },
         error: function () {
-            showError('Failed to load manifest orders');
         }
     });
 }
@@ -123,7 +122,6 @@ function loadManifestList() {
             renderManifestTable();
         },
         error: function () {
-            showError('Failed to load manifest list');
         }
     });
 }
@@ -175,6 +173,13 @@ function renderAvailableOrders() {
                 text: order.name + ' (X' + order.quantity + ')'
             }).appendTo(productInfo);
             $('<br>').appendTo(productInfo);
+
+            $('<p>', {
+                class: 'mv-mobile-product-sku',
+                text: order.status,
+                style: `font-weight: bold; background :${order.status_color}; color: #fff`
+            }).appendTo(productInfo);
+
             $('<p>', {
                 class: 'mv-mobile-product-sku',
                 text: `Marque: ${order.reference}`
@@ -626,7 +631,6 @@ function executeManifestSave(addressId, orderDetailIds) {
             }
         },
         error: function () {
-            showError('Failed to save manifest');
         }
     });
 }
@@ -642,7 +646,7 @@ function executeManifestPrint(addressId, orderDetailIds) {
 }
 function printExistingManifest(manifestId) {
     window.open(
-        window.manifestConfig.ajaxUrl + '?ajax=1&action=printManifest&id_manifest=' + manifestId,
+        window.manifestConfig.ajaxUrl + '&ajax=1&action=printManifest&id_manifest=' + manifestId,
         '_blank'
     );
 }
@@ -674,14 +678,15 @@ function createAndPrintManifest(addressId, orderDetailIds) {
             }
         },
         error: function () {
-            showError('Failed to create and print manifest');
         }
     });
 }
 
 function loadManifest(manifestId, manifestsTypes) {
     currentManifestType = manifestsTypes
-
+    if (manifestsTypes == 2) {
+        $('#saveBtn').text('✅ Valider le retour');
+    }
     currentManifestId = manifestId;
     if (currentManifestType == 2) {
         var availableOrders = $('#availableOrders');
@@ -700,7 +705,21 @@ function loadManifest(manifestId, manifestsTypes) {
     }
 
     loadManifestOrders(manifestId);
-    alert('Manifest #' + manifestId + ' loaded successfully');
+
+    showNotification('success', 'Manifest #' + manifestId + ' loaded successfully');
+
+}
+
+function updateValidationButtonText() {
+    var buttonText = 'Valider';
+
+    if (currentManifestType == 1) { // Pickup
+        buttonText = window.pickup_validation_name || 'Valider';
+    } else if (currentManifestType == 2) { // Returns
+        buttonText = window.returns_validation_name || 'Valider';
+    }
+
+    $('#saveBtn').text(buttonText);
 }
 
 function deleteManifest(manifestId) {
@@ -730,7 +749,6 @@ function deleteManifest(manifestId) {
             }
         },
         error: function () {
-            showError('Failed to delete manifest');
         }
     });
 }
@@ -778,9 +796,61 @@ function processMpnScan(mpnValue) {
     }
 }
 
+function justSaveManifest() {
+    if (selectedOrders.length === 0) {
+        showNotification('info', window.manifestConfig.translations.noItemsSelected);
+        return;
+    }
+
+    var addressId = $('#addressSelect').val();
+    if (!addressId) {
+        showNotification('info', window.manifestConfig.translations.selectAddress);
+        return;
+    }
+
+    var orderDetailIds = selectedOrders.map(function (order) {
+        return order.id;
+    });
+
+    executeJustSave(addressId, orderDetailIds);
+}
+
+
+function executeJustSave(addressId, orderDetailIds) {
+    var ajaxData = {
+        ajax: true,
+        action: 'saveManifestOnly',
+        id_address: addressId,
+        order_details: orderDetailIds
+    };
+
+    if (currentManifestId) {
+        ajaxData.id_manifest = currentManifestId;
+        ajaxData.id_manifest_type = currentManifestType;
+    }
+
+    $.ajax({
+        url: window.manifestConfig.ajaxUrl,
+        method: 'POST',
+        dataType: 'json',
+        data: ajaxData,
+        success: function (response) {
+            if (response.success) {
+                showNotification('success', 'Manifeste enregistré avec succès');
+                loadManifestList();
+                location.reload();
+            } else {
+                showError(response.error);
+                return;
+            }
+
+        },
+        error: function (response) {
+        }
+    });
+}
 function showError(message) {
-    console.error(message);
-    alert(message);
+    showNotification('error', message);
 }
 
 /**

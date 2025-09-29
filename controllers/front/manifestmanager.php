@@ -31,7 +31,8 @@ class MultivendorManifestManagerModuleFrontController extends ModuleFrontControl
             $this->handleAjaxRequest();
             return;
         }
-
+        $pickupValidationName = $this->getValidationButtonName(Manifest::TYPE_PICKUP);
+        $returnsValidationName = $this->getValidationButtonName(Manifest::TYPE_RETURNS);
         $this->context->controller->addJS($this->module->getPathUri() . 'views/js/manifest_front.js');
         $this->context->controller->addCSS($this->module->getPathUri() . 'views/css/manifest_front.css');
         $this->context->controller->addCSS($this->module->getPathUri() . 'views/css/dashboard.css');
@@ -51,6 +52,8 @@ class MultivendorManifestManagerModuleFrontController extends ModuleFrontControl
         // Pass vendor data to JavaScript
         Media::addJsDef([
             'manifest_ajax_url' => $this->context->link->getModuleLink('multivendor', 'manifestmanager'),
+            'pickup_validation_name' => $pickupValidationName,
+            'returns_validation_name' => $returnsValidationName,
             'vendor_id' => $this->vendor['id_vendor']
         ]);
         $this->context->smarty->assign([
@@ -58,7 +61,8 @@ class MultivendorManifestManagerModuleFrontController extends ModuleFrontControl
             'vendor_id' => $this->vendor['id_vendor'],
             'manifest_ajax_url' => $this->context->link->getModuleLink('multivendor', 'manifestmanager'),
             'vendor_dashboard_url' => $this->context->link->getModuleLink('multivendor', 'dashboard'),
-            
+            'pickup_validation_name' => $pickupValidationName,
+            'returns_validation_name' => $returnsValidationName,
             'vendor_commissions_url' => $this->context->link->getModuleLink('multivendor', 'commissions'),
             'vendor_profile_url' => $this->context->link->getModuleLink('multivendor', 'profile'),
             'vendor_orders_url' => $this->context->link->getModuleLink('multivendor', 'orders'),
@@ -96,14 +100,32 @@ class MultivendorManifestManagerModuleFrontController extends ModuleFrontControl
                 $this->loadManifest();
                 break;
             case 'printManifest':
-
                 $this->printManifest();
                 break;
             case 'createAndPrintManifest':
                 $this->createAndPrintManifest();
                 break;
+            case 'saveManifestOnly':
+                $this->saveManifestOnly();
+                break;
         }
         exit;
+    }
+
+    private function getValidationButtonName($manifestType)
+    {
+        if ($manifestType == Manifest::TYPE_PICKUP) {
+            $statusId = Configuration::get('mv_pickup');
+        } else {
+            $statusId = Configuration::get('mv_returns');
+        }
+
+        if ($statusId) {
+            $status = new ManifestStatusType($statusId);
+            return $status->name;
+        }
+
+        return 'Valider';
     }
     private function printManifest()
     {
@@ -169,7 +191,8 @@ class MultivendorManifestManagerModuleFrontController extends ModuleFrontControl
                 'reference' => $order['product_reference'],
                 'mpn' => $order['product_mpn'],
                 'quantity' => $order['product_quantity'],
-                'status' => $order['order_state_name'],
+                'status' => $order['line_status'],
+                'status_color' => $order['status_color'],
                 'public_price' => $order['unit_price'],
                 'price' => $order['product_price'],
                 'total' => $order['vendor_amount'],
@@ -225,27 +248,28 @@ class MultivendorManifestManagerModuleFrontController extends ModuleFrontControl
         $manifests = $this->getVendorManifests();
         $result = [];
         foreach ($manifests as $manifest) {
-            $address = Manifest::getManifestAddress($manifest['id_manifest']);
-            $manifestTypeObj = new ManifestType($manifest['id_manifest_type']);
-            $orderdetails = OrderHelper::getVendorOrderDetails($this->vendor['id_vendor'], ['manifest' => $manifest['id_manifest']]);
-            $total = array_sum(array_column($orderdetails, 'vendor_amount'));
-            $result[] = [
-                'id' => $manifest['id_manifest'],
-                'reference' => $manifest['reference'],
-                'address' =>  substr($address, 0, 25) . (strlen($address) > 25 ? '...' : ''),
-                'date' => date('d/m/Y', strtotime($manifest['date_add'])),
-                'type' => $manifest['id_manifest_type'],
-                'type_name' => $manifestTypeObj->name,
-                'nbre' => $manifest['item_count'],
-                'qty' => $manifest['total_quantity'],
-                'total' =>  $total,
-                'status' => $manifest['status_name'],
-                'editable' => $manifest['allowed_modification'],
-                'deletable' => $manifest['allowed_delete'],
-                'orderdetails' => $orderdetails,
-            ];
+            if ($manifest['id_manifest_status'] != 5) {
+                $address = Manifest::getManifestAddress($manifest['id_manifest']);
+                $manifestTypeObj = new ManifestType($manifest['id_manifest_type']);
+                $orderdetails = OrderHelper::getVendorOrderDetails($this->vendor['id_vendor'], ['manifest' => $manifest['id_manifest']]);
+                $total = array_sum(array_column($orderdetails, 'vendor_amount'));
+                $result[] = [
+                    'id' => $manifest['id_manifest'],
+                    'reference' => $manifest['reference'],
+                    'address' =>  substr($address, 0, 25) . (strlen($address) > 25 ? '...' : ''),
+                    'date' => date('d/m/Y', strtotime($manifest['date_add'])),
+                    'type' => $manifest['id_manifest_type'],
+                    'type_name' => $manifestTypeObj->name,
+                    'nbre' => $manifest['item_count'],
+                    'qty' => $manifest['total_quantity'],
+                    'total' =>  $total,
+                    'status' => $manifest['status_name'],
+                    'editable' => $manifest['allowed_modification'],
+                    'deletable' => $manifest['allowed_delete'],
+                    'orderdetails' => $orderdetails,
+                ];
+            }
         }
-
         $this->ajaxResponse(['manifests' => $result]);
     }
 
@@ -376,6 +400,56 @@ class MultivendorManifestManagerModuleFrontController extends ModuleFrontControl
                 'editable' => Manifest::IsEditable($id_manifest)
             ]
         ]);
+    }
+
+    private function saveManifestOnly()
+    {
+        $id_manifest = (int)Tools::getValue('id_manifest');
+        $orderDetails = Tools::getValue('order_details', []);
+        $id_address = (int)Tools::getValue('id_address');
+
+        if (empty($orderDetails)) {
+            $this->ajaxResponse(['error' => 'No order details selected'], 400);
+            return;
+        }
+
+        // Create or update manifest without changing status
+        try {
+            if ($id_manifest && $id_manifest > 0) {
+                // Update existing manifest
+                $manifest = new Manifest($id_manifest);
+                if ($manifest->id_vendor != $this->vendor['id_vendor']) {
+                    $this->ajaxResponse(['error' => 'Access denied'], 403);
+                    return;
+                }
+
+                if (!Manifest::IsEditable($id_manifest)) {
+                    $this->ajaxResponse(['error' => 'Manifest cannot be modified'], 400);
+                    return;
+                }
+
+                $manifest->clearOrderDetails();
+                foreach ($orderDetails as $id_order_detail) {
+                    $manifest->addOrderDetail($id_order_detail);
+                }
+            } else {
+                // Create new manifest without changing status
+                $manifest_id = Manifest::addNewManifest(
+                    $orderDetails,
+                    $this->vendor['id_vendor'],
+                    Manifest::TYPE_PICKUP,
+                    $id_address,
+                    null
+                );
+            }
+
+            $this->ajaxResponse([
+                'success' => true,
+                'message' => 'Manifest saved successfully'
+            ]);
+        } catch (Exception $e) {
+            $this->ajaxResponse(['success' => false, 'error' => $e->getMessage()]);
+        }
     }
 
     private function getVendorManifests()

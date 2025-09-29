@@ -270,11 +270,17 @@ class AdminManifestController extends ModuleAdminController
                 $selected_ids = !empty($selected_data) ? array_column($selected_data, 'id_order_details') : [];
             }
         }
+        
 
+        $filters['id_vendor'] = $vendorId;
+
+        $details = OrderHelper::getVendorOrderDetails($vendorId, $filters);
+
+        
         $this->context->smarty->assign([
             'orderStatuses' => $orderStatuses,
             'selected_ids' => $selected_ids,
-            'order_details' => [],
+            'order_details' => $this->object->id ? $details : [],
             'vendor_id' => $vendorId,
             'manifest_id' => $manifestId,
             'is_edit_mode' => $isEditMode,
