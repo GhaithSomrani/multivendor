@@ -39,7 +39,7 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
         $id_supplier = $this->context->smarty->getTemplateVars('id_supplier');
         // Get Vendor Address 
         $address_list = $this->getVendorAddress($id_vendor);
-        
+
         $this->getVendorAddress($id_vendor);
 
         // Handle status update submission
@@ -86,19 +86,27 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
             $status_colors[$status['name']] = $status['color'];
         }
 
+        $productList = Vendor::getProducts($id_vendor);
 
         // Add CSS and JS files
         $this->context->controller->addCSS($this->module->getPathUri() . 'views/css/dashboard.css');
+        $this->context->controller->addCSS($this->module->getPathUri() . 'views/css/commissions.css');
+
         $this->context->controller->addCSS($this->module->getPathUri() . 'views/css/orders.css');
         $this->context->controller->addJS($this->module->getPathUri() . 'views/js/orders.js');
+
         // Add JS definitions for AJAX
         Media::addJsDef([
             'ordersAjaxUrl' => $this->context->link->getModuleLink('multivendor', 'ajax'),
             'ordersAjaxToken' => Tools::getToken('multivendor')
         ]);
-
+        $available_status_vendor = new orderlineStatusType(Configuration::get('MV_AVAILABLE_STATUS'));
+        $out_of_stock_status = new orderlineStatusType(Configuration::get('MV_OUT_OF_STOCK_STATUS'));
         // Assign data to template
         $this->context->smarty->assign([
+            'first_status' => Configuration::get('MV_FIRST_STATUS'),
+            'available_status_vendor' => $available_status_vendor,
+            'out_of_stock_status' => $out_of_stock_status,
             'addresses' => $address_list,
             'per_page' => $per_page,
             'filter_status' => $filter_status,
@@ -182,6 +190,23 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
         }
         return   $filteredStatus;
     }
+
+
+    /**
+     * Ajax function to get the list of product of the vendor 
+     * 
+     */
+
+
+
+
+    /**
+     * Get changeable status info for each order line
+     * 
+     * @param array $orderLines List of order lines
+     * @param int $id_vendor Vendor ID
+     * @return array Associative array with changeable info and allowed transitions
+     */
 
     protected function getChangeableStatusInfo($orderLines, $id_vendor)
     {

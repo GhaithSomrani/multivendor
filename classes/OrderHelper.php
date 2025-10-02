@@ -360,15 +360,14 @@ class OrderHelper
                     'vendor_amount' => (float)$vendor_amount,
                 ], 'id_vendor_order_detail = ' . (int)$vendorOrderDetail['id_vendor_order_detail']);
 
-                // Log the update
-                OrderLineStatusLog::logStatusChange(
-                    $orderDetail->id_order_detail,
-                    $vendor['id_vendor'],
-                    'updated',
-                    'updated',
-                    $currentStatus,
-                    'commande modifiée de l\'administration - mise à jour de la ligne de commande pour le vendeur'
-                );
+                // OrderLineStatusLog::logStatusChange(
+                //     $orderDetail->id_order_detail,
+                //     $vendor['id_vendor'],
+                //     'updated',
+                //     'updated',
+                //     $currentStatus,
+                //     'commande modifiée de l\'administration - mise à jour de la ligne de commande pour le vendeur'
+                // );
 
                 return $result;
             } else {

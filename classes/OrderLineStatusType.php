@@ -58,6 +58,8 @@ class OrderLineStatusType extends ObjectModel
         ]
     ];
 
+
+
     protected $webserviceParameters = [
         'objectsNodeName' => 'order_line_status_types',
         'objectNodeName' => 'order_line_status_type',
@@ -74,7 +76,7 @@ class OrderLineStatusType extends ObjectModel
         'hidden_fields' => [
             'is_vendor_allowed',
             'is_admin_allowed',
-            'affects_commission', 
+            'affects_commission',
             'commission_action',
             'color',
 
@@ -138,6 +140,5 @@ class OrderLineStatusType extends ObjectModel
         } else {
             return false;
         }
-    } 
-    
+    }
 }

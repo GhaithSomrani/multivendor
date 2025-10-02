@@ -10,7 +10,7 @@
 .mv-container {
     display: flex;
     gap: 24px;
-    max-width: 1400px;
+    max-width: 90%;
     margin: 0 auto;
     flex-direction: column;
 }

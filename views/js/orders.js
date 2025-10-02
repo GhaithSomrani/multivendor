@@ -75,8 +75,7 @@ $(document).ready(function () {
         loadStatusHistory(orderDetailId);
     });
 
-    // Initialize the global MPN verification
-    initGlobalMpnVerification();
+
 
     // Make status badges clickable for filtering - FIXED VERSION
     $('.mv-filter-status').on('click', function () {
@@ -1201,13 +1200,96 @@ function updateMobileOrderLineStatus(orderDetailId, newStatusId, selectElement) 
     }
 }
 
+function getcurrentorderdetails(orderDetailId) {
+    $.ajax({
+        url: ordersAjaxUrl,
+        type: 'POST',
+        dataType: 'json',
+        data: {
+            action: 'GetOrderDetail',
+            id_order_detail: orderDetailId,
+            token: ordersAjaxToken
+        },
+        success: function (data) {
+            if (data.success) {
+                $('#currentoutodstock-image').attr('src', data.orderDetail.imageUrl);
+                $('#currentoutodstock-name').html(data.orderDetail.product_name + ' (X' + data.orderDetail.product_quantity + ')');
+                $('#currentoutodstock-brand').html(data.orderDetail.brand);
+                $('#currentoutodstock-price').html("Prix Public : " + parseFloat(data.orderDetail.product_price).toFixed(2));
+                $('#currentoutodstock-sku').html("Reférence : " + data.orderDetail.product_reference);
+                $('#currentoutodstock-mpn').html("Code-barre : " + data.orderDetail.product_mpn);
+                
+            }
+        }
+    })
+}
+
+function getvendorProduct() {
+    $.ajax({
+        url: ordersAjaxUrl,
+        type: 'POST',
+        dataType: 'json',
+        data: {
+            action: 'getVendorProducts',
+            token: ordersAjaxToken
+        },
+        success: function (data) {
+            if (data.success) {
+                $('#vendorProduct').html(data.vendorProduct);
+            }
+        }
+    })
+}
+function getseletecdvariant(idProduct) {
+    $.ajax({
+        url: ordersAjaxUrl,
+        type: 'POST',
+        dataType: 'json',
+        data: {
+            action: 'GetSeletecdVariants',
+            id_product: idProduct,
+            token: ordersAjaxToken
+        },
+        success: function (data) {
+            if (data.success) {
+                console.log(data);
+            }
+        }
+    })
+}
+
+// insert data into in to #variants-table-body
 
 
 
+function openOutOfStockModal(orderDetailId) {
+    getcurrentorderdetails(orderDetailId);
+    document.getElementById('outofstock-modal').classList.add('mv-modal-open');
+}
+
+function closeOutOfStockModal() {
+    document.getElementById('outofstock-modal').classList.remove('mv-modal-open');
+}
+
+function confirmOutOfStock() {
+    closeOutOfStockModal();
+}
+
+// document.addEventListener('DOMContentLoaded', function () {
+//     document.querySelectorAll('#outofstock').forEach(btn => {
+//         console.log(btn);
+//         btn.addEventListener('click', openOutOfStockModal);
+//     });
 
 
+// });
 
+// $(document).ready(function () {
+//     $('#outofstock').click(function (value) {
+//         orderDetailId = value.currentTarget.dataset.id;
 
+//     });
+// })
 
 
 // Add mobile initialization to existing DOMContentLoaded
@@ -1228,3 +1310,4 @@ function changePerPage(value) {
     url.searchParams.set('per_page', value);
     window.location.href = url.toString();
 }
+

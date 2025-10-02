@@ -56,10 +56,18 @@ class MultivendorAjaxModuleFrontController extends ModuleFrontController
             case 'getAllManifestItems':
                 $this->processGetAllManifestItems();
                 break;
-
+            case 'getVendorProducts':
+                $this->processGetVendorProducts();
+                break;
+            case 'GetOrderDetail':
+                $this->processGetOrderDetail();
+                break;
             default:
                 error_log('MultivendorAjax: Unknown action: ' . $action);
                 die(json_encode(['success' => false, 'message' => 'Unknown action: ' . $action]));
+            case 'getseletecdVariants':
+                $this->processGetSeletecdVariants();
+                break;
         }
     }
 
@@ -226,5 +234,53 @@ class MultivendorAjaxModuleFrontController extends ModuleFrontController
         } catch (Exception $e) {
             die(json_encode(['success' => false, 'message' => $e->getMessage()]));
         }
+    }
+    /**
+     * Ajax function to get all products of the vendor with their attributes
+     * 
+     */
+    public function processGetVendorProducts()
+    {
+        $vendor = VendorHelper::getVendorByCustomer(Context::getContext()->customer->id);
+        $id_vendor = $vendor['id_vendor'];
+        $products = Vendor::getProducts($id_vendor);
+        $products_with_attributes = [];
+        foreach ($products as $product) {
+            $attributes = Vendor::getProductsAttribute($product['id_product']);
+            $products_with_attributes[] = [
+                'product' => $product,
+                'attributes' => $attributes
+            ];
+        }
+        die(json_encode([
+            'success' => true,
+            'products' => $products_with_attributes
+        ]));
+    }
+    /**
+     * Ajax function to get the current order details from vendor order detail 
+     * 
+     */
+    public function processGetOrderDetail()
+    {
+
+        $id_order_detail = (int)Tools::getValue('id_order_detail');
+        $orderDetail = VendorOrderDetail::getByIdOrderDetail($id_order_detail);
+        $orderDetail['imageUrl'] = OrderHelper::getProductImageLink($orderDetail['product_id'], $orderDetail['product_attribute_id']);
+        $orderDetail['brand'] = VendorOrderDetail::getBrandByProductId($orderDetail['product_id']);
+        die(json_encode([
+            'success' => true,
+            'orderDetail' => $orderDetail
+        ]));
+    }
+
+    function processGetSeletecdVariants()
+    {
+        $product_id = (int)Tools::getValue('product_id');
+        $attributes = Vendor::getProductsAttribute($product_id);
+        die(json_encode([
+            'success' => true,
+            'attributes' => $attributes
+        ]));
     }
 }

@@ -138,27 +138,6 @@ class Vendor extends ObjectModel
     {
 
 
-        // $totalCommissionRefunded = Db::getInstance()->getRow(
-        //     'SELECT SUM(vt.vendor_amount)  as total , count(vod.id_order_detail)  as count_details
-        //         FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod
-        //         LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status ols ON ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor
-        //         LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status_type olst ON olst.id_order_line_status_type = ols.id_order_line_status_type
-        //         LEFT JOIN ' . _DB_PREFIX_ . 'mv_vendor_transaction vt ON vt.order_detail_id = vod.id_order_detail
-        //         LEFT JOIN ' . _DB_PREFIX_ . 'mv_vendor_payment vp ON vp.id_vendor_payment = vt.id_vendor_payment
-        //         WHERE vod.id_vendor = ' . (int)$id_vendor . '
-        //         AND olst.id_order_line_status_type != 15
-        //         AND vt.status = "pending"
-        //         AND vt.transaction_type = "refund"
-        //         AND vt.id_vendor_payment = 0
-        //         AND vt.id_vendor_transaction = (
-        //             SELECT MAX(vt2.id_vendor_transaction)
-        //             FROM ' . _DB_PREFIX_ . 'mv_vendor_transaction vt2
-        //             WHERE vt2.order_detail_id = vt.order_detail_id
-        //             AND vt2.status = "pending"
-        //             AND vt2.id_vendor_payment = 0
-        //         );'
-        // );
-        // calculate total commission refunded by the vednor amount and the count of order details from the mv_vendor_order_details table
         $query = new DbQuery();
         $query->select('SUM(vod.vendor_amount) * -1 as total, count(vod.id_order_detail) as count_details');
         $query->from('mv_vendor_order_detail', 'vod');
@@ -172,25 +151,19 @@ class Vendor extends ObjectModel
 
 
         $pendingAmount = Db::getInstance()->getRow(
-            'SELECT SUM(vt.vendor_amount)  as total , count(vod.id_order_detail)  as count_details
-                FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod
-                LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status ols ON ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor
-                LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status_type olst ON olst.id_order_line_status_type = ols.id_order_line_status_type
-                LEFT JOIN ' . _DB_PREFIX_ . 'mv_vendor_transaction vt ON vt.order_detail_id = vod.id_order_detail
-                LEFT JOIN ' . _DB_PREFIX_ . 'mv_vendor_payment vp ON vp.id_vendor_payment = vt.id_vendor_payment
-                WHERE vod.id_vendor = ' . (int)$id_vendor . '
+            'SELECT SUM(vt.vendor_amount) as total , count(vod.id_order_detail)  as count_details
+                FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod 
+                LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status ols ON ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor 
+                LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status_type olst ON olst.id_order_line_status_type = ols.id_order_line_status_type 
+                LEFT JOIN ' . _DB_PREFIX_ . 'mv_vendor_transaction vt ON vt.order_detail_id = vod.id_order_detail 
+                LEFT JOIN ' . _DB_PREFIX_ . 'mv_vendor_payment vp ON vp.id_vendor_payment = vt.id_vendor_payment 
+                WHERE vod.id_vendor = ' . (int)$id_vendor . ' 
                 AND olst.id_order_line_status_type != 15
-                AND vt.status = "pending"
-                AND vt.transaction_type = "commission"
-                AND vt.id_vendor_payment = 0
-                AND vt.id_vendor_transaction = (
-                    SELECT MAX(vt2.id_vendor_transaction)
-                    FROM ' . _DB_PREFIX_ . 'mv_vendor_transaction vt2
-                    WHERE vt2.order_detail_id = vt.order_detail_id
-                    AND vt2.status = "pending"
-                    AND vt2.id_vendor_payment = 0
-                );'
+                AND olst.commission_action = "add"
+                AND vt.transaction_type =  "commission" 
+                AND ( vt.status = "pending"  OR  vp.status = "pending"  OR vt.id_vendor_payment = 0)  '
         );
+
 
 
         $totalCommissionPending = Db::getInstance()->getRow(
@@ -203,7 +176,7 @@ class Vendor extends ObjectModel
                 WHERE vod.id_vendor = ' . (int)$id_vendor . ' 
                 AND olst.id_order_line_status_type = 15
                 AND vt.transaction_type =  "commission" 
-                AND  vt.status = "pending"  
+                AND vt.status = "pending"  
                 AND vt.id_vendor_payment = 0;'
         );
 
@@ -238,5 +211,75 @@ class Vendor extends ObjectModel
         $result = Db::getInstance()->getValue($sql);
 
         return $result ? (int)$result : false;
+    }
+
+
+
+    public static function getProducts($id_vendor, $idCategory = false, $priceFrom = false, $priceTo = false, $name = false, $reference = false, $mpn = false)
+    {
+        $idLang = (int)Configuration::get('PS_LANG_DEFAULT');
+        $idShop = (int)Context::getContext()->shop->id;
+        $vendor = new Vendor($id_vendor);
+        $idSupplier = $vendor->id_supplier ? (int)$vendor->id_supplier : false;
+        $query = new DbQuery();
+        $query->select('p.id_product , pl.name, p.reference, p.mpn, p.price ');
+        $query->from('product', 'p');
+
+        $query->innerJoin('product_lang', 'pl', 'pl.id_product = p.id_product AND pl.id_lang = ' . (int)$idLang . ' AND pl.id_shop = ' . (int)$idShop);
+
+        if ($idCategory) {
+            $ids = is_array($idCategory) ? array_map('intval', $idCategory) : [(int)$idCategory];
+            $query->innerJoin('category_product', 'cp', 'cp.id_product = p.id_product AND cp.id_category IN (' . implode(',', $ids) . ')');
+        }
+
+        if ($idSupplier) {
+            $query->where('p.id_supplier = ' . (int)$idSupplier);
+        }
+
+        if ($priceFrom > 0) {
+            $query->where('p.price >= ' . (float)$priceFrom);
+        }
+        if ($priceTo > 0) {
+            $query->where('p.price <= ' . (float)$priceTo);
+        }
+
+        if (trim($name)) {
+            $query->where('pl.name LIKE "%' . pSQL($name) . '%"');
+        }
+        if (trim($reference)) {
+            $query->where('p.reference LIKE "%' . pSQL($reference) . '%"');
+        }
+        if (trim($mpn)) {
+            $query->where('p.mpn = "' . pSQL($mpn) . '"');
+        }
+        $query->where('p.active = 1');
+        return  Db::getInstance()->executeS($query);;
+    }
+
+    public static function getProductsAttribute($id_product)
+    {
+        $id_lang = (int)Configuration::get('PS_LANG_DEFAULT');
+        $id_product = (int)$id_product;
+
+        $query = new DbQuery();
+        $query->select('pa.id_product_attribute')
+            ->select('CONCAT_WS(" – ", pl.name, GROUP_CONCAT(al.name ORDER BY ag.position, a.position SEPARATOR ", ")) AS name')
+            ->select('COALESCE(ROUND(p.price + pa.price, 6), 0) AS price')
+            ->select('sa.quantity AS stock')
+            ->select('pa.reference AS sku')
+            ->select('pa.mpn AS mpn');
+        $query->from('product_attribute', 'pa');
+        $query->innerJoin('product_lang', 'pl', 'pl.id_product = pa.id_product AND pl.id_lang = ' . $id_lang);
+        $query->innerJoin('stock_available', 'sa', 'sa.id_product = pa.id_product AND sa.id_product_attribute = pa.id_product_attribute');
+        $query->leftJoin('product_attribute_combination', 'pac', 'pac.id_product_attribute = pa.id_product_attribute');
+        $query->leftJoin('attribute', 'a', 'a.id_attribute = pac.id_attribute');
+        $query->leftJoin('attribute_lang', 'al', 'al.id_attribute = a.id_attribute AND al.id_lang = ' . $id_lang);
+        $query->leftJoin('attribute_group', 'ag', 'ag.id_attribute_group = a.id_attribute_group');
+        $query->leftJoin('product', 'p', 'p.id_product = pa.id_product');
+        $query->where('pa.id_product = ' . $id_product);
+        $query->where('sa.quantity > 0');
+        $query->groupBy('pa.id_product_attribute');
+        $query->orderBy('pa.id_product_attribute');
+        return Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS($query);
     }
 }

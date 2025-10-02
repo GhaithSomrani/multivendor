@@ -223,7 +223,7 @@
     background-color: white;
     border-radius: 12px;
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-    max-width: 500px;
+    min-width: 500px;
     width: 90%;
     z-index: 1050;
     max-height: 90vh;
@@ -271,7 +271,12 @@
     border-top: 1px solid #eee;
     display: flex;
     gap: 12px;
-    justify-content: flex-end;
+    justify-content: space-between;
+}
+
+
+#outofstock-modal .mv-modal-content {
+    width: 80%
 }
 
 /* Form Controls */
@@ -406,13 +411,15 @@ textarea.mv-form-control {
 
 }
 
-.mv-filter-status {
+.mv-filter-status,
+.mv-quick-action>button {
     cursor: pointer;
     transition: all 0.2s ease;
     opacity: 0.8;
 }
 
-.mv-filter-status:hover {
+.mv-filter-status:hover,
+.mv-quick-action>button:hover {
     opacity: 1;
     transform: translateY(-2px);
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
@@ -736,6 +743,18 @@ tr.mv-mpn-found {
     border: none;
     cursor: pointer;
 }
+
+.mv-status-btn {
+    color: white;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: capitalize;
+    border: none;
+    cursor: pointer;
+}
+
 
 .mv-btn-comment {
     background: none;
@@ -1462,4 +1481,96 @@ tr.mv-mpn-found {
 
 h3.mv-card-title.address-title {
     text-align: right;
+}
+
+.mv-quick-action {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    justify-content: center;
+}
+
+.mv-quick-action button {
+    padding: 5px 10px;
+}
+
+#currentoutofstock {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+#currentoutofstock .mv-product-name {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.7rem;
+    width: 100%;
+}
+
+.mv-search-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    justify-content: space-between;
+    overflow-y: auto;
+    max-height: 400px;
+}
+
+.mv-search-container .mv-payment-header {
+    width: calc(33% - 0.5rem);
+    border-radius: 8px;
+    max-height: 250px;
+    border: 1px solid #e0e0e0;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 1rem;
+}
+
+.mv-search-container .mv-payment-header.selected {
+    background-color: #e3f2fd;
+    border-color: #2196f3;
+}
+
+.mv-search-container .mv-product-name {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.7rem;
+    width: 100%;
+}
+
+.row-btn {
+    display: flex;
+    gap: 1rem;
+}
+
+#input-comment {
+    width: 100%;
+}
+
+div#generated-comment {
+    width: 100%;
+}
+
+#input-comment {
+    width: 100%;
+    margin-right: auto;
+    height: 80px;
+}
+
+div#load-more {
+    display: flex;
+    width: 100%;
+    margin: auto;
+}
+
+#load-more a {
+    margin: auto;
+}
+
+.search-block{
+    display: flex;
+    align-items: center;
+    gap: 1rem;
 }

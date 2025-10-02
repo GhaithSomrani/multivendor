@@ -32,6 +32,7 @@ class OrderLineStatus extends ObjectModel
     /** @var string Last update date */
     public $date_upd;
 
+    public static $is_admin = false;
     /**
      * @see ObjectModel::$definition
      */
@@ -116,7 +117,7 @@ class OrderLineStatus extends ObjectModel
 
             // Check user permissions
             $is_api_call = $this->isApiCall();
-            $is_admin = $is_api_call ? true : (Context::getContext()->employee ? (bool)Context::getContext()->employee->id : false);
+            $is_admin = $is_api_call ? true : $this->is_admin;
 
             if (!$is_api_call) {
                 if (!$is_admin && $statusType->is_vendor_allowed != 1) {
@@ -334,12 +335,11 @@ class OrderLineStatus extends ObjectModel
     {
         // Check if status already exists
         $currentStatus = self::getByOrderDetailAndVendor($id_order_detail, $id_vendor);
-     
         if ($currentStatus) {
             $orderLineStatus = new OrderLineStatus($currentStatus['id_order_line_status']);
             $orderLineStatus->id_order_line_status_type = (int)$id_status_type;
             $orderLineStatus->comment = $comment;
-
+            $orderLineStatus->is_admin = $is_admin;
             return $orderLineStatus->update();
         } else {
             // Create new status
@@ -347,6 +347,7 @@ class OrderLineStatus extends ObjectModel
             $orderLineStatus->id_order_detail = (int)$id_order_detail;
             $orderLineStatus->id_vendor = (int)$id_vendor;
             $orderLineStatus->id_order_line_status_type = (int)$id_status_type;
+            $orderLineStatus->is_admin = $is_admin;
             $orderLineStatus->comment = $comment;
 
             return $orderLineStatus->save();

@@ -94,6 +94,17 @@ class VendorOrderDetail extends ObjectModel
         return Db::getInstance()->executeS($query);
     }
 
+
+    /** get vendor order detail by id order details */
+    public static function getByIdOrderDetail($id_order_detail)
+    {
+        $query = new DbQuery();
+        $query->select('*');
+        $query->from('mv_vendor_order_detail');
+        $query->where('id_order_detail = ' . (int)$id_order_detail);
+
+        return Db::getInstance()->getRow($query);
+    }
     /**
      * Get brand name by product ID      
      * 

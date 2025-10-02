@@ -70,7 +70,7 @@ class Manifest extends ObjectModel
      * @param bool $null_values Allow null values
      * @return bool
      */
-    public function update($null_values = false)
+     public function update($null_values = false)
     {
         $nextOrderlineStatus = ManifestStatusType::getTheNextOrderlineStatus($this->id_manifest_status);
         $orderDetailIds = Manifest::getOrderdetailsIDs($this->id);
@@ -82,8 +82,8 @@ class Manifest extends ObjectModel
                     $id_order_detail['id_order_details'],
                     (int)$this->id_vendor,
                     $nextOrderlineStatus,
-                    Context::getContext()->employee->id,
-                    'Status modifié depuis l\'administration',
+                    Context::getContext()->employee->id ?? 0,
+                    'Status modifié depuis l\'administration le manifeste :' . $this->reference,
                     true
                 );
             } catch (Exception $e) {

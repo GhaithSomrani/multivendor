@@ -69,7 +69,7 @@
     </div>
 
     {* Global MPN Input *}
-   
+
 
     <div class="mv-card-body">
         {if $order_lines}
@@ -123,28 +123,20 @@
                                     {$line.product_quantity}</td>
                                 <td>{($line.vendor_amount)|number_format:3} TND</td>
                                 <td>
-                                    {if isset($all_statuses[$line.status_type_id]) && !isset($vendor_statuses[$line.status_type_id])}
+                                    {if $line.status_type_id == $first_status }
+
+                                        <div class="mv-quick-action">
+                                            <button class="mv-status-btn" id="outofstock"
+                                                onclick="openOutOfStockModal({$line.id_order_detail})">🚫</button>
+                                            <button class="mv-status-btn">✅</button>
+                                        </div>
+                                    {else}
                                         <span class="mv-status-badge"
                                             style="background-color: {$status_colors[$line.line_status]|default:'#777'};">
                                             {$line.line_status|capitalize}
                                         </span>
-                                    {else}
-                                        <select class="mv-status-select order-line-status-select"
-                                            id="status-select-{$line.id_order_detail}"
-                                            data-order-detail-id="{$line.id_order_detail}"
-                                            data-original-status-type-id="{$line.status_type_id}">
-                                            {foreach from=$vendor_statuses key=status_type_id item=status_label}
-                                                {assign var="is_changeable" value=OrderHelper::isChangableStatusType($line.id_order_detail, $status_type_id)}
-                                                {if $is_changeable ||  $line.status_type_id == $status_type_id}
-                                                    <option value="{$status_type_id}"
-                                                        {if $line.status_type_id == $status_type_id}selected{/if}
-                                                        style="background-color: {$status_colors[$status_label]}; color: white;">
-                                                        {$status_label|escape:'html':'UTF-8'|capitalize}
-                                                    </option>
-                                                {/if}
-                                            {/foreach}
-                                        </select>
                                     {/if}
+
                                 </td>
                                 <td>{$line.order_date|date_format:'%Y-%m-%d'}</td>
                                 {assign var='paid' value=TransactionHelper::isOrderDetailPaid($line.id_order_detail)}
@@ -178,14 +170,17 @@
                         {if $current_page < $pages_nb}
                             <li class="mv-pagination-item">
                                 <a class="mv-pagination-link"
-                                    href="{$link->getModuleLink('multivendor', 'orders', ['page' => $current_page+1, 'status' => $filter_status])}">
-                                    <span>›</span>
+                                    href="{$link->getModuleLink('multivendor', 'orders', ['page' => 1, 'status' => $filter_status])}">
+                                    <span>
+                                        << </span>
                                 </a>
+
                             </li>
                             <li class="mv-pagination-item">
                                 <a class="mv-pagination-link"
-                                    href="{$link->getModuleLink('multivendor', 'orders', ['page' => $pages_nb, 'status' => $filter_status])}">
-                                    <span>»</span>
+                                    href="{$link->getModuleLink('multivendor', 'orders', ['page' => $current_page-1, 'status' => $filter_status])}">
+                                    <span>
+                                        < </span>
                                 </a>
                             </li>
                         {/if}
@@ -204,13 +199,13 @@
                             <li class="mv-pagination-item">
                                 <a class="mv-pagination-link"
                                     href="{$link->getModuleLink('multivendor', 'orders', ['page' => $current_page+1 , 'per_page' => $per_page ])}">
-                                    <span>›</span>
+                                    <span>></span>
                                 </a>
                             </li>
                             <li class="mv-pagination-item">
                                 <a class="mv-pagination-link"
                                     href="{$link->getModuleLink('multivendor', 'orders', ['page' => $pages_nb , 'per_page' => $per_page])}">
-                                    <span>»</span>
+                                    <span>>></span>
                                 </a>
                             </li>
                         {/if}
@@ -235,10 +230,1204 @@
             </p>
         {/if}
 
-        
+
     </div>
 </div>
 
+
+{* Out of Stock Modal *}
+<div class="mv-modal" id="outofstock-modal">
+    <div class="mv-modal-backdrop" onclick="closeOutOfStockModal()"></div>
+    <div class="mv-modal-content">
+        <div class="mv-modal-header">
+
+            <div class="mv-modal-title">
+                <h3>{l s='Produit en rupture' mod='multivendor'} </h3>
+
+
+            </div>
+
+            <button class="mv-modal-close" onclick="closeOutOfStockModal()">&times;</button>
+        </div>
+
+        <div class="mv-modal-body">
+            <div id="currentoutofstock">
+                <div class="mv-product-image"> <img src="" id="currentoutodstock-image" class="mv-product-image">
+                </div>
+                <div class="mv-product-name">
+                    <strong class="mv-product-name" id="currentoutodstock-name"></strong>
+                    <div class="mv-additional-option">
+                        <div class="mv-mobile-product-sku" id="currentoutodstock-brand"> </div>
+                        <div class="mv-mobile-product-sku" id="currentoutodstock-price"> </div>
+                        <div class="mv-mobile-product-sku" id="currentoutodstock-sku"> </div>
+                        <div class="mv-mobile-product-sku" id="currentoutodstock-mpn"> </div>
+                    </div>
+
+                </div>
+                <div id="generated-comment">
+                    <textarea id="input-comment" disabled required> Top Léger en Lin- Estelle Femmes</textarea>
+                </div>
+            </div>
+            <div class="search-block">
+                <input type="text" id="product-search-input" class="mv-input"
+                    placeholder="{l s='Tapez pour rechercher...' mod='multivendor'}"
+                    style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+                <div class="row-btn">
+                    <button class="mv-btn mv-btn-secondary">
+                        {l s='Annuler' mod='multivendor'}
+                    </button>
+                    <button class="mv-btn mv-btn-primary">
+                        {l s='Confirmer' mod='multivendor'}
+                    </button>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 20px;">
+                <h4 style="margin-bottom: 12px; font-size: 16px;">
+                    {l s='Variantes disponibles' mod='multivendor'}
+                </h4>
+                {* <div class="mv-table-container">
+
+                </div> *}
+                <div class="mv-search-container">
+                    <div class="mv-payment-header">
+                        <div class="mv-payment-info">
+                            <img src="https://www.lamode.tn/87154-small_default/top-leger-en-lin-estelle-femmes.webp"
+                                class="mv-product-image">
+
+                        </div>
+
+                        <div class="mv-product-name">
+                            <strong class="mv-product-name" id="currentoutodstock-name">Top Léger en Lin- Estelle
+                                Femmes</strong>
+                            <div class="mv-additional-option">
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-brand"> demo</div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-price"> demo </div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-sku"> demo </div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-mpn"> demo</div>
+                            </div>
+                            <div style="display: flex; gap: 8px; ">
+                                <select class="mv-form-control">
+                                    <option> 37 </option>
+                                    <option> 38 </option>
+                                    <option> 39 </option>
+                                    <option> 40 </option>
+                                    <option> 41 </option>
+                                    <option> 42 </option>
+                                </select>
+                                <select class="mv-form-control">
+                                    <option selected=""> Green </option>
+                                    <option> red </option>
+                                    <option> blue </option>
+                                    <option> yellow </option>
+                                    <option> magenta </option>
+                                    <option> cyan</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mv-payment-header selected">
+                        <div class="mv-payment-info">
+                            <img src="https://www.lamode.tn/87154-small_default/top-leger-en-lin-estelle-femmes.webp"
+                                class="mv-product-image">
+
+                        </div>
+
+                        <div class="mv-product-name">
+                            <strong class="mv-product-name" id="currentoutodstock-name">Top Léger en Lin- Estelle
+                                Femmes</strong>
+                            <div class="mv-additional-option">
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-brand"> demo</div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-price"> demo </div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-sku"> demo </div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-mpn"> demo</div>
+                            </div>
+                            <div style="display: flex; gap: 8px; ">
+                                <select class="mv-form-control">
+                                    <option> 37 </option>
+                                    <option> 38 </option>
+                                    <option> 39 </option>
+                                    <option> 40 </option>
+                                    <option> 41 </option>
+                                    <option> 42 </option>
+                                </select>
+                                <select class="mv-form-control">
+                                    <option selected=""> Green </option>
+                                    <option> red </option>
+                                    <option> blue </option>
+                                    <option> yellow </option>
+                                    <option> magenta </option>
+                                    <option> cyan</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mv-payment-header">
+                        <div class="mv-payment-info">
+                            <img src="https://www.lamode.tn/87154-small_default/top-leger-en-lin-estelle-femmes.webp"
+                                class="mv-product-image">
+
+                        </div>
+
+                        <div class="mv-product-name">
+                            <strong class="mv-product-name" id="currentoutodstock-name">Top Léger en Lin- Estelle
+                                Femmes</strong>
+                            <div class="mv-additional-option">
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-brand"> demo</div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-price"> demo </div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-sku"> demo </div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-mpn"> demo</div>
+                            </div>
+                            <div style="display: flex; gap: 8px; ">
+                                <select class="mv-form-control">
+                                    <option> 37 </option>
+                                    <option> 38 </option>
+                                    <option> 39 </option>
+                                    <option> 40 </option>
+                                    <option> 41 </option>
+                                    <option> 42 </option>
+                                </select>
+                                <select class="mv-form-control">
+                                    <option selected=""> Green </option>
+                                    <option> red </option>
+                                    <option> blue </option>
+                                    <option> yellow </option>
+                                    <option> magenta </option>
+                                    <option> cyan</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mv-payment-header">
+                        <div class="mv-payment-info">
+                            <img src="https://www.lamode.tn/87154-small_default/top-leger-en-lin-estelle-femmes.webp"
+                                class="mv-product-image">
+
+                        </div>
+
+                        <div class="mv-product-name">
+                            <strong class="mv-product-name" id="currentoutodstock-name">Top Léger en Lin- Estelle
+                                Femmes</strong>
+                            <div class="mv-additional-option">
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-brand"> demo</div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-price"> demo </div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-sku"> demo </div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-mpn"> demo</div>
+                            </div>
+                            <div style="display: flex; gap: 8px; ">
+                                <select class="mv-form-control">
+                                    <option> 37 </option>
+                                    <option> 38 </option>
+                                    <option> 39 </option>
+                                    <option> 40 </option>
+                                    <option> 41 </option>
+                                    <option> 42 </option>
+                                </select>
+                                <select class="mv-form-control">
+                                    <option selected=""> Green </option>
+                                    <option> red </option>
+                                    <option> blue </option>
+                                    <option> yellow </option>
+                                    <option> magenta </option>
+                                    <option> cyan</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mv-payment-header">
+                        <div class="mv-payment-info">
+                            <img src="https://www.lamode.tn/87154-small_default/top-leger-en-lin-estelle-femmes.webp"
+                                class="mv-product-image">
+
+                        </div>
+
+                        <div class="mv-product-name">
+                            <strong class="mv-product-name" id="currentoutodstock-name">Top Léger en Lin- Estelle
+                                Femmes</strong>
+                            <div class="mv-additional-option">
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-brand"> demo</div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-price"> demo </div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-sku"> demo </div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-mpn"> demo</div>
+                            </div>
+                            <div style="display: flex; gap: 8px; ">
+                                <select class="mv-form-control">
+                                    <option> 37 </option>
+                                    <option> 38 </option>
+                                    <option> 39 </option>
+                                    <option> 40 </option>
+                                    <option> 41 </option>
+                                    <option> 42 </option>
+                                </select>
+                                <select class="mv-form-control">
+                                    <option selected=""> Green </option>
+                                    <option> red </option>
+                                    <option> blue </option>
+                                    <option> yellow </option>
+                                    <option> magenta </option>
+                                    <option> cyan</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mv-payment-header">
+                        <div class="mv-payment-info">
+                            <img src="https://www.lamode.tn/87154-small_default/top-leger-en-lin-estelle-femmes.webp"
+                                class="mv-product-image">
+
+                        </div>
+
+                        <div class="mv-product-name">
+                            <strong class="mv-product-name" id="currentoutodstock-name">Top Léger en Lin- Estelle
+                                Femmes</strong>
+                            <div class="mv-additional-option">
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-brand"> demo</div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-price"> demo </div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-sku"> demo </div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-mpn"> demo</div>
+                            </div>
+                            <div style="display: flex; gap: 8px; ">
+                                <select class="mv-form-control">
+                                    <option> 37 </option>
+                                    <option> 38 </option>
+                                    <option> 39 </option>
+                                    <option> 40 </option>
+                                    <option> 41 </option>
+                                    <option> 42 </option>
+                                </select>
+                                <select class="mv-form-control">
+                                    <option selected=""> Green </option>
+                                    <option> red </option>
+                                    <option> blue </option>
+                                    <option> yellow </option>
+                                    <option> magenta </option>
+                                    <option> cyan</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mv-payment-header">
+                        <div class="mv-payment-info">
+                            <img src="https://www.lamode.tn/87154-small_default/top-leger-en-lin-estelle-femmes.webp"
+                                class="mv-product-image">
+
+                        </div>
+
+                        <div class="mv-product-name">
+                            <strong class="mv-product-name" id="currentoutodstock-name">Top Léger en Lin- Estelle
+                                Femmes</strong>
+                            <div class="mv-additional-option">
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-brand"> demo</div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-price"> demo </div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-sku"> demo </div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-mpn"> demo</div>
+                            </div>
+                            <div style="display: flex; gap: 8px; ">
+                                <select class="mv-form-control">
+                                    <option> 37 </option>
+                                    <option> 38 </option>
+                                    <option> 39 </option>
+                                    <option> 40 </option>
+                                    <option> 41 </option>
+                                    <option> 42 </option>
+                                </select>
+                                <select class="mv-form-control">
+                                    <option selected=""> Green </option>
+                                    <option> red </option>
+                                    <option> blue </option>
+                                    <option> yellow </option>
+                                    <option> magenta </option>
+                                    <option> cyan</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mv-payment-header">
+                        <div class="mv-payment-info">
+                            <img src="https://www.lamode.tn/87154-small_default/top-leger-en-lin-estelle-femmes.webp"
+                                class="mv-product-image">
+
+                        </div>
+
+                        <div class="mv-product-name">
+                            <strong class="mv-product-name" id="currentoutodstock-name">Top Léger en Lin- Estelle
+                                Femmes</strong>
+                            <div class="mv-additional-option">
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-brand"> demo</div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-price"> demo </div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-sku"> demo </div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-mpn"> demo</div>
+                            </div>
+                            <div style="display: flex; gap: 8px; ">
+                                <select class="mv-form-control">
+                                    <option> 37 </option>
+                                    <option> 38 </option>
+                                    <option> 39 </option>
+                                    <option> 40 </option>
+                                    <option> 41 </option>
+                                    <option> 42 </option>
+                                </select>
+                                <select class="mv-form-control">
+                                    <option selected=""> Green </option>
+                                    <option> red </option>
+                                    <option> blue </option>
+                                    <option> yellow </option>
+                                    <option> magenta </option>
+                                    <option> cyan</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mv-payment-header">
+                        <div class="mv-payment-info">
+                            <img src="https://www.lamode.tn/87154-small_default/top-leger-en-lin-estelle-femmes.webp"
+                                class="mv-product-image">
+
+                        </div>
+
+                        <div class="mv-product-name">
+                            <strong class="mv-product-name" id="currentoutodstock-name">Top Léger en Lin- Estelle
+                                Femmes</strong>
+                            <div class="mv-additional-option">
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-brand"> demo</div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-price"> demo </div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-sku"> demo </div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-mpn"> demo</div>
+                            </div>
+                            <div style="display: flex; gap: 8px; ">
+                                <select class="mv-form-control">
+                                    <option> 37 </option>
+                                    <option> 38 </option>
+                                    <option> 39 </option>
+                                    <option> 40 </option>
+                                    <option> 41 </option>
+                                    <option> 42 </option>
+                                </select>
+                                <select class="mv-form-control">
+                                    <option selected=""> Green </option>
+                                    <option> red </option>
+                                    <option> blue </option>
+                                    <option> yellow </option>
+                                    <option> magenta </option>
+                                    <option> cyan</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mv-payment-header">
+                        <div class="mv-payment-info">
+                            <img src="https://www.lamode.tn/87154-small_default/top-leger-en-lin-estelle-femmes.webp"
+                                class="mv-product-image">
+
+                        </div>
+
+                        <div class="mv-product-name">
+                            <strong class="mv-product-name" id="currentoutodstock-name">Top Léger en Lin- Estelle
+                                Femmes</strong>
+                            <div class="mv-additional-option">
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-brand"> demo</div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-price"> demo </div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-sku"> demo </div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-mpn"> demo</div>
+                            </div>
+                            <div style="display: flex; gap: 8px; ">
+                                <select class="mv-form-control">
+                                    <option> 37 </option>
+                                    <option> 38 </option>
+                                    <option> 39 </option>
+                                    <option> 40 </option>
+                                    <option> 41 </option>
+                                    <option> 42 </option>
+                                </select>
+                                <select class="mv-form-control">
+                                    <option selected=""> Green </option>
+                                    <option> red </option>
+                                    <option> blue </option>
+                                    <option> yellow </option>
+                                    <option> magenta </option>
+                                    <option> cyan</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mv-payment-header">
+                        <div class="mv-payment-info">
+                            <img src="https://www.lamode.tn/87154-small_default/top-leger-en-lin-estelle-femmes.webp"
+                                class="mv-product-image">
+
+                        </div>
+
+                        <div class="mv-product-name">
+                            <strong class="mv-product-name" id="currentoutodstock-name">Top Léger en Lin- Estelle
+                                Femmes</strong>
+                            <div class="mv-additional-option">
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-brand"> demo</div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-price"> demo </div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-sku"> demo </div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-mpn"> demo</div>
+                            </div>
+                            <div style="display: flex; gap: 8px; ">
+                                <select class="mv-form-control">
+                                    <option> 37 </option>
+                                    <option> 38 </option>
+                                    <option> 39 </option>
+                                    <option> 40 </option>
+                                    <option> 41 </option>
+                                    <option> 42 </option>
+                                </select>
+                                <select class="mv-form-control">
+                                    <option selected=""> Green </option>
+                                    <option> red </option>
+                                    <option> blue </option>
+                                    <option> yellow </option>
+                                    <option> magenta </option>
+                                    <option> cyan</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mv-payment-header">
+                        <div class="mv-payment-info">
+                            <img src="https://www.lamode.tn/87154-small_default/top-leger-en-lin-estelle-femmes.webp"
+                                class="mv-product-image">
+
+                        </div>
+
+                        <div class="mv-product-name">
+                            <strong class="mv-product-name" id="currentoutodstock-name">Top Léger en Lin- Estelle
+                                Femmes</strong>
+                            <div class="mv-additional-option">
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-brand"> demo</div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-price"> demo </div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-sku"> demo </div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-mpn"> demo</div>
+                            </div>
+                            <div style="display: flex; gap: 8px; ">
+                                <select class="mv-form-control">
+                                    <option> 37 </option>
+                                    <option> 38 </option>
+                                    <option> 39 </option>
+                                    <option> 40 </option>
+                                    <option> 41 </option>
+                                    <option> 42 </option>
+                                </select>
+                                <select class="mv-form-control">
+                                    <option selected=""> Green </option>
+                                    <option> red </option>
+                                    <option> blue </option>
+                                    <option> yellow </option>
+                                    <option> magenta </option>
+                                    <option> cyan</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mv-payment-header">
+                        <div class="mv-payment-info">
+                            <img src="https://www.lamode.tn/87154-small_default/top-leger-en-lin-estelle-femmes.webp"
+                                class="mv-product-image">
+
+                        </div>
+
+                        <div class="mv-product-name">
+                            <strong class="mv-product-name" id="currentoutodstock-name">Top Léger en Lin- Estelle
+                                Femmes</strong>
+                            <div class="mv-additional-option">
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-brand"> demo</div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-price"> demo </div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-sku"> demo </div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-mpn"> demo</div>
+                            </div>
+                            <div style="display: flex; gap: 8px; ">
+                                <select class="mv-form-control">
+                                    <option> 37 </option>
+                                    <option> 38 </option>
+                                    <option> 39 </option>
+                                    <option> 40 </option>
+                                    <option> 41 </option>
+                                    <option> 42 </option>
+                                </select>
+                                <select class="mv-form-control">
+                                    <option selected=""> Green </option>
+                                    <option> red </option>
+                                    <option> blue </option>
+                                    <option> yellow </option>
+                                    <option> magenta </option>
+                                    <option> cyan</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mv-payment-header">
+                        <div class="mv-payment-info">
+                            <img src="https://www.lamode.tn/87154-small_default/top-leger-en-lin-estelle-femmes.webp"
+                                class="mv-product-image">
+
+                        </div>
+
+                        <div class="mv-product-name">
+                            <strong class="mv-product-name" id="currentoutodstock-name">Top Léger en Lin- Estelle
+                                Femmes</strong>
+                            <div class="mv-additional-option">
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-brand"> demo</div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-price"> demo </div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-sku"> demo </div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-mpn"> demo</div>
+                            </div>
+                            <div style="display: flex; gap: 8px; ">
+                                <select class="mv-form-control">
+                                    <option> 37 </option>
+                                    <option> 38 </option>
+                                    <option> 39 </option>
+                                    <option> 40 </option>
+                                    <option> 41 </option>
+                                    <option> 42 </option>
+                                </select>
+                                <select class="mv-form-control">
+                                    <option selected=""> Green </option>
+                                    <option> red </option>
+                                    <option> blue </option>
+                                    <option> yellow </option>
+                                    <option> magenta </option>
+                                    <option> cyan</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mv-payment-header">
+                        <div class="mv-payment-info">
+                            <img src="https://www.lamode.tn/87154-small_default/top-leger-en-lin-estelle-femmes.webp"
+                                class="mv-product-image">
+
+                        </div>
+
+                        <div class="mv-product-name">
+                            <strong class="mv-product-name" id="currentoutodstock-name">Top Léger en Lin- Estelle
+                                Femmes</strong>
+                            <div class="mv-additional-option">
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-brand"> demo</div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-price"> demo </div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-sku"> demo </div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-mpn"> demo</div>
+                            </div>
+                            <div style="display: flex; gap: 8px; ">
+                                <select class="mv-form-control">
+                                    <option> 37 </option>
+                                    <option> 38 </option>
+                                    <option> 39 </option>
+                                    <option> 40 </option>
+                                    <option> 41 </option>
+                                    <option> 42 </option>
+                                </select>
+                                <select class="mv-form-control">
+                                    <option selected=""> Green </option>
+                                    <option> red </option>
+                                    <option> blue </option>
+                                    <option> yellow </option>
+                                    <option> magenta </option>
+                                    <option> cyan</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mv-payment-header">
+                        <div class="mv-payment-info">
+                            <img src="https://www.lamode.tn/87154-small_default/top-leger-en-lin-estelle-femmes.webp"
+                                class="mv-product-image">
+
+                        </div>
+
+                        <div class="mv-product-name">
+                            <strong class="mv-product-name" id="currentoutodstock-name">Top Léger en Lin- Estelle
+                                Femmes</strong>
+                            <div class="mv-additional-option">
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-brand"> demo</div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-price"> demo </div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-sku"> demo </div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-mpn"> demo</div>
+                            </div>
+                            <div style="display: flex; gap: 8px; ">
+                                <select class="mv-form-control">
+                                    <option> 37 </option>
+                                    <option> 38 </option>
+                                    <option> 39 </option>
+                                    <option> 40 </option>
+                                    <option> 41 </option>
+                                    <option> 42 </option>
+                                </select>
+                                <select class="mv-form-control">
+                                    <option selected=""> Green </option>
+                                    <option> red </option>
+                                    <option> blue </option>
+                                    <option> yellow </option>
+                                    <option> magenta </option>
+                                    <option> cyan</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mv-payment-header">
+                        <div class="mv-payment-info">
+                            <img src="https://www.lamode.tn/87154-small_default/top-leger-en-lin-estelle-femmes.webp"
+                                class="mv-product-image">
+
+                        </div>
+
+                        <div class="mv-product-name">
+                            <strong class="mv-product-name" id="currentoutodstock-name">Top Léger en Lin- Estelle
+                                Femmes</strong>
+                            <div class="mv-additional-option">
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-brand"> demo</div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-price"> demo </div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-sku"> demo </div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-mpn"> demo</div>
+                            </div>
+                            <div style="display: flex; gap: 8px; ">
+                                <select class="mv-form-control">
+                                    <option> 37 </option>
+                                    <option> 38 </option>
+                                    <option> 39 </option>
+                                    <option> 40 </option>
+                                    <option> 41 </option>
+                                    <option> 42 </option>
+                                </select>
+                                <select class="mv-form-control">
+                                    <option selected=""> Green </option>
+                                    <option> red </option>
+                                    <option> blue </option>
+                                    <option> yellow </option>
+                                    <option> magenta </option>
+                                    <option> cyan</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mv-payment-header">
+                        <div class="mv-payment-info">
+                            <img src="https://www.lamode.tn/87154-small_default/top-leger-en-lin-estelle-femmes.webp"
+                                class="mv-product-image">
+
+                        </div>
+
+                        <div class="mv-product-name">
+                            <strong class="mv-product-name" id="currentoutodstock-name">Top Léger en Lin- Estelle
+                                Femmes</strong>
+                            <div class="mv-additional-option">
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-brand"> demo</div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-price"> demo </div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-sku"> demo </div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-mpn"> demo</div>
+                            </div>
+                            <div style="display: flex; gap: 8px; ">
+                                <select class="mv-form-control">
+                                    <option> 37 </option>
+                                    <option> 38 </option>
+                                    <option> 39 </option>
+                                    <option> 40 </option>
+                                    <option> 41 </option>
+                                    <option> 42 </option>
+                                </select>
+                                <select class="mv-form-control">
+                                    <option selected=""> Green </option>
+                                    <option> red </option>
+                                    <option> blue </option>
+                                    <option> yellow </option>
+                                    <option> magenta </option>
+                                    <option> cyan</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mv-payment-header">
+                        <div class="mv-payment-info">
+                            <img src="https://www.lamode.tn/87154-small_default/top-leger-en-lin-estelle-femmes.webp"
+                                class="mv-product-image">
+
+                        </div>
+
+                        <div class="mv-product-name">
+                            <strong class="mv-product-name" id="currentoutodstock-name">Top Léger en Lin- Estelle
+                                Femmes</strong>
+                            <div class="mv-additional-option">
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-brand"> demo</div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-price"> demo </div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-sku"> demo </div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-mpn"> demo</div>
+                            </div>
+                            <div style="display: flex; gap: 8px; ">
+                                <select class="mv-form-control">
+                                    <option> 37 </option>
+                                    <option> 38 </option>
+                                    <option> 39 </option>
+                                    <option> 40 </option>
+                                    <option> 41 </option>
+                                    <option> 42 </option>
+                                </select>
+                                <select class="mv-form-control">
+                                    <option selected=""> Green </option>
+                                    <option> red </option>
+                                    <option> blue </option>
+                                    <option> yellow </option>
+                                    <option> magenta </option>
+                                    <option> cyan</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mv-payment-header">
+                        <div class="mv-payment-info">
+                            <img src="https://www.lamode.tn/87154-small_default/top-leger-en-lin-estelle-femmes.webp"
+                                class="mv-product-image">
+
+                        </div>
+
+                        <div class="mv-product-name">
+                            <strong class="mv-product-name" id="currentoutodstock-name">Top Léger en Lin- Estelle
+                                Femmes</strong>
+                            <div class="mv-additional-option">
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-brand"> demo</div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-price"> demo </div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-sku"> demo </div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-mpn"> demo</div>
+                            </div>
+                            <div style="display: flex; gap: 8px; ">
+                                <select class="mv-form-control">
+                                    <option> 37 </option>
+                                    <option> 38 </option>
+                                    <option> 39 </option>
+                                    <option> 40 </option>
+                                    <option> 41 </option>
+                                    <option> 42 </option>
+                                </select>
+                                <select class="mv-form-control">
+                                    <option selected=""> Green </option>
+                                    <option> red </option>
+                                    <option> blue </option>
+                                    <option> yellow </option>
+                                    <option> magenta </option>
+                                    <option> cyan</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mv-payment-header">
+                        <div class="mv-payment-info">
+                            <img src="https://www.lamode.tn/87154-small_default/top-leger-en-lin-estelle-femmes.webp"
+                                class="mv-product-image">
+
+                        </div>
+
+                        <div class="mv-product-name">
+                            <strong class="mv-product-name" id="currentoutodstock-name">Top Léger en Lin- Estelle
+                                Femmes</strong>
+                            <div class="mv-additional-option">
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-brand"> demo</div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-price"> demo </div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-sku"> demo </div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-mpn"> demo</div>
+                            </div>
+                            <div style="display: flex; gap: 8px; ">
+                                <select class="mv-form-control">
+                                    <option> 37 </option>
+                                    <option> 38 </option>
+                                    <option> 39 </option>
+                                    <option> 40 </option>
+                                    <option> 41 </option>
+                                    <option> 42 </option>
+                                </select>
+                                <select class="mv-form-control">
+                                    <option selected=""> Green </option>
+                                    <option> red </option>
+                                    <option> blue </option>
+                                    <option> yellow </option>
+                                    <option> magenta </option>
+                                    <option> cyan</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mv-payment-header">
+                        <div class="mv-payment-info">
+                            <img src="https://www.lamode.tn/87154-small_default/top-leger-en-lin-estelle-femmes.webp"
+                                class="mv-product-image">
+
+                        </div>
+
+                        <div class="mv-product-name">
+                            <strong class="mv-product-name" id="currentoutodstock-name">Top Léger en Lin- Estelle
+                                Femmes</strong>
+                            <div class="mv-additional-option">
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-brand"> demo</div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-price"> demo </div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-sku"> demo </div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-mpn"> demo</div>
+                            </div>
+                            <div style="display: flex; gap: 8px; ">
+                                <select class="mv-form-control">
+                                    <option> 37 </option>
+                                    <option> 38 </option>
+                                    <option> 39 </option>
+                                    <option> 40 </option>
+                                    <option> 41 </option>
+                                    <option> 42 </option>
+                                </select>
+                                <select class="mv-form-control">
+                                    <option selected=""> Green </option>
+                                    <option> red </option>
+                                    <option> blue </option>
+                                    <option> yellow </option>
+                                    <option> magenta </option>
+                                    <option> cyan</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mv-payment-header">
+                        <div class="mv-payment-info">
+                            <img src="https://www.lamode.tn/87154-small_default/top-leger-en-lin-estelle-femmes.webp"
+                                class="mv-product-image">
+
+                        </div>
+
+                        <div class="mv-product-name">
+                            <strong class="mv-product-name" id="currentoutodstock-name">Top Léger en Lin- Estelle
+                                Femmes</strong>
+                            <div class="mv-additional-option">
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-brand"> demo</div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-price"> demo </div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-sku"> demo </div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-mpn"> demo</div>
+                            </div>
+                            <div style="display: flex; gap: 8px; ">
+                                <select class="mv-form-control">
+                                    <option> 37 </option>
+                                    <option> 38 </option>
+                                    <option> 39 </option>
+                                    <option> 40 </option>
+                                    <option> 41 </option>
+                                    <option> 42 </option>
+                                </select>
+                                <select class="mv-form-control">
+                                    <option selected=""> Green </option>
+                                    <option> red </option>
+                                    <option> blue </option>
+                                    <option> yellow </option>
+                                    <option> magenta </option>
+                                    <option> cyan</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mv-payment-header">
+                        <div class="mv-payment-info">
+                            <img src="https://www.lamode.tn/87154-small_default/top-leger-en-lin-estelle-femmes.webp"
+                                class="mv-product-image">
+
+                        </div>
+
+                        <div class="mv-product-name">
+                            <strong class="mv-product-name" id="currentoutodstock-name">Top Léger en Lin- Estelle
+                                Femmes</strong>
+                            <div class="mv-additional-option">
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-brand"> demo</div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-price"> demo </div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-sku"> demo </div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-mpn"> demo</div>
+                            </div>
+                            <div style="display: flex; gap: 8px; ">
+                                <select class="mv-form-control">
+                                    <option> 37 </option>
+                                    <option> 38 </option>
+                                    <option> 39 </option>
+                                    <option> 40 </option>
+                                    <option> 41 </option>
+                                    <option> 42 </option>
+                                </select>
+                                <select class="mv-form-control">
+                                    <option selected=""> Green </option>
+                                    <option> red </option>
+                                    <option> blue </option>
+                                    <option> yellow </option>
+                                    <option> magenta </option>
+                                    <option> cyan</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mv-payment-header">
+                        <div class="mv-payment-info">
+                            <img src="https://www.lamode.tn/87154-small_default/top-leger-en-lin-estelle-femmes.webp"
+                                class="mv-product-image">
+
+                        </div>
+
+                        <div class="mv-product-name">
+                            <strong class="mv-product-name" id="currentoutodstock-name">Top Léger en Lin- Estelle
+                                Femmes</strong>
+                            <div class="mv-additional-option">
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-brand"> demo</div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-price"> demo </div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-sku"> demo </div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-mpn"> demo</div>
+                            </div>
+                            <div style="display: flex; gap: 8px; ">
+                                <select class="mv-form-control">
+                                    <option> 37 </option>
+                                    <option> 38 </option>
+                                    <option> 39 </option>
+                                    <option> 40 </option>
+                                    <option> 41 </option>
+                                    <option> 42 </option>
+                                </select>
+                                <select class="mv-form-control">
+                                    <option selected=""> Green </option>
+                                    <option> red </option>
+                                    <option> blue </option>
+                                    <option> yellow </option>
+                                    <option> magenta </option>
+                                    <option> cyan</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mv-payment-header">
+                        <div class="mv-payment-info">
+                            <img src="https://www.lamode.tn/87154-small_default/top-leger-en-lin-estelle-femmes.webp"
+                                class="mv-product-image">
+
+                        </div>
+
+                        <div class="mv-product-name">
+                            <strong class="mv-product-name" id="currentoutodstock-name">Top Léger en Lin- Estelle
+                                Femmes</strong>
+                            <div class="mv-additional-option">
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-brand"> demo</div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-price"> demo </div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-sku"> demo </div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-mpn"> demo</div>
+                            </div>
+                            <div style="display: flex; gap: 8px; ">
+                                <select class="mv-form-control">
+                                    <option> 37 </option>
+                                    <option> 38 </option>
+                                    <option> 39 </option>
+                                    <option> 40 </option>
+                                    <option> 41 </option>
+                                    <option> 42 </option>
+                                </select>
+                                <select class="mv-form-control">
+                                    <option selected=""> Green </option>
+                                    <option> red </option>
+                                    <option> blue </option>
+                                    <option> yellow </option>
+                                    <option> magenta </option>
+                                    <option> cyan</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mv-payment-header">
+                        <div class="mv-payment-info">
+                            <img src="https://www.lamode.tn/87154-small_default/top-leger-en-lin-estelle-femmes.webp"
+                                class="mv-product-image">
+
+                        </div>
+
+                        <div class="mv-product-name">
+                            <strong class="mv-product-name" id="currentoutodstock-name">Top Léger en Lin- Estelle
+                                Femmes</strong>
+                            <div class="mv-additional-option">
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-brand"> demo</div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-price"> demo </div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-sku"> demo </div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-mpn"> demo</div>
+                            </div>
+                            <div style="display: flex; gap: 8px; ">
+                                <select class="mv-form-control">
+                                    <option> 37 </option>
+                                    <option> 38 </option>
+                                    <option> 39 </option>
+                                    <option> 40 </option>
+                                    <option> 41 </option>
+                                    <option> 42 </option>
+                                </select>
+                                <select class="mv-form-control">
+                                    <option selected=""> Green </option>
+                                    <option> red </option>
+                                    <option> blue </option>
+                                    <option> yellow </option>
+                                    <option> magenta </option>
+                                    <option> cyan</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mv-payment-header">
+                        <div class="mv-payment-info">
+                            <img src="https://www.lamode.tn/87154-small_default/top-leger-en-lin-estelle-femmes.webp"
+                                class="mv-product-image">
+
+                        </div>
+
+                        <div class="mv-product-name">
+                            <strong class="mv-product-name" id="currentoutodstock-name">Top Léger en Lin- Estelle
+                                Femmes</strong>
+                            <div class="mv-additional-option">
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-brand"> demo</div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-price"> demo </div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-sku"> demo </div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-mpn"> demo</div>
+                            </div>
+                            <div style="display: flex; gap: 8px; ">
+                                <select class="mv-form-control">
+                                    <option> 37 </option>
+                                    <option> 38 </option>
+                                    <option> 39 </option>
+                                    <option> 40 </option>
+                                    <option> 41 </option>
+                                    <option> 42 </option>
+                                </select>
+                                <select class="mv-form-control">
+                                    <option selected=""> Green </option>
+                                    <option> red </option>
+                                    <option> blue </option>
+                                    <option> yellow </option>
+                                    <option> magenta </option>
+                                    <option> cyan</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mv-payment-header">
+                        <div class="mv-payment-info">
+                            <img src="https://www.lamode.tn/87154-small_default/top-leger-en-lin-estelle-femmes.webp"
+                                class="mv-product-image">
+
+                        </div>
+
+                        <div class="mv-product-name">
+                            <strong class="mv-product-name" id="currentoutodstock-name">Top Léger en Lin- Estelle
+                                Femmes</strong>
+                            <div class="mv-additional-option">
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-brand"> demo</div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-price"> demo </div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-sku"> demo </div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-mpn"> demo</div>
+                            </div>
+                            <div style="display: flex; gap: 8px; ">
+                                <select class="mv-form-control">
+                                    <option> 37 </option>
+                                    <option> 38 </option>
+                                    <option> 39 </option>
+                                    <option> 40 </option>
+                                    <option> 41 </option>
+                                    <option> 42 </option>
+                                </select>
+                                <select class="mv-form-control">
+                                    <option selected=""> Green </option>
+                                    <option> red </option>
+                                    <option> blue </option>
+                                    <option> yellow </option>
+                                    <option> magenta </option>
+                                    <option> cyan</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mv-payment-header">
+                        <div class="mv-payment-info">
+                            <img src="https://www.lamode.tn/87154-small_default/top-leger-en-lin-estelle-femmes.webp"
+                                class="mv-product-image">
+
+                        </div>
+
+                        <div class="mv-product-name">
+                            <strong class="mv-product-name" id="currentoutodstock-name">Top Léger en Lin- Estelle
+                                Femmes</strong>
+                            <div class="mv-additional-option">
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-brand"> demo</div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-price"> demo </div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-sku"> demo </div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-mpn"> demo</div>
+                            </div>
+                            <div style="display: flex; gap: 8px; ">
+                                <select class="mv-form-control">
+                                    <option> 37 </option>
+                                    <option> 38 </option>
+                                    <option> 39 </option>
+                                    <option> 40 </option>
+                                    <option> 41 </option>
+                                    <option> 42 </option>
+                                </select>
+                                <select class="mv-form-control">
+                                    <option selected=""> Green </option>
+                                    <option> red </option>
+                                    <option> blue </option>
+                                    <option> yellow </option>
+                                    <option> magenta </option>
+                                    <option> cyan</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mv-payment-header">
+                        <div class="mv-payment-info">
+                            <img src="https://www.lamode.tn/87154-small_default/top-leger-en-lin-estelle-femmes.webp"
+                                class="mv-product-image">
+
+                        </div>
+
+                        <div class="mv-product-name">
+                            <strong class="mv-product-name" id="currentoutodstock-name">Top Léger en Lin- Estelle
+                                Femmes</strong>
+                            <div class="mv-additional-option">
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-brand"> demo</div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-price"> demo </div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-sku"> demo </div>
+                                <div class="mv-mobile-product-sku" id="currentoutodstock-mpn"> demo</div>
+                            </div>
+                            <div style="display: flex; gap: 8px; ">
+                                <select class="mv-form-control">
+                                    <option> 37 </option>
+                                    <option> 38 </option>
+                                    <option> 39 </option>
+                                    <option> 40 </option>
+                                    <option> 41 </option>
+                                    <option> 42 </option>
+                                </select>
+                                <select class="mv-form-control">
+                                    <option selected=""> Green </option>
+                                    <option> red </option>
+                                    <option> blue </option>
+                                    <option> yellow </option>
+                                    <option> magenta </option>
+                                    <option> cyan</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+                <div id="load-more">
+                    <a href="#"> Charger plus</a>
+                </div>
+
+            </div>
+        </div>
+        <div class="mv-modal-footer">
+            <div> <input type="checkbox" /> il n'y a aucune suggestion </div>
+            <div class="row-btn">
+                <button class="mv-btn mv-btn-secondary" onclick="closeOutOfStockModal()">
+                    {l s='Annuler' mod='multivendor'}
+                </button>
+                <button class="mv-btn mv-btn-primary" onclick="confirmOutOfStock()">
+                    {l s='Confirmer' mod='multivendor'}
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 <script>
-    // Function to change the number of items per page
+
 </script>

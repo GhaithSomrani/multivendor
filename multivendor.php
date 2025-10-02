@@ -251,6 +251,12 @@ class multivendor extends Module
         }
 
         if (Tools::isSubmit('submit' . $this->name)) {
+            // In getContent() method, after existing Configuration::updateValue calls:
+
+            Configuration::updateValue('MV_FIRST_STATUS', (int)Tools::getValue('MV_FIRST_STATUS'));
+            Configuration::updateValue('MV_AVAILABLE_STATUS', (int)Tools::getValue('MV_AVAILABLE_STATUS'));
+            Configuration::updateValue('MV_OUT_OF_STOCK_STATUS', (int)Tools::getValue('MV_OUT_OF_STOCK_STATUS'));
+
             // Process existing configuration
             $defaultCommission = (float)Tools::getValue('MV_DEFAULT_COMMISSION');
             Configuration::updateValue('MV_DEFAULT_COMMISSION', $defaultCommission);
@@ -449,6 +455,39 @@ class multivendor extends Module
                         ]
                     ],
                     [
+                        'type' => 'select',
+                        'label' => $this->l('First Order Line Status'),
+                        'name' => 'MV_FIRST_STATUS',
+                        'desc' => $this->l('Initial status for new order lines'),
+                        'options' => [
+                            'query' => $statusTypes,
+                            'id' => 'id_order_line_status_type',
+                            'name' => 'name'
+                        ],
+                    ],
+                    [
+                        'type' => 'select',
+                        'label' => $this->l('Product Available at Supplier Status'),
+                        'name' => 'MV_AVAILABLE_STATUS',
+                        'desc' => $this->l('Status indicating product is available at supplier'),
+                        'options' => [
+                            'query' => $statusTypes,
+                            'id' => 'id_order_line_status_type',
+                            'name' => 'name'
+                        ],
+                    ],
+                    [
+                        'type' => 'select',
+                        'label' => $this->l('Out of Stock Status'),
+                        'name' => 'MV_OUT_OF_STOCK_STATUS',
+                        'desc' => $this->l('Status indicating product is out of stock'),
+                        'options' => [
+                            'query' => $statusTypes,
+                            'id' => 'id_order_line_status_type',
+                            'name' => 'name'
+                        ],
+                    ],
+                    [
                         'type' => 'html',
                         'name' => 'stats_display',
                         'html_content' => '
@@ -520,6 +559,9 @@ class multivendor extends Module
 
         $hiddenStatusTypes = $this->getHiddenStatusTypesArray();
         $fieldsValue = [
+            'MV_FIRST_STATUS' => Configuration::get('MV_FIRST_STATUS'),
+            'MV_AVAILABLE_STATUS' => Configuration::get('MV_AVAILABLE_STATUS'),
+            'MV_OUT_OF_STOCK_STATUS' => Configuration::get('MV_OUT_OF_STOCK_STATUS'),
             'MV_DEFAULT_COMMISSION' => Configuration::get('MV_DEFAULT_COMMISSION', 10),
             'MV_AUTO_APPROVE_VENDORS' => Configuration::get('MV_AUTO_APPROVE_VENDORS', 0),
             'mv_pickup' => Configuration::get('mv_pickup'),
@@ -674,7 +716,7 @@ class multivendor extends Module
     public function hookActionObjectOrderUpdateAfter($params)
     {
         $order = $params['object'];
-        
+
         if (!Validate::isLoadedObject($order)) {
             return;
         }
