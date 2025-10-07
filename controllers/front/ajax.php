@@ -56,18 +56,38 @@ class MultivendorAjaxModuleFrontController extends ModuleFrontController
             case 'getAllManifestItems':
                 $this->processGetAllManifestItems();
                 break;
+
             case 'getVendorProducts':
                 $this->processGetVendorProducts();
                 break;
+
             case 'GetOrderDetail':
                 $this->processGetOrderDetail();
                 break;
-            default:
-                error_log('MultivendorAjax: Unknown action: ' . $action);
-                die(json_encode(['success' => false, 'message' => 'Unknown action: ' . $action]));
+
+            case 'searchOutOfStockProducts':
+                $this->processSearchOutOfStockProducts();
+                break;
+
+            case 'getProductVariants':
+                $this->processGetProductVariants();
+                break;
+
+            case 'addOutOfStockSuggestion':
+                $this->processAddOutOfStockSuggestion();
+                break;
+
             case 'getseletecdVariants':
                 $this->processGetSeletecdVariants();
                 break;
+
+            case 'getGefilterDetails':
+                $this->processGefilterDetails();
+                break;
+            default:
+                error_log('MultivendorAjax: Unknown action: ' . $action);
+                https: //claude.ai/recents
+                die(json_encode(['success' => false, 'message' => 'Unknown action: ' . $action]));
         }
     }
 
@@ -109,6 +129,7 @@ class MultivendorAjaxModuleFrontController extends ModuleFrontController
             die(json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]));
         }
     }
+
 
     /**
      * Process get status history
@@ -261,7 +282,7 @@ class MultivendorAjaxModuleFrontController extends ModuleFrontController
      * Ajax function to get the current order details from vendor order detail 
      * 
      */
-    public function processGetOrderDetail()
+    private function processGetOrderDetail()
     {
 
         $id_order_detail = (int)Tools::getValue('id_order_detail');
@@ -274,7 +295,7 @@ class MultivendorAjaxModuleFrontController extends ModuleFrontController
         ]));
     }
 
-    function processGetSeletecdVariants()
+    private function processGetSeletecdVariants()
     {
         $product_id = (int)Tools::getValue('product_id');
         $attributes = Vendor::getProductsAttribute($product_id);
@@ -282,5 +303,236 @@ class MultivendorAjaxModuleFrontController extends ModuleFrontController
             'success' => true,
             'attributes' => $attributes
         ]));
+    }
+
+    private function processSearchOutOfStockProducts()
+    {
+        $search = Tools::getValue('search');
+        $currentOrderDetailId = (int)Tools::getValue('currentOrderDetailId');
+        $orderDetailObj = new OrderDetail($currentOrderDetailId);
+        $idVendor = (int)VendorHelper::getVendorByCustomer(Context::getContext()->customer->id)['id_vendor'];
+
+        $priceFrom = $orderDetailObj->unit_price_tax_incl * 0.7;
+        $priceTo = $orderDetailObj->unit_price_tax_incl * 1.3;
+
+        $currentProductObj = new Product($orderDetailObj->product_id);
+        $defaultCategory = $currentProductObj->id_category_default;
+
+        $page = (int)Tools::getValue('page', 1);
+        $limit = (int)Tools::getValue('limit', 18);
+        $offset = ($page - 1) * $limit;
+
+        $products = Vendor::getProducts(
+            $idVendor,
+            $defaultCategory,
+            $priceFrom,
+            $priceTo,
+            $search,
+            $search,
+            $search,
+            $limit,
+            $offset
+        );
+
+        $totalProducts = Vendor::getProducts(
+            $idVendor,
+            $defaultCategory,
+            $priceFrom,
+            $priceTo,
+            $search,
+            $search,
+            $search,
+            0,
+            0,
+            true
+        );
+
+        $productsData = [];
+
+        foreach ($products as $product) {
+            $img = Image::getCover($product['id_product']);
+            $imgUrl = $this->context->link->getImageLink($product['reference'], $img['id_image'], 'small_default');
+
+            $productObj = new Product($product['id_product'], false, Context::getContext()->language->id);
+            $combinations = $productObj->getAttributeCombinations(Context::getContext()->language->id);
+
+            $attributes = [];
+
+            foreach ($combinations as $combination) {
+                $groupName = $combination['group_name'];
+                $attributeId = $combination['id_attribute'];
+                $attributeName = $combination['attribute_name'];
+
+                $combinationPrice = Product::getPriceStatic(
+                    $product['id_product'],
+                    false,
+                    $combination['id_product_attribute'],
+                    6,
+                    null,
+                    false,
+                    true,
+                    0,
+                    false,
+                    null,
+                    null,
+                    null,
+                    $specificPriceOutput,
+                    true
+                );
+
+                if (!isset($attributes[$groupName])) {
+                    $attributes[$groupName] = [];
+                }
+
+                if ($combinationPrice >= $priceFrom && $combinationPrice <= $priceTo) {
+                    $attributes[$groupName][$attributeId] = [
+                        'id_attribute' => $attributeId,
+                        'name' => $attributeName,
+                        'final_price' => Tools::displayPrice($combinationPrice, Context::getContext()->currency)
+                    ];
+                }
+            }
+
+           
+            $allGroupsEmpty = true;
+            foreach ($attributes as $groupAttributes) {
+                if (!empty($groupAttributes)) {
+                    $allGroupsEmpty = false;
+                    break;
+                }
+            }
+
+            
+            $productsData[] = [
+                'id_product' => $product['id_product'],
+                'name' => $product['name'],
+                'reference' => $product['reference'],
+                'price_formatted' => Tools::displayPrice($product['price']),
+                'mpn' => $product['mpn'],
+                'image_url' => $imgUrl,
+                'attributes' => $attributes,
+                'all_groups_empty' => $allGroupsEmpty
+            ];
+        }
+
+  
+
+        $this->context->smarty->assign('products', $productsData);
+        $html = $this->context->smarty->fetch('module:multivendor/views/templates/front/orders/_product_list.tpl');
+
+        $totalPages = is_int($totalProducts) ? ceil($totalProducts / $limit) : 1;
+
+        die(json_encode([
+            'success' => true,
+            'html' => $html,
+            'pagination' => [
+                'page' => $page,
+                'limit' => $limit,
+                'total_products' => $totalProducts,
+                'total_pages' => $totalPages
+            ]
+        ]));
+    }
+
+    private function processGefilterDetails()
+    {
+        $currentOrderDetailId = (int)Tools::getValue('currentOrderDetailId');
+        $orderDetailObj = new OrderDetail($currentOrderDetailId);
+        $priceFrom = $orderDetailObj->unit_price_tax_incl * 0.7;
+        $priceTo = $orderDetailObj->unit_price_tax_incl * 1.3;
+        $currentProductObj = new Product($orderDetailObj->product_id);
+        $defaultCategoryObj = new Category($currentProductObj->id_category_default);
+
+        die(json_encode([
+            'success' => true,
+            'priceFrom' => Tools::displayPrice($priceFrom),
+            'priceTo' => Tools::displayPrice($priceTo),
+            'category' => $defaultCategoryObj->name[Context::getContext()->language->id]
+        ]));
+    }
+
+
+
+    private function processGetProductVariants()
+    {
+        $idProduct = (int)Tools::getValue('id_product');
+
+        $product = new Product($idProduct, true, Context::getContext()->language->id);
+        $combinations = $product->getAttributeCombinations(Context::getContext()->language->id);
+
+        // Group attributes by group
+        $attributes = [];
+        foreach ($combinations as $combination) {
+            $groupName = $combination['group_name'];
+            if (!isset($attributes[$groupName])) {
+                $attributes[$groupName] = [];
+            }
+            $attributes[$groupName][$combination['id_attribute']] = [
+                'id_attribute' => $combination['id_attribute'],
+                'name' => $combination['attribute_name']
+            ];
+        }
+
+        // Remove duplicates
+        foreach ($attributes as &$group) {
+            $group = array_values($group);
+        }
+
+        $img = Image::getCover($idProduct);
+        $imgUrl = $this->context->link->getImageLink($product->reference, $img['id_image'], 'small_default');
+
+        $productData = [
+            'id_product' => $idProduct,
+            'name' => $product->name,
+            'reference' => $product->reference,
+            'price_formatted' => Tools::displayPrice($product->price),
+            'mpn' => $product->mpn,
+            'image_url' => $imgUrl,
+            'attributes' => $attributes
+        ];
+
+        $this->context->smarty->assign('product', $productData);
+        $html = $this->context->smarty->fetch('module:multivendor/views/templates/front/orders/_product_item.tpl');
+
+        die(json_encode(['success' => true, 'html' => $html]));
+    }
+
+    private function processAddOutOfStockSuggestion()
+    {
+        $idProduct = (int)Tools::getValue('id_product');
+        $selectedAttributes = Tools::getValue('attributes');
+        $idOrderDetail = (int)Tools::getValue('id_order_detail');
+
+        $product = new Product($idProduct, true, Context::getContext()->language->id);
+        $product_reference = $product->reference;
+        $suggestions = $product->name . ' [' . $product_reference . ']';
+        $selectedAttributesId =  $selectedAttributes ?  implode(',', array_column($selectedAttributes, 'id')) : false;
+
+        if (!empty($selectedAttributes)) {
+            foreach ($selectedAttributes as $attribute) {
+                $suggestions .= ' - ' . $attribute['name'];
+            }
+        }
+
+        if (!isset($_SESSION['out_of_stock_suggestions'])) {
+            $_SESSION['out_of_stock_suggestions'] = [];
+        }
+        if (!isset($_SESSION['out_of_stock_suggestions'][$idOrderDetail])) {
+            $_SESSION['out_of_stock_suggestions'][$idOrderDetail] = [];
+        }
+
+        $_SESSION['out_of_stock_suggestions'][$idOrderDetail][] = $suggestions;
+
+        $result = [
+            'success' => true,
+            'suggestions' => $suggestions,
+            "id_product" => $idProduct,
+        ];
+
+        if ($selectedAttributesId) {
+            $result["attributes"] = $selectedAttributesId;
+        }
+
+        die(json_encode($result));
     }
 }

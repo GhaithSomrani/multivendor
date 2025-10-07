@@ -83,7 +83,6 @@ $(document).ready(function() {
     // Update selected count display
     function updateSelectedCount() {
         var checkedBoxes = $("input[name='vendor_order_detailsBox[]']:checked");
-        console.log("Checked boxes:", checkedBoxes.length);
         
         var count = checkedBoxes.length;
         $("#ajax-selected-count-display").text(count + " {l s='sélectionné(s)' mod='multivendor'}");
@@ -128,8 +127,6 @@ $(document).ready(function() {
             selectedIds.push($(this).val());
         });
         
-        console.log("Selected IDs:", selectedIds);
-        console.log("New Status ID:", newStatusId);
         
         // Start AJAX mass update
         performAjaxMassUpdate(selectedIds, newStatusId, comment);
@@ -180,11 +177,9 @@ $(document).ready(function() {
                     processed++;
                     if (response.success) {
                         success++;
-                        console.log("Success for ID " + currentId);
                     } else {
                         errors++;
                         errorMessages.push("ID " + currentId + ": " + (response.message || 'Erreur inconnue'));
-                        console.log("Error for ID " + currentId + ":", response.message);
                     }
                     
                     // Process next item
@@ -194,7 +189,6 @@ $(document).ready(function() {
                     processed++;
                     errors++;
                     errorMessages.push("ID " + currentId + ": Erreur AJAX - " + error);
-                    console.log("AJAX Error for ID " + currentId + ":", error);
                     
                     // Process next item
                     setTimeout(processNextItem, 100);

@@ -215,16 +215,44 @@ class Vendor extends ObjectModel
 
 
 
-    public static function getProducts($id_vendor, $idCategory = false, $priceFrom = false, $priceTo = false, $name = false, $reference = false, $mpn = false)
-    {
+    /**
+     * Get products from a vendor
+     * 
+     * @param int $id_vendor Vendor ID
+     * @param int|array $idCategory Optional category ID(s)
+     * @param float $priceFrom Optional price from
+     * @param float $priceTo Optional price to
+     * @param string $name Optional product name
+     * @param string $reference Optional product reference
+     * @param string $mpn Optional product mpn
+     * @return array Products
+     */
+    public static function getProducts(
+        $id_vendor,
+        $idCategory = false,
+        $priceFrom = false,
+        $priceTo = false,
+        $name = false,
+        $reference = false,
+        $mpn = false,
+        $limit = 21,
+        $offset = 0,
+        $countOnly = false
+    ) {
         $idLang = (int)Configuration::get('PS_LANG_DEFAULT');
         $idShop = (int)Context::getContext()->shop->id;
         $vendor = new Vendor($id_vendor);
         $idSupplier = $vendor->id_supplier ? (int)$vendor->id_supplier : false;
-        $query = new DbQuery();
-        $query->select('p.id_product , pl.name, p.reference, p.mpn, p.price ');
-        $query->from('product', 'p');
 
+        $query = new DbQuery();
+
+        if ($countOnly) {
+            $query->select('COUNT(DISTINCT p.id_product)');
+        } else {
+            $query->select('p.id_product, pl.name, p.reference, p.mpn, p.price');
+        }
+
+        $query->from('product', 'p');
         $query->innerJoin('product_lang', 'pl', 'pl.id_product = p.id_product AND pl.id_lang = ' . (int)$idLang . ' AND pl.id_shop = ' . (int)$idShop);
 
         if ($idCategory) {
@@ -243,17 +271,19 @@ class Vendor extends ObjectModel
             $query->where('p.price <= ' . (float)$priceTo);
         }
 
-        if (trim($name)) {
-            $query->where('pl.name LIKE "%' . pSQL($name) . '%"');
+        if (trim($name) || trim($reference)) {
+            $query->where('pl.name LIKE "%' . pSQL($name) . '%" OR p.reference LIKE "%' . pSQL($reference) . '%" OR p.mpn LIKE "%' . pSQL($mpn) . '%"');
         }
-        if (trim($reference)) {
-            $query->where('p.reference LIKE "%' . pSQL($reference) . '%"');
-        }
-        if (trim($mpn)) {
-            $query->where('p.mpn = "' . pSQL($mpn) . '"');
-        }
+
         $query->where('p.active = 1');
-        return  Db::getInstance()->executeS($query);;
+
+        if (!$countOnly && $limit) {
+            $query->limit((int)$limit, (int)$offset);
+        }
+
+        return $countOnly
+            ? (int)Db::getInstance()->getValue($query)
+            : Db::getInstance()->executeS($query);
     }
 
     public static function getProductsAttribute($id_product)

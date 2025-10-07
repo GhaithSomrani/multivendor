@@ -3,17 +3,16 @@
  */
 
 $(document).ready(function () {
-    console.log('Multivendor admin.js loaded');
-    
+
     // Initialize autocomplete for vendor creation/editing
     if ($('select[name="id_customer"]').length > 0) {
         replaceSelectWithAutocomplete('id_customer', 'searchCustomers');
     }
-    
+
     if ($('select[name="id_supplier"]').length > 0) {
         replaceSelectWithAutocomplete('id_supplier', 'searchSuppliers');
     }
-    
+
     // Initialize order line status functionality
     initializeOrderLineStatus();
 });
@@ -88,7 +87,7 @@ function replaceSelectWithAutocomplete(selectName, ajaxAction) {
 
                 resultsContainer.show();
             },
-            error: function(xhr, status, error) {
+            error: function (xhr, status, error) {
                 console.error('Autocomplete AJAX error:', status, error);
                 resultsContainer.empty().append('<div class="list-group-item text-danger">Error loading results</div>').show();
             }
@@ -108,29 +107,25 @@ function replaceSelectWithAutocomplete(selectName, ajaxAction) {
 function initializeOrderLineStatus() {
     // Check if we're on an order page
     const isOrderPage = $('#orderProductsTable').length > 0;
-    
+
     if (!isOrderPage) {
-        console.log('Not on order page, skipping multivendor order line status functionality');
         return;
     }
-    
-    console.log('Initializing order line status for admin orders');
-    
+
+
     // Get order ID
     const orderId = getOrderIdFromPage();
     if (!orderId) {
-        console.error('Cannot initialize order line status: No order ID found');
         return;
     }
-    
-    console.log('Found order ID:', orderId);
-    
+
+
     // Add status column to order products table
     addOrderLineStatusColumn();
-    
+
     // Load status data
     loadOrderLineStatuses(orderId);
-    
+
     // Setup event handlers
     setupOrderLineStatusHandlers();
 }
@@ -140,15 +135,13 @@ function initializeOrderLineStatus() {
  */
 function addOrderLineStatusColumn() {
     const headerRow = $('#orderProductsTable thead tr');
-    
+
     // Check if column already exists
     if (headerRow.find('th.cellProductLineStatus').length > 0) {
-        console.log('Order line status column already exists');
         return;
     }
-    
-    console.log('Adding order line status column');
-    
+
+
     // Add header column before the Total column
     const totalHeader = headerRow.find('th:contains("Total")');
     if (totalHeader.length === 0) {
@@ -157,22 +150,22 @@ function addOrderLineStatusColumn() {
     } else {
         totalHeader.before('<th class="cellProductLineStatus"><p>Line Status</p></th>');
     }
-    
+
     // Add status cells to each product row
     $('#orderProductsTable tbody tr.cellProduct').each(function () {
         const $row = $(this);
         const productId = $row.attr('id') ? $row.attr('id').replace('orderProduct_', '') : '';
-        
+
         if (!productId) {
             console.warn('No product ID found for row:', $row);
             return;
         }
-        
+
         const statusCell = '<td class="cellProductLineStatus text-center">' +
             '<div class="js-line-status-placeholder" data-order-detail-id="' + productId + '">' +
             '<span class="badge badge-secondary">Loading...</span>' +
             '</div></td>';
-            
+
         const totalCell = $row.find('td.cellProductTotalPrice');
         if (totalCell.length === 0) {
             // Fallback: add at the end
@@ -187,19 +180,17 @@ function addOrderLineStatusColumn() {
  * Load order line statuses via AJAX
  */
 function loadOrderLineStatuses(orderId) {
-    console.log('Loading order line statuses for order:', orderId);
-    
+
     // Build the AJAX URL
     var ajaxUrl = buildAdminAjaxUrl();
-    
+
     if (!ajaxUrl) {
         console.error('Could not build AJAX URL');
         $('.js-line-status-placeholder').html('<span class="badge badge-danger">Config Error</span>');
         return;
     }
-    
-    console.log('Using AJAX URL:', ajaxUrl);
-    
+
+
     $.ajax({
         url: ajaxUrl,
         type: 'POST',
@@ -209,11 +200,9 @@ function loadOrderLineStatuses(orderId) {
             action: 'getOrderLineStatusesForAdmin',
             id_order: orderId
         },
-        beforeSend: function() {
-            console.log('Sending request to get order line statuses');
+        beforeSend: function () {
         },
-        success: function(response) {
-            console.log('Order line statuses response:', response);
+        success: function (response) {
             if (response && response.success) {
                 updateOrderLineStatusCells(response);
             } else {
@@ -221,10 +210,8 @@ function loadOrderLineStatuses(orderId) {
                 $('.js-line-status-placeholder').html('<span class="badge badge-danger">Error: ' + (response ? response.message : 'No response') + '</span>');
             }
         },
-        error: function(xhr, status, error) {
-            console.error('AJAX error loading statuses:', status, error);
-            console.log('Response status:', xhr.status);
-            console.log('Response text (first 500 chars):', xhr.responseText.substring(0, 500));
+        error: function (xhr, status, error) {
+
             $('.js-line-status-placeholder').html('<span class="badge badge-danger">Connection Error</span>');
         }
     });
@@ -234,22 +221,21 @@ function loadOrderLineStatuses(orderId) {
  * Update the order line status cells with loaded data
  */
 function updateOrderLineStatusCells(response) {
-    $('.js-line-status-placeholder').each(function() {
+    $('.js-line-status-placeholder').each(function () {
         const $placeholder = $(this);
         const orderDetailId = $placeholder.data('order-detail-id');
         const statusData = response.statusData[orderDetailId];
-        
-        console.log('Processing order detail:', orderDetailId, 'Status data:', statusData);
-        
+
+
         if (statusData && statusData.is_vendor_product && statusData.vendor_name) {
             // This is a vendor product, create status dropdown
             let html = '<select class="form-control order-line-status-select" ';
             html += 'data-order-detail-id="' + orderDetailId + '" ';
             html += 'data-vendor-id="' + statusData.id_vendor + '">';
-            
+
             // Add status options
             if (response.availableStatuses && response.availableStatuses.length > 0) {
-                $.each(response.availableStatuses, function(i, status) {
+                $.each(response.availableStatuses, function (i, status) {
                     const selected = (statusData.status_type_id == status.id_order_line_status_type) ? 'selected' : '';
                     const color = status.color || '#6c757d';
                     html += '<option value="' + status.id_order_line_status_type + '" ' + selected + ' ';
@@ -260,10 +246,10 @@ function updateOrderLineStatusCells(response) {
             } else {
                 html += '<option value="">No statuses available</option>';
             }
-            
+
             html += '</select>';
             html += '<div class="text-muted small mt-1">' + statusData.vendor_name + '</div>';
-            
+
             $placeholder.html(html);
         } else {
             // Not a vendor product
@@ -276,32 +262,27 @@ function updateOrderLineStatusCells(response) {
  * Setup event handlers for order line status changes
  */
 function setupOrderLineStatusHandlers() {
-    $(document).on('change', '.order-line-status-select', function() {
+    $(document).on('change', '.order-line-status-select', function () {
         const $select = $(this);
         const orderDetailId = $select.data('order-detail-id');
         const vendorId = $select.data('vendor-id');
         const newStatusTypeId = $select.val();
         const orderId = getOrderIdFromPage();
-        
-        console.log('Status change detected:', {
-            orderDetailId: orderDetailId,
-            vendorId: vendorId,
-            newStatusTypeId: newStatusTypeId,
-            orderId: orderId
-        });
-        
+
+
+
         // Disable select during update
         $select.prop('disabled', true);
-        
+
         // Build AJAX URL
         var ajaxUrl = buildAdminAjaxUrl();
-        
+
         if (!ajaxUrl) {
             console.error('Could not build AJAX URL for status update');
             $select.prop('disabled', false);
             return;
         }
-        
+
         $.ajax({
             url: ajaxUrl,
             type: 'POST',
@@ -314,12 +295,10 @@ function setupOrderLineStatusHandlers() {
                 id_vendor: vendorId,
                 status: newStatusTypeId
             },
-            success: function(response) {
-                console.log('Status update response:', response);
+            success: function (response) {
                 if (response && response.success) {
-                    console.log('Status updated successfully');
                     showSuccessMessage('Order line status updated successfully');
-                    
+
                     // Update the select appearance
                     const selectedOption = $select.find('option:selected');
                     const color = selectedOption.css('background-color') || '#28a745';
@@ -329,12 +308,10 @@ function setupOrderLineStatusHandlers() {
                     showErrorMessage('Failed to update status: ' + (response ? response.message : 'Unknown error'));
                 }
             },
-            error: function(xhr, status, error) {
-                console.error('AJAX error updating status:', status, error);
-                console.log('Response text:', xhr.responseText.substring(0, 500));
+            error: function (xhr, status, error) {
                 showErrorMessage('Connection error: ' + error);
             },
-            complete: function() {
+            complete: function () {
                 // Re-enable select
                 $select.prop('disabled', false);
             }
@@ -350,16 +327,16 @@ function buildAdminAjaxUrl() {
     if (typeof multivendorAdminAjaxUrl !== 'undefined') {
         return multivendorAdminAjaxUrl;
     }
-    
+
     // Fallback: build URL manually
     if (typeof currentIndex !== 'undefined' && typeof token !== 'undefined') {
         return currentIndex + '&configure=multivendor&ajax=1&token=' + token;
     }
-    
+
     // Final fallback: try to construct from window location
     const baseUrl = window.location.origin + window.location.pathname.replace(/\/[^\/]*$/, '');
     const fallbackUrl = baseUrl + '/index.php?controller=AdminModules&configure=multivendor&ajax=1';
-    
+
     // Try to get token from various sources
     var tokenValue = '';
     if (typeof multivendorToken !== 'undefined') {
@@ -369,11 +346,11 @@ function buildAdminAjaxUrl() {
     } else if (typeof token !== 'undefined') {
         tokenValue = token;
     }
-    
+
     if (tokenValue) {
         return fallbackUrl + '&token=' + tokenValue;
     }
-    
+
     console.warn('No token found, returning URL without token');
     return fallbackUrl;
 }
@@ -383,65 +360,58 @@ function buildAdminAjaxUrl() {
  */
 function getOrderIdFromPage() {
     var orderId = null;
-    
+
     // Method 1: Try Symfony routing format (/sell/orders/ID/)
     const pathMatch = window.location.pathname.match(/\/sell\/orders\/(\d+)\/?/);
     if (pathMatch) {
         orderId = pathMatch[1];
-        console.log('Order ID found via Symfony routing:', orderId);
         return orderId;
     }
-    
+
     // Method 2: Try legacy URL parameters (?id_order=ID)
     const urlParams = new URLSearchParams(window.location.search);
     orderId = urlParams.get('id_order');
     if (orderId) {
-        console.log('Order ID found via URL parameter:', orderId);
         return orderId;
     }
-    
+
     // Method 3: Try hidden input
     const input = $('input[name="id_order"]');
     if (input.length > 0 && input.val()) {
         orderId = input.val();
-        console.log('Order ID found via hidden input:', orderId);
         return orderId;
     }
-    
+
     // Method 4: Try to extract from currentIndex variable
     if (typeof currentIndex !== 'undefined' && currentIndex.includes('id_order=')) {
         const match = currentIndex.match(/id_order=(\d+)/);
         if (match) {
             orderId = match[1];
-            console.log('Order ID found via currentIndex:', orderId);
             return orderId;
         }
     }
-    
+
     // Method 5: Try alternative URL patterns
     const altMatch = window.location.href.match(/[?&]id_order=(\d+)/);
     if (altMatch) {
         orderId = altMatch[1];
-        console.log('Order ID found via alternative URL pattern:', orderId);
         return orderId;
     }
-    
+
     // Method 6: Try data attributes
     const orderElement = $('[data-order-id]');
     if (orderElement.length > 0) {
         orderId = orderElement.data('order-id');
-        console.log('Order ID found via data attribute:', orderId);
         return orderId;
     }
-    
+
     // Method 7: Try page title
     const titleMatch = document.title.match(/Order #(\d+)/i);
     if (titleMatch) {
         orderId = titleMatch[1];
-        console.log('Order ID found via page title:', orderId);
         return orderId;
     }
-    
+
     console.error('Order ID not found using any method');
     return null;
 }
@@ -450,8 +420,7 @@ function getOrderIdFromPage() {
  * Show success message
  */
 function showSuccessMessage(message) {
-    console.log('Success:', message);
-    
+
     // Create success notification
     const notification = $('<div class="alert alert-success alert-dismissible" role="alert">' +
         '<button type="button" class="close" data-dismiss="alert" aria-label="Close">' +
@@ -459,7 +428,7 @@ function showSuccessMessage(message) {
         '</button>' +
         message +
         '</div>');
-    
+
     // Find best container
     var container = $('.content-div').first();
     if (container.length === 0) {
@@ -471,12 +440,12 @@ function showSuccessMessage(message) {
     if (container.length === 0) {
         container = $('body');
     }
-    
+
     container.prepend(notification);
-    
+
     // Auto-remove after 5 seconds
-    setTimeout(function() {
-        notification.fadeOut(function() {
+    setTimeout(function () {
+        notification.fadeOut(function () {
             $(this).remove();
         });
     }, 5000);
@@ -487,7 +456,7 @@ function showSuccessMessage(message) {
  */
 function showErrorMessage(message) {
     console.error('Error:', message);
-    
+
     // Create error notification
     const notification = $('<div class="alert alert-danger alert-dismissible" role="alert">' +
         '<button type="button" class="close" data-dismiss="alert" aria-label="Close">' +
@@ -495,7 +464,7 @@ function showErrorMessage(message) {
         '</button>' +
         '<strong>Error:</strong> ' + message +
         '</div>');
-    
+
     // Find best container
     var container = $('.content-div').first();
     if (container.length === 0) {
@@ -507,12 +476,12 @@ function showErrorMessage(message) {
     if (container.length === 0) {
         container = $('body');
     }
-    
+
     container.prepend(notification);
-    
+
     // Auto-remove after 8 seconds
-    setTimeout(function() {
-        notification.fadeOut(function() {
+    setTimeout(function () {
+        notification.fadeOut(function () {
             $(this).remove();
         });
     }, 8000);

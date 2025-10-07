@@ -48,7 +48,7 @@
                                     <tr>
                                         <td>
                                             <a href="#" class="mv-link">
-                                                #{$line.order_reference}
+                                            {$line.id_order}#{$line.id_order_detail}
                                             </a>
                                         </td>
                                         <td class="mv-product-name">{$line.product_name|truncate:30:'...'}</td>

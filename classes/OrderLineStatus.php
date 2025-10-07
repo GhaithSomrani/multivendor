@@ -32,7 +32,7 @@ class OrderLineStatus extends ObjectModel
     /** @var string Last update date */
     public $date_upd;
 
-    public static $is_admin = false;
+    public $is_admin = false;
     /**
      * @see ObjectModel::$definition
      */

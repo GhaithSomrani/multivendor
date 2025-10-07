@@ -303,7 +303,7 @@
                             <td>{$detail.product_reference|default:'-'}</td>
                             <td class="center">-</td>
                             <td class="center">{$detail.product_quantity|default:'1'}</td>
-                            <td class="right">{($detail.vendor_amount*0.81)|number_format:3} TND</td>
+                            <td class="right">{($detail.vendor_amount/1.19)|number_format:3} TND</td>
                         </tr>
                     {/foreach}
                 </tbody>
@@ -313,7 +313,7 @@
                         <td class="center">
                             <strong>{if $transaction_details}{$transaction_details|@count}{else}0{/if}</strong>
                         </td>
-                        <td class="right"><strong>{($payment->amount*0.81)|number_format:3} TND</strong></td>
+                        <td class="right"><strong>{($payment->amount/1.19)|number_format:3} TND</strong></td>
                     </tr>
                     <tr>
                         <td colspan="4"><strong>TVA :</strong></td>

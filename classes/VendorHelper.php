@@ -44,10 +44,9 @@ class VendorHelper
 
 
 
-    public static function getOrderLinesByStatus($id_vendor)
+    public static function getOrderLinesByStatus($id_vendor, $id_order_line_status_type, $limit = null, $offset = 0)
     {
-        $defaultStatusTypeId = OrderLineStatus::getDefaultStatusTypeId();
-        $defaultStatusType = new OrderLineStatusType($defaultStatusTypeId);
+
 
         $hiddenIdsString = OrderHelper::getHiddenStatusTypeString();
         $query = new DbQuery();
@@ -68,10 +67,10 @@ class VendorHelper
         a.address1, 
         a.city, 
         a.postcode,
-        COALESCE(olst.name, "' . pSQL($defaultStatusType->name) . '") as line_status,
-        COALESCE(olst.commission_action, "' . pSQL($defaultStatusType->commission_action) . '") as commission_action,
-        COALESCE(olst.color, "' . pSQL($defaultStatusType->color) . '") as status_color,
-        COALESCE(ols.id_order_line_status_type, ' . (int)$defaultStatusTypeId . ') as status_type_id
+        olst.name as line_status,
+        olst.commission_action as commission_action,
+        olst.color as status_color,
+        ols.id_order_line_status_type as status_type_id
     ');
         $query->from('mv_vendor_order_detail', 'vod');
         $query->leftJoin('orders', 'o', 'o.id_order = vod.id_order');
@@ -81,8 +80,10 @@ class VendorHelper
         $query->leftJoin('mv_order_line_status_type', 'olst', 'olst.id_order_line_status_type = ols.id_order_line_status_type');
         $query->where('vod.id_vendor = ' . (int)$id_vendor);
         $query->where('ols.id_order_line_status_type NOT IN (' . $hiddenIdsString . ')');
-        $query->orderBy('o.date_add DESC');
-
+        $query->orderBy('vod.id_order_detail DESC');
+        if ($limit) {
+            $query->limit($limit, $offset);
+        }
         return Db::getInstance()->executeS($query);
     }
 
@@ -750,30 +751,28 @@ class VendorHelper
 
         $query = new DbQuery();
         $query->select('
-            vod.id_order_detail,
-            vod.product_name,
-            vod.product_reference as product_reference,
-            vod.product_quantity,
-            o.reference as order_reference,
-            o.date_add as order_date,
-            o.id_order,
-            vod.commission_amount,
-            vod.vendor_amount,
-            olst.name as line_status,
-            vp.reference as payment_reference,
-            vp.date_add as payment_date,
-            vp.status as payment_status
-        ');
+        vod.id_order_detail,
+        vod.product_name,
+        vod.product_reference as product_reference,
+        vod.product_quantity,
+        concat(vod.id_order,"#",vod.id_order_detail) as order_reference,
+        vod.date_add as order_date,
+        vod.commission_amount,
+        vod.vendor_amount,
+        olst.name as line_status
+    ');
+        // vp.reference as payment_reference,
+        // vp.date_add as payment_date,
+        // vt.id_vendor_transaction,
+        // vp.status as payment_status
         $query->from('mv_vendor_order_detail', 'vod');
-        $query->leftJoin('orders', 'o', 'o.id_order = vod.id_order');
-        $query->leftJoin('mv_order_line_status', 'ols', 'ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor');
+        $query->leftJoin('mv_order_line_status', 'ols', 'ols.id_order_detail = vod.id_order_detail ');
         $query->leftJoin('mv_order_line_status_type', 'olst', 'olst.id_order_line_status_type = ols.id_order_line_status_type');
-        $query->leftJoin('mv_vendor_transaction', 'vt', 'vt.order_detail_id = vod.id_order_detail');
-        $query->leftJoin('mv_vendor_payment', 'vp', 'vp.id_vendor_payment = vt.id_vendor_payment ');
+        // $query->leftJoin('mv_vendor_transaction', 'vt', 'vt.order_detail_id = vod.id_order_detail');
+        // $query->leftJoin('mv_vendor_payment', 'vp', 'vp.id_vendor_payment = vt.id_vendor_payment ');
         $query->where('vod.id_vendor = ' . (int)$id_vendor);
         $query->where('ols.id_order_line_status_type NOT IN (' . $hiddenIdsString . ')');
-
-        $query->orderBy('o.date_add DESC');
+        $query->orderBy('vod.date_add DESC');
 
         $orderLines = Db::getInstance()->executeS($query);
 
@@ -791,32 +790,39 @@ class VendorHelper
 
         fprintf($output, chr(0xEF) . chr(0xBB) . chr(0xBF));
 
+        // CSV Header - includes all selected columns
         fputcsv($output, [
+            $module->l('Order Detail ID'),
             $module->l('Order Reference'),
             $module->l('Product Name'),
             $module->l('SKU'),
             $module->l('Quantity'),
+            // $module->l('Commission Amount'),
             $module->l('Vendor Amount'),
             $module->l('Status'),
             $module->l('Order Date'),
-            $module->l('Payment Reference'),
-            $module->l('Payment Status'),
-            $module->l('Payment Date')
-
+            // $module->l('Payment Reference'),
+            // $module->l('Payment Status'),
+            // $module->l('Payment Date'),
+            // $module->l('Transaction ID')
         ]);
 
+        // CSV Data - includes all selected columns
         foreach ($orderLines as $line) {
             fputcsv($output, [
+                $line['id_order_detail'],
                 $line['order_reference'],
                 $line['product_name'],
                 $line['product_reference'],
                 $line['product_quantity'],
+                // $line['commission_amount'],
                 $line['vendor_amount'],
                 $line['line_status'],
                 date('Y-m-d H:i:s', strtotime($line['order_date'])),
-                $line['payment_reference'] ?: '-',
-                $line['payment_status'] ?: '-',
-                $line['payment_date'] ? date('Y-m-d H:i:s', strtotime($line['payment_date'])) : '-'
+                // $line['payment_reference'] ?: '-',
+                // $line['payment_status'] ?: '-',
+                // $line['payment_date'] ? date('Y-m-d H:i:s', strtotime($line['payment_date'])) : '-',
+                // $line['id_vendor_transaction'] ?: '-'
             ]);
         }
 

@@ -82,8 +82,8 @@ class Manifest extends ObjectModel
                     $id_order_detail['id_order_details'],
                     (int)$this->id_vendor,
                     $nextOrderlineStatus,
-                    Context::getContext()->employee->id ?? 0,
-                    'Status modifié depuis l\'administration le manifeste :' . $this->reference,
+                    Context::getContext()->employee->id ?? Context::getContext()->customer->id ?? null,
+                    'Status modifié depuis  le manifeste ' . $this->reference,
                     true
                 );
             } catch (Exception $e) {
@@ -356,7 +356,7 @@ class Manifest extends ObjectModel
             if ($id_manifest_status == null) {
                 $id_manifest_status = ManifestStatusType::getDefaultManifestStatusType($type);
             }
-            $manifest = self::addNewManifest($orderdetails, $id_vendor, $type, $id_address, $id_manifest_status , true);
+            $manifest = self::addNewManifest($orderdetails, $id_vendor, $type, $id_address, $id_manifest_status, true);
             $manifestTypeObj = new ManifestType($type);
 
             $pdfData = [
@@ -407,7 +407,7 @@ class Manifest extends ObjectModel
                 $manifestTypeObj = new ManifestType($type);
 
                 foreach ($Data as $data) {
-                    self::addNewManifest($data['orderids'], $data['vendor'], $type, null,  $id_manifest_status , true);
+                    self::addNewManifest($data['orderids'], $data['vendor'], $type, null,  $id_manifest_status, true);
                 }
                 $pdfData = [
                     'vendor' => '',

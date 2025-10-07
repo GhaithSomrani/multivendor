@@ -3,7 +3,6 @@
  */
 
 const verifiedOrderDetails = new Set();
-let currentOrderDetailId = null;
 let currentProductName = null;
 let currentStatusName = null;
 let currentStatusColor = null;
@@ -438,8 +437,7 @@ function checkAndAddToManifestIfNeeded(orderDetailId, newStatus) {
         dataType: 'json',
         success: function (response) {
             if (response.success && response.status) {
-                console.log('response.status', response.status)
-                console.log('response.status', newStatus)
+
 
                 if (newStatus === response.status.id_order_line_status_type) {
                     if (!verifiedOrderDetails.has(parseInt(orderDetailId))) {
@@ -501,7 +499,7 @@ function displayStatusHistory(history) {
             html += '<span class="mv-history-new">' + entry.new_status + '</span>';
             html += '</div>';
             if (entry.comment) {
-                html += '<div class="mv-history-comment">' + entry.comment + '</div>';
+                html += '<pre class="mv-history-comment">' + entry.comment + ' </pre>';
             }
             html += '<div class="mv-history-user">by ' + entry.changed_by + '</div>';
             html += '</div>';
@@ -610,21 +608,17 @@ function showNotification(type, message) {
  * Open status comment modal
  */
 function openStatusCommentModal(orderDetailId, productName, currentStatus, statusColor, statusTypeId) {
-    console.log('Opening modal for order detail:', orderDetailId);
 
     // Check if this order detail is changeable
     if (!window.mvChangeableInfo || !window.mvChangeableInfo[orderDetailId]) {
-        console.log('Order detail not changeable:', orderDetailId);
         return;
     }
 
     // Get allowed status transitions for this specific order detail
     const allowedTransitions = window.mvAllowedTransitions[orderDetailId] || {};
-    console.log('Allowed transitions for order detail', orderDetailId, ':', allowedTransitions);
 
     if (Object.keys(allowedTransitions).length === 0) {
         showNotification('warning', changeableTranslations.noStatusAvailable);
-        console.log('No transitions available for order detail:', orderDetailId);
         return;
     }
 
@@ -662,7 +656,6 @@ function populateAvailableStatuses(allowedTransitions) {
     // Clear existing options
     select.innerHTML = '<option value="">' + (changeableTranslations.selectNewStatus || 'Sélectionnez un nouveau statut...') + '</option>';
 
-    console.log('Populating available statuses:', allowedTransitions);
 
     if (Object.keys(allowedTransitions).length === 0) {
         // No transitions available
@@ -670,7 +663,6 @@ function populateAvailableStatuses(allowedTransitions) {
         noStatusDiv.style.display = 'block';
         statusInfoDiv.style.display = 'none';
         submitBtn.disabled = true;
-        console.log('No transitions available - disabling form');
         return;
     }
 
@@ -698,10 +690,8 @@ function populateAvailableStatuses(allowedTransitions) {
         }
 
         select.appendChild(option);
-        console.log('Added status option:', statusId, statusName, statusColor);
     });
 
-    console.log('Populated', Object.keys(allowedTransitions).length, 'status options');
 }
 
 
@@ -745,11 +735,7 @@ function submitStatusWithComment() {
     const newStatusId = document.getElementById('newStatusSelect').value;
     const comment = document.getElementById('statusComment').value.trim();
 
-    console.log('Submitting status change:', {
-        orderDetailId: currentOrderDetailId,
-        newStatusId: newStatusId,
-        comment: comment
-    });
+
 
     if (!newStatusId) {
         alert(changeableTranslations.selectNewStatus || 'Veuillez sélectionner un nouveau statut');
@@ -788,7 +774,6 @@ function submitStatusWithComment() {
             token: ordersAjaxToken
         },
         success: function (data) {
-            console.log('Status update response:', data);
 
             if (data.success) {
                 // Update the status select in the table
@@ -870,7 +855,6 @@ function updateAllowedTransitionsForOrderDetail(orderDetailId) {
                     }
                 }
 
-                console.log('Updated transitions for order detail', orderDetailId, ':', window.mvAllowedTransitions[orderDetailId]);
 
                 // Update the action button for this order detail if needed
                 updateActionButtonForOrderDetail(orderDetailId);
@@ -948,16 +932,11 @@ $(document).ready(function () {
         }
     });
 
-    // Debug: Verify data is loaded
-    console.log('Orders JS initialized with data:');
-    console.log('- Changeable info loaded:', !!window.mvChangeableInfo);
-    console.log('- Allowed transitions loaded:', !!window.mvAllowedTransitions);
-    console.log('- Status colors loaded:', !!window.mvStatusColors);
+
 
     if (window.mvAllowedTransitions) {
         const totalOrderDetails = Object.keys(window.mvAllowedTransitions).length;
         const changeableOrderDetails = Object.values(window.mvChangeableInfo || {}).filter(Boolean).length;
-        console.log(`- ${totalOrderDetails} order details total, ${changeableOrderDetails} changeable`);
     }
 });
 
@@ -1087,6 +1066,7 @@ function initializeMobileBulkActions() {
         });
     }
 }
+
 
 /**
  * Apply bulk status change on mobile
@@ -1218,7 +1198,7 @@ function getcurrentorderdetails(orderDetailId) {
                 $('#currentoutodstock-price').html("Prix Public : " + parseFloat(data.orderDetail.product_price).toFixed(2));
                 $('#currentoutodstock-sku').html("Reférence : " + data.orderDetail.product_reference);
                 $('#currentoutodstock-mpn').html("Code-barre : " + data.orderDetail.product_mpn);
-                
+
             }
         }
     })
@@ -1240,56 +1220,102 @@ function getvendorProduct() {
         }
     })
 }
-function getseletecdvariant(idProduct) {
-    $.ajax({
-        url: ordersAjaxUrl,
-        type: 'POST',
-        dataType: 'json',
-        data: {
-            action: 'GetSeletecdVariants',
-            id_product: idProduct,
-            token: ordersAjaxToken
-        },
-        success: function (data) {
-            if (data.success) {
-                console.log(data);
-            }
-        }
-    })
-}
+
 
 // insert data into in to #variants-table-body
 
 
 
-function openOutOfStockModal(orderDetailId) {
-    getcurrentorderdetails(orderDetailId);
-    document.getElementById('outofstock-modal').classList.add('mv-modal-open');
-}
 
 function closeOutOfStockModal() {
     document.getElementById('outofstock-modal').classList.remove('mv-modal-open');
+    selectedSuggestions = [];
+    let variantSelected = $('#variant-selected');
+    variantSelected.empty();
+    $('#product-search-input').val('');
+
 }
+$(document).ready(function () {
+    $('#no-suggestion').on('change', function () {
+        if (this.checked) {
+            noSuggestion = true;
+            $('#outofstock-btn').attr('disabled', false);
+        } else {
+            noSuggestion = false;
+            if (selectedSuggestions.length < 1) {
+                $('#outofstock-btn').attr('disabled', true);
+            }
+        }
+    })
+
+
+})
 
 function confirmOutOfStock() {
-    closeOutOfStockModal();
+    let comment = '';
+    let orderDetailId = currentOrderDetailId;
+    let statusTypeId = $('#outofstock-btn').val();
+    if (noSuggestion) {
+        selectedSuggestions = [];
+        comment = $('#no-suggestion').val()
+    } else {
+        let suggestion = selectedSuggestions.join('\n \t');
+        let customComment = $('#input-comment').val();
+        if (customComment != '') {
+            comment += 'Notes : ' + customComment + '\n \n';
+        }
+        if (suggestion != '') {
+            comment += 'Suggestion de mon catalogue : \n \t' + suggestion;
+        }
+    }
+
+
+    $.ajax({
+        url: ordersAjaxUrl,
+        type: 'POST',
+        data: {
+            action: 'updateVendorStatus',
+            id_order_detail: orderDetailId,
+            id_status_type: statusTypeId,
+            comment: comment,
+            token: ordersAjaxToken
+        },
+        dataType: 'json',
+        success: function (updateResponse) {
+            if (updateResponse.success) {
+                showNotification('success', updateResponse.message);
+                closeOutOfStockModal();
+                setTimeout(() => window.location.reload(), 1000);
+            }
+        }
+    })
+    // closeOutOfStockModal();
+
 }
 
-// document.addEventListener('DOMContentLoaded', function () {
-//     document.querySelectorAll('#outofstock').forEach(btn => {
-//         console.log(btn);
-//         btn.addEventListener('click', openOutOfStockModal);
-//     });
+function mkAvailble(orderDetailId, statusTypeId) {
+    $.ajax({
+        url: ordersAjaxUrl,
+        type: 'POST',
+        data: {
+            action: 'updateVendorStatus',
+            id_order_detail: orderDetailId,
+            id_status_type: statusTypeId,
+            token: ordersAjaxToken
+        },
+        dataType: 'json',
+        success: function (updateResponse) {
+            if (updateResponse.success) {
+                showNotification('success', updateResponse.message);
+                closeOutOfStockModal();
+                setTimeout(() => window.location.reload(), 1000);
+            }
+        }
+    })
+}
 
 
-// });
 
-// $(document).ready(function () {
-//     $('#outofstock').click(function (value) {
-//         orderDetailId = value.currentTarget.dataset.id;
-
-//     });
-// })
 
 
 // Add mobile initialization to existing DOMContentLoaded
@@ -1311,3 +1337,210 @@ function changePerPage(value) {
     window.location.href = url.toString();
 }
 
+
+let currentOrderDetailId = null;
+let selectedSuggestions = [];
+let noSuggestion = false;
+function openOutOfStockModal(orderDetailId) {
+    currentOrderDetailId = orderDetailId;
+    selectedSuggestions = [];
+    document.getElementById('generated-comment').value = '';
+    document.getElementById('search-results').innerHTML = '';
+    // document.getElementById('variants-container').innerHTML = '';
+    getcurrentorderdetails(orderDetailId);
+    document.getElementById('outofstock-modal').classList.add('mv-modal-open');
+
+    searchProducts();
+    $.ajax({
+        url: ordersAjaxUrl,
+        type: 'POST',
+        data: {
+            currentOrderDetailId: currentOrderDetailId,
+            action: 'getGefilterDetails',
+            token: ordersAjaxToken
+        },
+        dataType: 'json',
+        success: function (data) {
+            if (data.success) {
+                $('#filter-pricefrom').html('Min : ' + data.priceFrom);
+                $('#filter-priceto').html('Max : ' + data.priceTo);
+                $('#filter-category').html('Categorie : ' + data.category);
+            }
+        }
+    })
+}
+function searchProducts(page = 1, limit = 21) {
+    const search = document.getElementById('product-search-input').value;
+
+    $.ajax({
+        url: ordersAjaxUrl,
+        type: 'POST',
+        data: {
+            action: 'searchOutOfStockProducts',
+            currentOrderDetailId: currentOrderDetailId,
+            search: search,
+            token: ordersAjaxToken,
+            page: page,
+            limit: limit
+        },
+        dataType: 'json',
+        success: function (data) {
+            if (data.success) {
+                $('#search-results').html(data.html);
+
+                let paginationHtml = '';
+                if (data.pagination && data.pagination.total_pages > 1) {
+                    paginationHtml += '<div class="mv-pagination">';
+
+                    if (data.pagination.page > 1) {
+                        paginationHtml += `<button class="mv-page-btn" data-page="${data.pagination.page - 1}">← Précédent</button>`;
+                    }
+
+                    paginationHtml += `<span class="mv-page-info">Page ${data.pagination.page} / ${data.pagination.total_pages}</span>`;
+
+                    // Next button
+                    if (data.pagination.page < data.pagination.total_pages) {
+                        paginationHtml += `<button class="mv-page-btn" data-page="${data.pagination.page + 1}">Suivant →</button>`;
+                    }
+
+                    paginationHtml += '</div>';
+                }
+
+                $('#search-outofstock-pagination').html(paginationHtml);
+
+                $('.mv-page-btn').on('click', function () {
+                    const newPage = $(this).data('page');
+                    searchProducts(newPage, limit);
+                });
+            } else {
+                $('#search-results').html('<div class="mv-no-results">Aucun produit trouvé.</div>');
+            }
+        },
+        error: function () {
+            $('#search-results').html('<div class="mv-error">Erreur lors de la recherche.</div>');
+        }
+    });
+}
+function loadVariants(idProduct) {
+    $.ajax({
+        url: ordersAjaxUrl,
+        type: 'POST',
+        data: {
+            action: 'getProductVariants',
+            id_product: idProduct,
+            token: ordersAjaxToken
+        },
+        dataType: 'json',
+        success: function (data) {
+            if (data.success) {
+                $('#variants-container').html(data.html);
+                $('#variants-section').show();
+            }
+        }
+    });
+}
+
+function addSuggestion(idProduct, btn) {
+    const container = $(btn).closest('.mv-payment-header');
+    const selects = container.find('.variant-select');
+    let attributes = [];
+    selects.each(function () {
+        const text = $(this).find('option:selected').text();
+        const id = $(this).find('option:selected').val();
+        const group = $(this).data('group');
+        if (text && text !== group) {
+            attributes.push({ name: text, id: id });
+        }
+    });
+
+    $.ajax({
+        url: ordersAjaxUrl,
+        type: 'POST',
+        data: {
+            action: 'addOutOfStockSuggestion',
+            id_product: idProduct,
+            attributes: attributes,
+            id_order_detail: currentOrderDetailId,
+            token: ordersAjaxToken
+        },
+        dataType: 'json',
+        success: function (data) {
+            if (data.success) {
+                if (!selectedSuggestions.includes(data.suggestions)) {
+                    selectedSuggestions.push(data.suggestions);
+                    updateVariantSelect();
+                }
+            }
+        }
+    });
+}
+function updateVariantSelect() {
+
+    if (selectedSuggestions.length < 1 && !noSuggestion && $('#input-comment').val() == '') {
+        $('#outofstock-btn').attr('disabled', true);
+    } else {
+        $('#outofstock-btn').attr('disabled', false);
+    }
+    if (selectedSuggestions.length < 1) {
+        $('#variant-selected').hide();
+
+    }
+    let variantSelected = $('#variant-selected');
+
+    variantSelected.show();
+    variantSelected.empty();
+    selectedSuggestions.forEach(element => {
+
+        item = $('<div>', {
+            class: 'variant-selected-item',
+        }).appendTo(variantSelected);
+
+        textspan = $('<span>', {
+            text: element
+        }).appendTo(item);
+
+        $('<span>', {
+            class: 'delete-btn',
+            text: '❌',
+            click: function () {
+                selectedSuggestions = selectedSuggestions.filter(item => item !== element);
+                updateVariantSelect();
+            }
+        }).appendTo(item);
+
+
+    });
+
+}
+
+
+$(document).on('change', '.variant-select', function () {
+    const container = $(this).closest('.mv-payment-header');
+    const selects = container.find('.variant-select');
+    const allSelected = selects.toArray().every(sel => $(sel).val() !== '');
+    const button = container.find('.suggest-btn');
+
+    if (allSelected) {
+        button.prop('disabled', false);
+    } else {
+        button.prop('disabled', true);
+    }
+});
+$(document).ready(function () {
+
+    $('#input-comment').on('input', function () {
+        if (selectedSuggestions.length < 1 && $(this).val() == '' && !noSuggestion) {
+            $('#outofstock-btn').attr('disabled', true);
+        } else {
+            $('#outofstock-btn').attr('disabled', false);
+        }
+    });
+
+    $('.input-search-block button').on('click', function () {
+        searchProducts();
+    })
+    $('#product-search-input').on('keypress', function (e) {
+        if (e.which === 13) searchProducts();
+    });
+
+});

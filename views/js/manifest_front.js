@@ -538,7 +538,6 @@ function updateTotal() {
 
         return parseInt(sum) + parseInt(order.quantity);
     }, 0);
-    console.log(totalQty);
     $('#totalAmount').text(total.toFixed(2));
     $('#totalQty').text(totalQty);
 }

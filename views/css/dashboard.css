@@ -13,13 +13,19 @@
     }
 }
 
+.page-content.card-block {
+    padding: 0 0 0 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+}
+
 header.page-header {
     display: none;
 }
 
 .mv-dashboard {
     color: #333;
-    background-color: #f5f5f7;
+    background-color: #f9f9f9;
     min-height: 100vh;
     padding: 20px;
 }

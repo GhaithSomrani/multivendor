@@ -54,7 +54,7 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
         // Pagination
         $page = (int)Tools::getValue('page', 1);
 
-        $per_page = (int)Tools::getValue('per_page', 20);
+        $per_page = (int)Tools::getValue('per_page', 16);
         $offset = ($page - 1) * $per_page;
 
         // Get order lines specific to this vendor's supplier ID
@@ -86,7 +86,6 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
             $status_colors[$status['name']] = $status['color'];
         }
 
-        $productList = Vendor::getProducts($id_vendor);
 
         // Add CSS and JS files
         $this->context->controller->addCSS($this->module->getPathUri() . 'views/css/dashboard.css');
@@ -94,6 +93,7 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
 
         $this->context->controller->addCSS($this->module->getPathUri() . 'views/css/orders.css');
         $this->context->controller->addJS($this->module->getPathUri() . 'views/js/orders.js');
+        // $this->context->controller->addJS($this->module->getPathUri() . 'views/js/outofstock.js');
 
         // Add JS definitions for AJAX
         Media::addJsDef([
@@ -156,7 +156,7 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
      * @param int $offset Offset
      * @return array List of order line items
      */
-    protected function getVendorOrderLines($id_vendor, $limit = 20, $offset = 0, $filters = [])
+    protected function getVendorOrderLines($id_vendor, $limit = 16, $offset = 0, $filters = [])
     {
         $defaultStatusTypeId = OrderLineStatus::getDefaultStatusTypeId();
 

@@ -12,9 +12,10 @@
                     <div class="form-group">
                         <label for="export_status_type">Order Line Status*:</label>
                         <select name="export_status_type" id="export_status_type" class="form-control">
+                            <option value=""> -- Choisi le status de l'export PDF --</option>
                             {foreach from=$status_types item=status}
-                                <option value="{$status.id_order_line_status_type|intval}">
-                                    {$status.name|escape:'html':'UTF-8'}</option>
+                            <option value="{$status.id_order_line_status_type|intval}">
+                                {$status.name|escape:'html':'UTF-8'}</option>
                             {/foreach}
                         </select>
                     </div>
@@ -25,8 +26,8 @@
                         <select name="export_vendor" id="export_vendor" class="form-control">
                             <option value="">-- Select Vendor --</option>
                             {foreach from=$vendors item=vendor}
-                                <option value="{$vendor.id_vendor|intval}">{$vendor.shop_name|escape:'html':'UTF-8'}
-                                </option>
+                            <option value="{$vendor.id_vendor|intval}">{$vendor.shop_name|escape:'html':'UTF-8'}
+                            </option>
                             {/foreach}
                         </select>
                     </div>
@@ -36,7 +37,7 @@
                         <label for="export_type">Export Type:</label>
                         <select name="export_type" id="export_type" class="form-control" required>
                             {foreach from=$manifest_types item=type}
-                            {if $type.id != 1}  <option value="{$type.id}">{$type.name}</option> {/if}
+                            {if $type.id != 1} <option value="{$type.id}">{$type.name}</option> {/if}
                             {/foreach}
                         </select>
                     </div>
@@ -80,7 +81,6 @@
             var selectedStatus = [];
             var exportType = $('#export_type').val();
             var vendorId = $('#export_vendor').val();
-            console.log(exportType, vendorId);
             $('input[name="vendor_order_detailsBox[]"]:checked').each(function() {
                 selectedStatus.push($(this).val());
             });
@@ -90,8 +90,6 @@
                 return;
             }
 
-            console.log(exportType);
-            console.log(selectedStatus);
 
             // Show loading indicator
             $('#exportselectd').prop('disabled', true).text('Generating PDF...');
