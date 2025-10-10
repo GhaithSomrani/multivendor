@@ -120,7 +120,8 @@
                                 {if ($brand)}
                                     <p class="mv-mobile-product-sku">Marque: {$brand}</p>
                                 {/if}
-                                <p class="mv-mobile-product-sku mv-mobile-value mv-mobile-amount">Prix Public: {$line.product_price|number_format:3}</p>
+                                <p class="mv-mobile-product-sku mv-mobile-value mv-mobile-amount">Prix Public:
+                                    {$line.product_price|number_format:3}</p>
 
                             </div>
 
@@ -142,16 +143,28 @@
 
                             <div class="mv-mobile-status-section">
                                 <div class="mv-mobile-current-status">
-                                    <button class="mv-mobile-status-badge mv-mobile-btn"
-                                        onclick='openStatusCommentModal({$line.id_order_detail}, "{$line.product_name}", "{$line.line_status}", "{$status_colors[$line.line_status]|default:'#777'}")'
-                                        style="background-color: {$status_colors[$line.line_status]|default:'#777'};">
-
-                                        <i class="mv-icon">🔃</i>
-                                        <span>{$line.line_status|capitalize}</span>
-                                    </button>
+                                    {if $line.status_type_id == $first_status}
+                                        <small style="text-align: center; display: block; margin-bottom: 8px;">Disponible ?</small>
+                                        <div class="mv-quick-action" style="display: flex; gap: 8px;">
+                                            <button class="mv-mobile-btn" style="background-color: #ff4444; color: white;"
+                                                onclick="openOutOfStockModal({$line.id_order_detail})">
+                                                🚫 Non
+                                            </button>
+                                            <button class="mv-mobile-btn" style="background-color: #44ff44; color: black;"
+                                                onclick="mkAvailble({$line.id_order_detail},{$available_status_vendor->id})">
+                                                ✅ Oui
+                                            </button>
+                                        </div>
+                                    {else}
+                                        <button class="mv-mobile-status-badge mv-mobile-btn"
+                                            onclick='openStatusCommentModal({$line.id_order_detail}, "{$line.product_name}", "{$line.line_status}", "{$status_colors[$line.line_status]|default:'#777'}")'
+                                            style="background-color: {$status_colors[$line.line_status]|default:'#777'};">
+                                            <i class="mv-icon">📃</i>
+                                            <span>{$line.line_status|capitalize}</span>
+                                        </button>
+                                    {/if}
                                 </div>
                             </div>
-
 
 
                         </div>
@@ -190,3 +203,4 @@
     </div>
 </div>
 
+{include file="module:multivendor/views/templates/front/orders/_outofstock_modal.tpl"}

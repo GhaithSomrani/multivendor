@@ -1204,29 +1204,6 @@ function getcurrentorderdetails(orderDetailId) {
     })
 }
 
-function getvendorProduct() {
-    $.ajax({
-        url: ordersAjaxUrl,
-        type: 'POST',
-        dataType: 'json',
-        data: {
-            action: 'getVendorProducts',
-            token: ordersAjaxToken
-        },
-        success: function (data) {
-            if (data.success) {
-                $('#vendorProduct').html(data.vendorProduct);
-            }
-        }
-    })
-}
-
-
-// insert data into in to #variants-table-body
-
-
-
-
 function closeOutOfStockModal() {
     document.getElementById('outofstock-modal').classList.remove('mv-modal-open');
     selectedSuggestions = [];
@@ -1369,7 +1346,7 @@ function openOutOfStockModal(orderDetailId) {
         }
     })
 }
-function searchProducts(page = 1, limit = 21) {
+function searchProducts(page = 1, limit = 18) {
     const search = document.getElementById('product-search-input').value;
 
     $.ajax({
@@ -1398,7 +1375,6 @@ function searchProducts(page = 1, limit = 21) {
 
                     paginationHtml += `<span class="mv-page-info">Page ${data.pagination.page} / ${data.pagination.total_pages}</span>`;
 
-                    // Next button
                     if (data.pagination.page < data.pagination.total_pages) {
                         paginationHtml += `<button class="mv-page-btn" data-page="${data.pagination.page + 1}">Suivant →</button>`;
                     }
@@ -1421,24 +1397,7 @@ function searchProducts(page = 1, limit = 21) {
         }
     });
 }
-function loadVariants(idProduct) {
-    $.ajax({
-        url: ordersAjaxUrl,
-        type: 'POST',
-        data: {
-            action: 'getProductVariants',
-            id_product: idProduct,
-            token: ordersAjaxToken
-        },
-        dataType: 'json',
-        success: function (data) {
-            if (data.success) {
-                $('#variants-container').html(data.html);
-                $('#variants-section').show();
-            }
-        }
-    });
-}
+
 
 function addSuggestion(idProduct, btn) {
     const container = $(btn).closest('.mv-payment-header');

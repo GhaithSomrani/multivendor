@@ -710,7 +710,7 @@ class OrderHelper
      * @param bool $force_https Force HTTPS
      * @return string|false Image URL or false if not found
      */
-    public static function getProductImageLink($id_product, $id_product_attribute = null, $image_type = 'cart_default', $force_https = false)
+    public static function getProductImageLink($id_product, $id_product_attribute = null, $image_type = 'small_default', $force_https = false)
     {
         if (!$id_product) {
             return false;

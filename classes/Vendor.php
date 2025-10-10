@@ -4,6 +4,8 @@
  * Vendor model class
  */
 
+use Twig\Cache\NullCache;
+
 if (!defined('_PS_VERSION_')) {
     exit;
 }
@@ -227,7 +229,7 @@ class Vendor extends ObjectModel
      * @param string $mpn Optional product mpn
      * @return array Products
      */
-    public static function getProducts(
+    public static function getOutOfStockProducts(
         $id_vendor,
         $idCategory = false,
         $priceFrom = false,
@@ -237,7 +239,8 @@ class Vendor extends ObjectModel
         $mpn = false,
         $limit = 21,
         $offset = 0,
-        $countOnly = false
+        $countOnly = false,
+        $product_price = false
     ) {
         $idLang = (int)Configuration::get('PS_LANG_DEFAULT');
         $idShop = (int)Context::getContext()->shop->id;
@@ -249,11 +252,29 @@ class Vendor extends ObjectModel
         if ($countOnly) {
             $query->select('COUNT(DISTINCT p.id_product)');
         } else {
-            $query->select('p.id_product, pl.name, p.reference, p.mpn, p.price');
+            $query->select('
+            p.id_product, 
+            pl.name, 
+            p.reference, 
+            p.mpn, 
+            p.price,
+            pa.id_product_attribute,
+            IF(sp.reduction_type = "percentage", 
+                (p.price + IFNULL(pa.price, 0)) * (1 - IFNULL(sp.reduction, 0)),
+                (p.price + IFNULL(pa.price, 0)) - IFNULL(sp.reduction, 0)
+            ) as final_price,
+           ( IF(
+                sp.reduction_type = "percentage",
+                (p.price + IFNULL(pa.price, 0)) * (1 - IFNULL(sp.reduction, 0)),
+                (p.price + IFNULL(pa.price, 0)) - IFNULL(sp.reduction, 0)
+            ) - ' . (float)$product_price . ') as shift_price
+        ');
         }
 
         $query->from('product', 'p');
         $query->innerJoin('product_lang', 'pl', 'pl.id_product = p.id_product AND pl.id_lang = ' . (int)$idLang . ' AND pl.id_shop = ' . (int)$idShop);
+        $query->leftJoin('product_attribute', 'pa', 'pa.id_product = p.id_product AND pa.default_on = 1');
+        $query->leftJoin('specific_price', 'sp', 'sp.id_product = p.id_product AND (sp.id_product_attribute = 0 OR sp.id_product_attribute = pa.id_product_attribute) AND sp.id_shop IN (0, ' . (int)$idShop . ') AND (sp.from = "0000-00-00 00:00:00" OR sp.from <= NOW()) AND (sp.to = "0000-00-00 00:00:00" OR sp.to >= NOW())');
 
         if ($idCategory) {
             $ids = is_array($idCategory) ? array_map('intval', $idCategory) : [(int)$idCategory];
@@ -265,10 +286,10 @@ class Vendor extends ObjectModel
         }
 
         if ($priceFrom > 0) {
-            $query->where('p.price >= ' . (float)$priceFrom);
+            $query->where('IF(sp.reduction_type = "percentage", (p.price + IFNULL(pa.price, 0)) * (1 - IFNULL(sp.reduction, 0)), (p.price + IFNULL(pa.price, 0)) - IFNULL(sp.reduction, 0)) >= ' . (float)$priceFrom);
         }
         if ($priceTo > 0) {
-            $query->where('p.price <= ' . (float)$priceTo);
+            $query->where('IF(sp.reduction_type = "percentage", (p.price + IFNULL(pa.price, 0)) * (1 - IFNULL(sp.reduction, 0)), (p.price + IFNULL(pa.price, 0)) - IFNULL(sp.reduction, 0)) <= ' . (float)$priceTo);
         }
 
         if (trim($name) || trim($reference)) {
@@ -276,8 +297,11 @@ class Vendor extends ObjectModel
         }
 
         $query->where('p.active = 1');
-
+        if ($product_price) {
+            $query->orderBy('ABS(final_price - ' . (float)$product_price . ')', 'asc');
+        }
         if (!$countOnly && $limit) {
+            $query->groupBy('p.id_product');
             $query->limit((int)$limit, (int)$offset);
         }
 
@@ -286,6 +310,29 @@ class Vendor extends ObjectModel
             : Db::getInstance()->executeS($query);
     }
 
+    public static function getProductPriceByAttributes($idProduct, array $idAttributes = [], $withTaxes = true)
+    {
+
+        $idProductAttribute = !empty($idAttributes) ? Product::getIdProductAttributeByIdAttributes($idProduct, $idAttributes, true) : null;
+
+
+        $price = Product::getPriceStatic(
+            (int)$idProduct,
+            $withTaxes,
+            $idProductAttribute,
+            6,
+            null,
+            false,
+            true,
+            1,
+            false,
+            null,
+            null,
+            null
+        );
+
+        return $price;
+    }
     public static function getProductsAttribute($id_product)
     {
         $id_lang = (int)Configuration::get('PS_LANG_DEFAULT');

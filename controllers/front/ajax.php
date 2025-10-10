@@ -57,10 +57,6 @@ class MultivendorAjaxModuleFrontController extends ModuleFrontController
                 $this->processGetAllManifestItems();
                 break;
 
-            case 'getVendorProducts':
-                $this->processGetVendorProducts();
-                break;
-
             case 'GetOrderDetail':
                 $this->processGetOrderDetail();
                 break;
@@ -69,9 +65,6 @@ class MultivendorAjaxModuleFrontController extends ModuleFrontController
                 $this->processSearchOutOfStockProducts();
                 break;
 
-            case 'getProductVariants':
-                $this->processGetProductVariants();
-                break;
 
             case 'addOutOfStockSuggestion':
                 $this->processAddOutOfStockSuggestion();
@@ -256,28 +249,7 @@ class MultivendorAjaxModuleFrontController extends ModuleFrontController
             die(json_encode(['success' => false, 'message' => $e->getMessage()]));
         }
     }
-    /**
-     * Ajax function to get all products of the vendor with their attributes
-     * 
-     */
-    public function processGetVendorProducts()
-    {
-        $vendor = VendorHelper::getVendorByCustomer(Context::getContext()->customer->id);
-        $id_vendor = $vendor['id_vendor'];
-        $products = Vendor::getProducts($id_vendor);
-        $products_with_attributes = [];
-        foreach ($products as $product) {
-            $attributes = Vendor::getProductsAttribute($product['id_product']);
-            $products_with_attributes[] = [
-                'product' => $product,
-                'attributes' => $attributes
-            ];
-        }
-        die(json_encode([
-            'success' => true,
-            'products' => $products_with_attributes
-        ]));
-    }
+
     /**
      * Ajax function to get the current order details from vendor order detail 
      * 
@@ -322,7 +294,7 @@ class MultivendorAjaxModuleFrontController extends ModuleFrontController
         $limit = (int)Tools::getValue('limit', 18);
         $offset = ($page - 1) * $limit;
 
-        $products = Vendor::getProducts(
+        $products = Vendor::getOutOfStockProducts(
             $idVendor,
             $defaultCategory,
             $priceFrom,
@@ -330,11 +302,13 @@ class MultivendorAjaxModuleFrontController extends ModuleFrontController
             $search,
             $search,
             $search,
-            $limit,
-            $offset
+            18,
+            $offset,
+            false,
+            $priceTo = $orderDetailObj->unit_price_tax_incl
         );
 
-        $totalProducts = Vendor::getProducts(
+        $totalProducts = Vendor::getOutOfStockProducts(
             $idVendor,
             $defaultCategory,
             $priceFrom,
@@ -342,10 +316,12 @@ class MultivendorAjaxModuleFrontController extends ModuleFrontController
             $search,
             $search,
             $search,
-            0,
-            0,
-            true
+            false,
+            false,
+            true,
+            false
         );
+
 
         $productsData = [];
 
@@ -363,9 +339,10 @@ class MultivendorAjaxModuleFrontController extends ModuleFrontController
                 $attributeId = $combination['id_attribute'];
                 $attributeName = $combination['attribute_name'];
 
-                $combinationPrice = Product::getPriceStatic(
+
+                $combinationPrice =  Product::getPriceStatic(
                     $product['id_product'],
-                    false,
+                    true,
                     $combination['id_product_attribute'],
                     6,
                     null,
@@ -375,53 +352,42 @@ class MultivendorAjaxModuleFrontController extends ModuleFrontController
                     false,
                     null,
                     null,
-                    null,
-                    $specificPriceOutput,
-                    true
+                    null
                 );
 
                 if (!isset($attributes[$groupName])) {
                     $attributes[$groupName] = [];
                 }
 
-                if ($combinationPrice >= $priceFrom && $combinationPrice <= $priceTo) {
-                    $attributes[$groupName][$attributeId] = [
-                        'id_attribute' => $attributeId,
-                        'name' => $attributeName,
-                        'final_price' => Tools::displayPrice($combinationPrice, Context::getContext()->currency)
-                    ];
-                }
+                $attributes[$groupName][$attributeId] = [
+                    'id_attribute' => $attributeId,
+                    'name' => $attributeName,
+                    'final_price' => Tools::displayPrice($combinationPrice, Context::getContext()->currency)
+                ];
             }
 
-           
-            $allGroupsEmpty = true;
-            foreach ($attributes as $groupAttributes) {
-                if (!empty($groupAttributes)) {
-                    $allGroupsEmpty = false;
-                    break;
-                }
-            }
 
-            
+
+
+
             $productsData[] = [
                 'id_product' => $product['id_product'],
                 'name' => $product['name'],
                 'reference' => $product['reference'],
                 'price_formatted' => Tools::displayPrice($product['price']),
+                'shift_price' => number_format($product['shift_price'], 2),
                 'mpn' => $product['mpn'],
                 'image_url' => $imgUrl,
                 'attributes' => $attributes,
-                'all_groups_empty' => $allGroupsEmpty
             ];
         }
 
-  
+
 
         $this->context->smarty->assign('products', $productsData);
         $html = $this->context->smarty->fetch('module:multivendor/views/templates/front/orders/_product_list.tpl');
 
         $totalPages = is_int($totalProducts) ? ceil($totalProducts / $limit) : 1;
-
         die(json_encode([
             'success' => true,
             'html' => $html,
@@ -453,60 +419,18 @@ class MultivendorAjaxModuleFrontController extends ModuleFrontController
 
 
 
-    private function processGetProductVariants()
-    {
-        $idProduct = (int)Tools::getValue('id_product');
-
-        $product = new Product($idProduct, true, Context::getContext()->language->id);
-        $combinations = $product->getAttributeCombinations(Context::getContext()->language->id);
-
-        // Group attributes by group
-        $attributes = [];
-        foreach ($combinations as $combination) {
-            $groupName = $combination['group_name'];
-            if (!isset($attributes[$groupName])) {
-                $attributes[$groupName] = [];
-            }
-            $attributes[$groupName][$combination['id_attribute']] = [
-                'id_attribute' => $combination['id_attribute'],
-                'name' => $combination['attribute_name']
-            ];
-        }
-
-        // Remove duplicates
-        foreach ($attributes as &$group) {
-            $group = array_values($group);
-        }
-
-        $img = Image::getCover($idProduct);
-        $imgUrl = $this->context->link->getImageLink($product->reference, $img['id_image'], 'small_default');
-
-        $productData = [
-            'id_product' => $idProduct,
-            'name' => $product->name,
-            'reference' => $product->reference,
-            'price_formatted' => Tools::displayPrice($product->price),
-            'mpn' => $product->mpn,
-            'image_url' => $imgUrl,
-            'attributes' => $attributes
-        ];
-
-        $this->context->smarty->assign('product', $productData);
-        $html = $this->context->smarty->fetch('module:multivendor/views/templates/front/orders/_product_item.tpl');
-
-        die(json_encode(['success' => true, 'html' => $html]));
-    }
 
     private function processAddOutOfStockSuggestion()
     {
         $idProduct = (int)Tools::getValue('id_product');
         $selectedAttributes = Tools::getValue('attributes');
         $idOrderDetail = (int)Tools::getValue('id_order_detail');
-
         $product = new Product($idProduct, true, Context::getContext()->language->id);
         $product_reference = $product->reference;
         $suggestions = $product->name . ' [' . $product_reference . ']';
-        $selectedAttributesId =  $selectedAttributes ?  implode(',', array_column($selectedAttributes, 'id')) : false;
+        $attributeIdArray =   $selectedAttributes  ? array_column($selectedAttributes, 'id') : [];
+        $selectedAttributesId =  $selectedAttributes ?  implode(',', $attributeIdArray) : ' ';
+        $final_price =  Vendor::getProductPriceByAttributes($idProduct, $attributeIdArray, true);
 
         if (!empty($selectedAttributes)) {
             foreach ($selectedAttributes as $attribute) {
@@ -525,7 +449,7 @@ class MultivendorAjaxModuleFrontController extends ModuleFrontController
 
         $result = [
             'success' => true,
-            'suggestions' => $suggestions,
+            'suggestions' => $suggestions . ' (' . Tools::displayPrice($final_price, Context::getContext()->currency) . ')',
             "id_product" => $idProduct,
         ];
 

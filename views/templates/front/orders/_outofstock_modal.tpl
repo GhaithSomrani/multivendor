@@ -57,22 +57,21 @@
                 </div>
                 <div id="search-outofstock-pagination"></div>
             </div>
+            <div class="mv-modal-footer">
+
+                <div class="no-suggestion"> <input type="checkbox" id="no-suggestion"
+                        value="n'existe aucune autre variante, produit similaire ou suggestion alternative disponible.">
+                    <span> Il
+                        n’existe aucune autre
+                        variante, produit similaire ou suggestion alternative disponible. </span>
+                </div>
+                <button class="mv-btn mv-btn-primary" value="{$out_of_stock_status->id}" id='outofstock-btn'
+                    onclick="confirmOutOfStock()" disabled>
+                    {l s='Confirmer' mod='multivendor'}
+                </button>
+            </div>
         </div>
 
-        <div class="mv-modal-footer">
-            {* <button class="mv-btn mv-btn-secondary" onclick="closeOutOfStockModal()">
-                {l s='Annuler' mod='multivendor'}
-            </button> *}
-            <div class="no-suggestion"> <input type="checkbox" id="no-suggestion"
-                    value="n'existe aucune autre variante, produit similaire ou suggestion alternative disponible.">
-                <span> Il
-                    n’existe aucune autre
-                    variante, produit similaire ou suggestion alternative disponible. </span>
-            </div>
-            <button class="mv-btn mv-btn-primary" value="{$out_of_stock_status->id}" id='outofstock-btn'
-                onclick="confirmOutOfStock()" disabled>
-                {l s='Confirmer' mod='multivendor'}
-            </button>
-        </div>
+
     </div>
 </div>

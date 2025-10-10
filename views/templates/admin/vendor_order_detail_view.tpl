@@ -161,7 +161,7 @@
                         {if isset($status_info) && $status_info && $status_info.comment}
                             <tr>
                                 <td><strong>{l s='Status Comment:' mod='multivendor'}</strong></td>
-                                <td>{$status_info.comment}</td>
+                                <td><pre>{$status_info.comment}</pre></td>
                             </tr>
                         {/if}
                         {if isset($status_info) && $status_info && $status_info.date_upd}
@@ -214,11 +214,7 @@
                                                 {$log.changed_by_firstname} {$log.changed_by_lastname}
                                             </td>
                                             <td>
-                                                {if $log.comment}
-                                                    {$log.comment}
-                                                {else}
-                                                    <span class="text-muted">-</span>
-                                                {/if}
+                                                <pre>{$log.comment}</pre>    
                                             </td>
                                         </tr>
                                     {/foreach}

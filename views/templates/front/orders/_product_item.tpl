@@ -1,4 +1,3 @@
-{if !$product.all_groups_empty && $product.attributes|@count > 0}
     <div class="mv-payment-header" data-id-product="{$product.id_product}">
         <div class="mv-payment-info">
             <img src="{$product.image_url}" class="mv-product-image">
@@ -10,6 +9,18 @@
                     <div class="mv-mobile-product-sku">REF: {$product.reference}</div>
                     <div class="mv-mobile-product-sku">{$product.price_formatted}</div>
                     <div class="mv-mobile-product-sku">MPN: {$product.mpn}</div>
+
+
+                    {if $product.shift_price > 0}
+                        <div class="mv-mobile-product-sku"> <span style="color:#00DFA2;"> ▲ <strong>
+                                    {$product.shift_price}</strong></span>
+                        </div>
+                    {elseif $product.shift_price < 0}
+                        <div class="mv-mobile-product-sku"> <span style="color:#FF0060;"> ▼ <strong>
+                                    {$product.shift_price}</strong></span>
+                        </div>
+                    {/if}
+
                 </div>
             </div>
             <div style="display: flex; gap: 8px; width:100%">
@@ -26,10 +37,10 @@
                     </div>
                 {/if}
                 <button class="mv-btn mv-btn-primary mv-btn-sm suggest-btn" style="margin-left:auto"
-                    onclick="addSuggestion({$product.id_product}, this); event.stopPropagation();" disabled>
+                    onclick="addSuggestion({$product.id_product}, this); event.stopPropagation();"
+                    {if $product.attributes|@count > 0}disabled{/if}>
                     {l s='Suggérer' mod='multivendor'}
                 </button>
             </div>
         </div>
-    </div>
-{/if}
+</div>

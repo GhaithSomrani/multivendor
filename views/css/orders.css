@@ -223,7 +223,6 @@
     background-color: white;
     border-radius: 12px;
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-    min-width: 500px;
     width: 90%;
     z-index: 1050;
     max-height: 90vh;
@@ -288,12 +287,13 @@
 }
 
 #outofstock-modal .mv-modal-body {
-    height: 84%;
+    height: 84vh;
 }
 
 #outofstock-modal .mv-modal-footer {
-    height: 8%;
+    height: 10%;
 }
+
 
 /* Form Controls */
 .mv-form-group {
@@ -1701,4 +1701,94 @@ div#load-more {
 
 .mv-page-info {
     color: #888;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+    .search-block {
+        max-height: 27%;
+    }
+
+    #outofstock-modal .mv-modal-content {
+        height: 90%;
+        width: 90vw;
+    }
+
+    #currentoutofstock {
+        height: auto;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    #currentoutofstock .mv-product-name {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.7rem;
+        min-width: 76%;
+    }
+
+    .mv-search-container .mv-payment-header {
+        width: 100%;
+        max-height: none;
+
+    }
+
+    .input-search-block {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .input-search-block input {
+        width: 100%;
+    }
+
+    .input-search-block button {
+        width: 100%;
+    }
+
+    .mv-status-badge-filter {
+        font-size: 10px;
+        padding: 4px 6px;
+    }
+
+    .no-suggestion {
+        flex-direction: row;
+        align-items: flex-start;
+
+    }
+
+    .no-suggestion span {
+        font-size: 1rem;
+    }
+
+    .variant-selected-item {
+        min-width: 200px;
+    }
+
+    #outfostock-result {
+        height: auto;
+        max-height: 50vh;
+    }
+
+    .mv-search-container {
+        height: auto;
+        max-height: 40vh;
+    }
+}
+
+@media (max-width: 480px) {
+    .mv-search-container .mv-payment-header {
+        min-height: 120px;
+    }
+
+    .row-btn {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    #variant-selected {
+        height: auto;
+        min-height: 3rem;
+    }
 }
