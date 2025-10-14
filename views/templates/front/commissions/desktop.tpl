@@ -40,7 +40,7 @@
                                 </td>
                                 <td>
                                     <span class="mv-action-type mv-action-{$transaction.commission_action}">
-                                        {if $transaction.commission_action == 'refund'}remboursement{else}{$transaction.commission_action}{/if}
+                                        {if $transaction.commission_action == 'refund'}remboursement{else}Addition{/if}
                                     </span>
                                 </td>
                                

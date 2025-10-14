@@ -273,7 +273,7 @@ class Vendor extends ObjectModel
 
         $query->from('product', 'p');
         $query->innerJoin('product_lang', 'pl', 'pl.id_product = p.id_product AND pl.id_lang = ' . (int)$idLang . ' AND pl.id_shop = ' . (int)$idShop);
-        $query->leftJoin('product_attribute', 'pa', 'pa.id_product = p.id_product AND pa.default_on = 1');
+        $query->leftJoin('product_attribute', 'pa', 'pa.id_product = p.id_product');
         $query->leftJoin('specific_price', 'sp', 'sp.id_product = p.id_product AND (sp.id_product_attribute = 0 OR sp.id_product_attribute = pa.id_product_attribute) AND sp.id_shop IN (0, ' . (int)$idShop . ') AND (sp.from = "0000-00-00 00:00:00" OR sp.from <= NOW()) AND (sp.to = "0000-00-00 00:00:00" OR sp.to >= NOW())');
 
         if ($idCategory) {
@@ -293,7 +293,7 @@ class Vendor extends ObjectModel
         }
 
         if (trim($name) || trim($reference)) {
-            $query->where('pl.name LIKE "%' . pSQL($name) . '%" OR p.reference LIKE "%' . pSQL($reference) . '%" OR p.mpn LIKE "%' . pSQL($mpn) . '%"');
+            $query->where('pl.name LIKE "%' . pSQL($name) . '%" OR p.reference LIKE "%' . pSQL($reference) . '%" OR p.mpn LIKE "%' . pSQL($mpn) . '%" Or pa.reference LIKE "%' . pSQL($reference) . '%" Or pa.mpn LIKE "%' . pSQL($mpn) . '%"');
         }
 
         $query->where('p.active = 1');
@@ -359,4 +359,6 @@ class Vendor extends ObjectModel
         $query->orderBy('pa.id_product_attribute');
         return Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS($query);
     }
+
+
 }

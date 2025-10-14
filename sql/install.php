@@ -229,6 +229,30 @@ $sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'mv_manifest_type` (
     PRIMARY KEY (`id_manifest_type`)
 ) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8;';
 
+$sql[] =  'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'mv_product_commission` (
+    `id_product_commission` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+    `id_product` INT(11) UNSIGNED NOT NULL,
+    `id_attribute` INT(11) UNSIGNED NOT NULL,
+    `commission_rate` DECIMAL(10,3) NOT NULL,
+    `expires_at` DATETIME NULL,
+    `changed_by` VARCHAR(256) NULL,
+    `date_add` DATETIME NOT NULL,
+    `date_upd` DATETIME NOT NULL,
+    PRIMARY KEY (`id_product_commission`),
+    UNIQUE KEY `product_attribute_unique` (`id_product`, `id_attribute`)
+) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8;';
+
+$sql[] =  'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'mv_product_commission_log` (
+    `id_product_commission_log` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+    `id_product_commission` INT(11) UNSIGNED NOT NULL,
+    `old_commission_rate` DECIMAL(10,3) NOT NULL,
+    `new_commission_rate` DECIMAL(10,3) NOT NULL,
+    `changed_by` VARCHAR(256) NULL,
+    `comment` TEXT,
+    `date_add` DATETIME NOT NULL,
+    `date_upd` DATETIME NOT NULL,
+    PRIMARY KEY (`id_product_commission_log`)
+) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8;';
 
 
 // Execute all SQL queries

@@ -27,6 +27,8 @@ require_once(dirname(__FILE__) . '/classes/TransactionHelper.php');
 require_once(dirname(__FILE__) . '/classes/Manifest.php');
 require_once(dirname(__FILE__) . '/classes/ManifestStatusType.php');
 require_once(dirname(__FILE__) . '/classes/ManifestType.php');
+require_once(dirname(__FILE__) . '/classes/ProductCommission.php');
+require_once(dirname(__FILE__) . '/classes/ProductCommissionLog.php');
 class multivendor extends Module
 {
     public function __construct()
@@ -752,7 +754,7 @@ class multivendor extends Module
                 continue;
             }
 
-            OrderHelper::processOrderDetailForVendor($orderDetailObj);
+            OrderHelper::updateOrderDetailForVendor($orderDetailObj);
         }
     }
 
@@ -779,6 +781,12 @@ class multivendor extends Module
                 'specific_management' => false,
                 'forbidden_method' => ['POST', 'DELETE']
 
+            ],
+            'product_commissions' => [
+                'description' => 'Multi-vendor product commissions',
+                'class' => 'ProductCommission',
+                'specific_management' => false,
+                'forbidden_method' => ['DELETE']
             ],
 
         ];

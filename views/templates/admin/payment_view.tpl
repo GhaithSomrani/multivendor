@@ -56,6 +56,7 @@
                             <td><strong>{l s='Date de création:' mod='multivendor'}</strong></td>
                             <td>{dateFormat date=$payment->date_add full=1}</td>
                         </tr>
+
                     </table>
                 </div>
 
@@ -104,6 +105,7 @@
                                         <th>{l s='Produit' mod='multivendor'}</th>
                                         <th>{l s='Montant vendeur' mod='multivendor'}</th>
                                         <th>{l s='Type' mod='multivendor'}</th>
+                                        <th>{l s='manifest' mod='multivendor'}</th>
                                         <th>{l s='Date de commande' mod='multivendor'}</th>
                                         <th>{l s='Statut' mod='multivendor'}</th>
                                     </tr>
@@ -128,6 +130,15 @@
                                             </td>
                                             <td class="text-info"><strong>{$detail.vendor_amount|number_format:3} TND</strong></td>
                                             <td>{$detail.transaction_type|default:'commission'|ucfirst}</td>
+                                            <td>
+                                                {assign var="manifestObj" value=TransactionHelper::getManifestReference($detail.id_order_detail ,$detail.transaction_type)}
+                                                {assign var="manifestlink" value=Manifest::getAdminLink($manifestObj.id_manifest)}
+                                                {assign var="manifeststatus" value=Manifest::getStatus($manifestObj.id_manifest)}
+                                                <span>
+                                                    <a href="{$manifestlink}" target="_blank">
+                                                       {$manifestObj.reference}</a>{if $manifeststatus}-[{$manifeststatus}]{/if} 
+                                                </span>
+                                            </td>
                                             <td>{dateFormat date=$detail.order_date full=0}</td>
                                             <td>
                                                 <span

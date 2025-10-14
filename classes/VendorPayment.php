@@ -118,4 +118,25 @@ class VendorPayment extends ObjectModel
 
         return $payments;
     }
+
+    public static function getLastId()
+    {
+        $query = new DbQuery();
+        $query->select('MAX(id_vendor_payment) as max_id');
+        $query->from('mv_vendor_payment');
+        $result = Db::getInstance()->getRow($query);
+        return $result['max_id'] ?? 0;
+    }
+
+    public static function generateReference($id_vendor)
+    {
+        $vendorObj = new Vendor($id_vendor);
+        $vendorName = $vendorObj->shop_name;
+        $cleanName = preg_replace('/[^a-zA-Z0-9]/', '', $vendorName);
+        $noVowels = preg_replace('/[aeiouAEIOU]/', '', $cleanName);
+        $today = date('Y-m-d');
+        $prefix =  strtoupper(substr($noVowels, 0, 3));
+        $id = VendorPayment::getLastId() + 1 ?? 0;
+        return $prefix . "-" . $today . "-" . str_pad($id, 5, '0', STR_PAD_LEFT);
+    }
 }

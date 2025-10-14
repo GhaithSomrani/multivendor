@@ -341,4 +341,14 @@ class TransactionHelper
 
         return $availableTransactions;
     }
+
+    public static function getManifestReference($id_order_detail, $transaction_type)
+    {
+        if ($transaction_type == 'commission') {
+            $manifest_type = Manifest::TYPE_PICKUP;
+        } elseif ($transaction_type == 'refund') {
+            $manifest_type = Manifest::TYPE_RETURNS;
+        }
+        return Manifest::getManifestByOrderDetailAndType($id_order_detail, $manifest_type);
+    }
 }

@@ -318,6 +318,7 @@ class AdminVendorPaymentsController extends ModuleAdminController
             'name' => 'reference',
             'hint' => $this->l('Transaction ID, Check Number, etc.'),
             'required' => true
+
         ];
 
         // Add status field
@@ -476,6 +477,7 @@ class AdminVendorPaymentsController extends ModuleAdminController
 
             // Assign variables to Smarty
             $this->context->smarty->assign([
+                'advanced' => $advanced,
                 'transactions' => $transactions,
                 'currency_sign' => $this->context->currency->sign
             ]);
@@ -657,7 +659,7 @@ class AdminVendorPaymentsController extends ModuleAdminController
 
             if ($transactions && count($transactions) > 0) {
                 foreach ($transactions as $transaction) {
-                    $html .= $this->renderTransactionRow($transaction);
+                    $html .= $this->renderTransactionRow($transaction, $advanced);
                 }
             }
 
@@ -665,6 +667,7 @@ class AdminVendorPaymentsController extends ModuleAdminController
                 'success' => true,
                 'html' => $html,
                 'count' => count($transactions),
+                'reference' => VendorPayment::generateReference($id_vendor),
                 'debug' => [
                     'vendor_id' => $id_vendor,
                     'status_filter' => $status_filter,
@@ -685,9 +688,10 @@ class AdminVendorPaymentsController extends ModuleAdminController
     /**
      * Render individual transaction row
      */
-    protected function renderTransactionRow($transaction)
+    protected function renderTransactionRow($transaction, $advanced = false)
     {
         $this->context->smarty->assign([
+            'advanced' => $advanced,
             'transaction' => $transaction,
             'currency' => $this->context->currency
         ]);

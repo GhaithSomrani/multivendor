@@ -13,74 +13,87 @@
                     <th>{l s='Type' mod='multivendor'}</th>
                     <th>{l s='Amount' mod='multivendor'}</th>
                     <th>{l s='Status' mod='multivendor'}</th>
+                    <th>{l s='Manifest' mod='multivendor'}</th>
                     <th>{l s='Date' mod='multivendor'}</th>
                     <th>{l s='Action' mod='multivendor'}</th>
                 </tr>
             </thead>
             <tbody>
                 {foreach from=$transactions item=transaction}
-                    <tr>
-                        <td>
-                            <strong>{$transaction.id_order}</strong><br>
-                            <small>{$transaction.id_order_detail}</small>
-                        </td>
-                        <td>
-                            <strong>{$transaction.product_name|escape:'html':'UTF-8'}</strong><br>
-                            <small>
-                                {if $transaction.product_reference}
-                                    SKU: {$transaction.product_reference|escape:'html':'UTF-8'}<br>
+                    {assign var="manifestObj" value=TransactionHelper::getManifestReference($transaction.id_order_detail ,$transaction.transaction_type)}
+                    {if $manifestObj || $advanced}
+                        <tr>
+                            <td>
+                                <strong>{$transaction.id_order}</strong><br>
+                                <small>{$transaction.id_order_detail}</small>
+                            </td>
+                            <td>
+                                <strong>{$transaction.product_name|escape:'html':'UTF-8'}</strong><br>
+                                <small>
+                                    {if $transaction.product_reference}
+                                        SKU: {$transaction.product_reference|escape:'html':'UTF-8'}<br>
+                                    {/if}
+                                    {if $transaction.product_quantity > 0}
+                                        Qty: {$transaction.product_quantity|intval}
+                                    {/if}
+                                </small>
+                            </td>
+                            <td>
+                                {if $transaction.transaction_type == 'refund'}
+                                    <span class="badge badge-warning">
+                                        <i class="icon-undo"></i> {l s='Refund' mod='multivendor'}
+                                    </span>
+                                {elseif $transaction.transaction_type == 'commission'}
+                                    <span class="badge badge-success">
+                                        <i class="icon-money"></i> {l s='Commission' mod='multivendor'}
+                                    </span>
+                                {elseif $transaction.transaction_type == 'adjustment'}
+                                    <span class="badge badge-info">
+                                        <i class="icon-edit"></i> {l s='Adjustment' mod='multivendor'}
+                                    </span>
+                                {else}
+                                    <span class="badge badge-default">
+                                        {$transaction.transaction_type|escape:'html':'UTF-8'|capitalize}
+                                    </span>
                                 {/if}
-                                {if $transaction.product_quantity > 0}
-                                    Qty: {$transaction.product_quantity|intval}
+                            </td>
+                            <td>
+                                {if $transaction.transaction_type == 'refund'}
+                                    <span class="text-danger">
+                                        <strong>-{$transaction.vendor_amount|number_format:3} TND</strong>
+                                    </span>
+                                {else}
+                                    <span class="text-success">
+                                        <strong>{$transaction.vendor_amount|number_format:3} TND</strong>
+                                    </span>
                                 {/if}
-                            </small>
-                        </td>
-                        <td>
-                            {if $transaction.transaction_type == 'refund'}
-                                <span class="badge badge-warning">
-                                    <i class="icon-undo"></i> {l s='Refund' mod='multivendor'}
+                            </td>
+                            <td>
+                                <span class="badge" style="background-color: {$transaction.status_color}; color: white;">
+                                    {$transaction.line_status|escape:'html':'UTF-8'}
                                 </span>
-                            {elseif $transaction.transaction_type == 'commission'}
-                                <span class="badge badge-success">
-                                    <i class="icon-money"></i> {l s='Commission' mod='multivendor'}
+                            </td>
+                            <td>
+                                {assign var="manifestlink" value=manifest::getAdminLink($manifestObj.id_manifest)}
+                                {assign var="manifeststatus" value=Manifest::getStatus($manifestObj.id_manifest)}
+
+                                <span>
+                                    <a href="{$manifestlink}" target="_blank">{$manifestObj.reference}</a>{if $manifeststatus}-[{$manifeststatus}]{/if} 
                                 </span>
-                            {elseif $transaction.transaction_type == 'adjustment'}
-                                <span class="badge badge-info">
-                                    <i class="icon-edit"></i> {l s='Adjustment' mod='multivendor'}
-                                </span>
-                            {else}
-                                <span class="badge badge-default">
-                                    {$transaction.transaction_type|escape:'html':'UTF-8'|capitalize}
-                                </span>
-                            {/if}
-                        </td>
-                        <td>
-                            {if $transaction.transaction_type == 'refund'}
-                                <span class="text-danger">
-                                    <strong>-{$transaction.vendor_amount|number_format:3} TND</strong>
-                                </span>
-                            {else}
-                                <span class="text-success">
-                                    <strong>{$transaction.vendor_amount|number_format:3} TND</strong>
-                                </span>
-                            {/if}
-                        </td>
-                        <td>
-                            <span class="badge" style="background-color: {$transaction.status_color}; color: white;">
-                                {$transaction.line_status|escape:'html':'UTF-8'}
-                            </span>
-                        </td>
-                        <td>
-                            <small>{$transaction.order_date|date_format:'Y-m-d H:i'}</small>
-                        </td>
-                        <td>
-                            <button type="button" class="btn btn-primary btn-xs add-transaction"
-                                data-transaction-id="{$transaction.id_vendor_transaction|intval}"
-                                title="{l s='Add this transaction to the payment' mod='multivendor'}">
-                                <i class="icon-plus"></i> {l s='Add' mod='multivendor'}
-                            </button>
-                        </td>
-                    </tr>
+                            </td>
+                            <td>
+                                <small>{$transaction.order_date|date_format:'Y-m-d H:i'}</small>
+                            </td>
+                            <td>
+                                <button type="button" class="btn btn-primary btn-xs add-transaction"
+                                    data-transaction-id="{$transaction.id_vendor_transaction|intval}"
+                                    title="{l s='Add this transaction to the payment' mod='multivendor'}">
+                                    <i class="icon-plus"></i> {l s='Add' mod='multivendor'}
+                                </button>
+                            </td>
+                        </tr>
+                    {/if}
+
                 {/foreach}
             </tbody>
         </table>

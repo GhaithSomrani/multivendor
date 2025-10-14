@@ -17,6 +17,7 @@
                         <th>{l s='Type' mod='multivendor'}</th>
                         <th>{l s='Amount' mod='multivendor'}</th>
                         <th>{l s='Status' mod='multivendor'}</th>
+                        <th>{l s='Manifest' mod='multivendor'}</th>
                         <th>{l s='Date' mod='multivendor'}</th>
                         <th>{l s='Actions' mod='multivendor'}</th>
                     </tr>
@@ -71,8 +72,18 @@
                                     {/if}
                                 </td>
                                 <td>
-                                    <span class="badge">
+                                    <span class="badge" style="background-color: {$transaction.status_color}; color: white;">
                                         {$transaction.line_status|escape:'html':'UTF-8'}
+                                    </span>
+                                </td>
+                                <td>
+                                    {assign var="manifestObj" value=TransactionHelper::getManifestReference($transaction.id_order_detail ,$transaction.transaction_type)}
+                                    {assign var="manifestlink" value=manifest::getAdminLink($manifestObj.id_manifest)}
+                                    {assign var="manifeststatus" value=Manifest::getStatus($manifestObj.id_manifest)}
+
+                                    <span>
+                                        <a href="{$manifestlink}" target="_blank">
+                                           {$manifestObj.reference}</a>{if $manifeststatus}-[{$manifeststatus}]{/if} 
                                     </span>
                                 </td>
                                 <td>

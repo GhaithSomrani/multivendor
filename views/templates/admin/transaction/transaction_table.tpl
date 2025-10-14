@@ -97,19 +97,18 @@
                                 <tr>
                                     <th>
                                         <input type="checkbox" id="select-all-transactions" />
-                                        <label for="select-all-transactions"
-                                            style="margin-left: 5px;">{l s='Select All' mod='multivendor'}</label>
+
                                     </th>
                                     <th>{l s='Order' mod='multivendor'}</th>
                                     <th>{l s='Product' mod='multivendor'}</th>
                                     <th>{l s='Type' mod='multivendor'}</th>
                                     <th>{l s='Amount' mod='multivendor'}</th>
                                     <th>{l s='Status' mod='multivendor'}</th>
+                                    <th>{l s='Manifest' mod='multivendor'}</th>
                                     <th>{l s='Date' mod='multivendor'}</th>
                                 </tr>
                             </thead>
                             <tbody id="transactions-tbody">
-                                <!-- Transactions will be loaded here via AJAX -->
                             </tbody>
                         </table>
                     </div>
@@ -177,10 +176,10 @@
                         $('#transaction-count').text(response.count);
                         $('#transactions-container').show();
                         $('#no-transactions-message').hide();
-
                         // Reset selection
                         $('#select-all-transactions').prop('checked', false);
                         updateSelectedTotal();
+                        $('#reference').val(response.reference);
                     } else {
                         $('#transactions-container').hide();
                         $('#no-transactions-message').show();

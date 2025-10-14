@@ -45,7 +45,15 @@ class OrderHelper
             }
             $defaultStatusTypeId = OrderLineStatus::getDefaultStatusTypeId();
 
-            $commission_rate = VendorCommission::getCommissionRate($vendor['id_vendor']);
+
+            $commission_rate = null;
+            $product_commission = ProductCommission::getByProductAttribute($orderDetail->product_id, $orderDetail->product_attribute_id);
+            if ($product_commission['commission_rate'] > 0 && new DateTime($product_commission['expires_at']) > new DateTime()) {
+                $commission_rate = $product_commission['commission_rate'];
+            } else {
+                $commission_rate =  VendorCommission::getCommissionRate($vendor['id_vendor']);
+            }
+
             $product_price = $orderDetail->unit_price_tax_incl;
             $quantity = $orderDetail->product_quantity;
             $total_price = $quantity * $product_price;
@@ -343,7 +351,7 @@ class OrderHelper
 
             if ($vendorOrderDetail) {
                 // Recalculate commission based on updated order detail
-                $commission_rate = VendorCommission::getCommissionRate($vendor['id_vendor']);
+                $commission_rate = $vendorOrderDetail['commission_rate'];
                 $total_price = $orderDetail->unit_price_tax_incl * $orderDetail->product_quantity;
                 $commission_amount = $total_price * ($commission_rate / 100);
                 $vendor_amount = $total_price - $commission_amount;
@@ -351,7 +359,7 @@ class OrderHelper
                 // Update the vendor order detail with new product info including reference
                 $result = Db::getInstance()->update('mv_vendor_order_detail', [
                     'product_name' => pSQL($orderDetail->product_name),
-                    'product_reference' => pSQL($orderDetail->product_reference), 
+                    'product_reference' => pSQL($orderDetail->product_reference),
                     'product_mpn' => pSQL($product->mpn ?: $orderDetail->product_reference),
                     'product_price' => (float)$orderDetail->unit_price_tax_incl,
                     'product_quantity' => (int)$orderDetail->product_quantity,

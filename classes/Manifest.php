@@ -70,7 +70,7 @@ class Manifest extends ObjectModel
      * @param bool $null_values Allow null values
      * @return bool
      */
-     public function update($null_values = false)
+    public function update($null_values = false)
     {
         $nextOrderlineStatus = ManifestStatusType::getTheNextOrderlineStatus($this->id_manifest_status);
         $orderDetailIds = Manifest::getOrderdetailsIDs($this->id);
@@ -548,5 +548,33 @@ class Manifest extends ObjectModel
         }
         $addressobj = new Address($manifest->id_address);
         return  AddressFormat::generateAddress($addressobj, [], ' - ', ' ');
+    }
+    public static function getManifestByOrderDetailAndType($id_order_detail, $type)
+    {
+        if (!Validate::isUnsignedId($id_order_detail)) {
+            return false;
+        }
+        $query = new DbQuery();
+        $query->select('*');
+        $query->from('mv_manifest_details', 'md');
+        $query->leftJoin('mv_manifest', 'm', 'md.id_manifest = m.id_manifest');
+        $query->where('md.id_order_details = ' . (int)$id_order_detail);
+        $query->where('m.id_manifest_type = ' . (int)$type);
+
+        return Db::getInstance(_PS_USE_SQL_SLAVE_)->getRow($query);
+    }
+
+    public static function getAdminLink($id_manifest)
+    {
+        $link = Context::getContext()->link->getAdminLink('AdminManifest');
+        $link .= '&viewmv_manifest&id_manifest=' . $id_manifest;
+        return $link;
+    }
+
+    public static function getStatus($id_manifest)
+    {
+        $manifestObj = new Manifest($id_manifest);
+        $statusObj = new ManifestStatusType($manifestObj->id_manifest_status);
+        return $statusObj->name;
     }
 }
