@@ -88,7 +88,6 @@ function replaceSelectWithAutocomplete(selectName, ajaxAction) {
                 resultsContainer.show();
             },
             error: function (xhr, status, error) {
-                console.error('Autocomplete AJAX error:', status, error);
                 resultsContainer.empty().append('<div class="list-group-item text-danger">Error loading results</div>').show();
             }
         });
@@ -157,7 +156,6 @@ function addOrderLineStatusColumn() {
         const productId = $row.attr('id') ? $row.attr('id').replace('orderProduct_', '') : '';
 
         if (!productId) {
-            console.warn('No product ID found for row:', $row);
             return;
         }
 
@@ -185,7 +183,6 @@ function loadOrderLineStatuses(orderId) {
     var ajaxUrl = buildAdminAjaxUrl();
 
     if (!ajaxUrl) {
-        console.error('Could not build AJAX URL');
         $('.js-line-status-placeholder').html('<span class="badge badge-danger">Config Error</span>');
         return;
     }
@@ -206,7 +203,6 @@ function loadOrderLineStatuses(orderId) {
             if (response && response.success) {
                 updateOrderLineStatusCells(response);
             } else {
-                console.error('Error loading statuses:', response ? response.message : 'No response');
                 $('.js-line-status-placeholder').html('<span class="badge badge-danger">Error: ' + (response ? response.message : 'No response') + '</span>');
             }
         },
@@ -278,7 +274,6 @@ function setupOrderLineStatusHandlers() {
         var ajaxUrl = buildAdminAjaxUrl();
 
         if (!ajaxUrl) {
-            console.error('Could not build AJAX URL for status update');
             $select.prop('disabled', false);
             return;
         }
@@ -304,7 +299,6 @@ function setupOrderLineStatusHandlers() {
                     const color = selectedOption.css('background-color') || '#28a745';
                     $select.css('background-color', color);
                 } else {
-                    console.error('Status update failed:', response ? response.message : 'No response');
                     showErrorMessage('Failed to update status: ' + (response ? response.message : 'Unknown error'));
                 }
             },
@@ -351,7 +345,6 @@ function buildAdminAjaxUrl() {
         return fallbackUrl + '&token=' + tokenValue;
     }
 
-    console.warn('No token found, returning URL without token');
     return fallbackUrl;
 }
 
@@ -412,7 +405,6 @@ function getOrderIdFromPage() {
         return orderId;
     }
 
-    console.error('Order ID not found using any method');
     return null;
 }
 
@@ -455,7 +447,6 @@ function showSuccessMessage(message) {
  * Show error message
  */
 function showErrorMessage(message) {
-    console.error('Error:', message);
 
     // Create error notification
     const notification = $('<div class="alert alert-danger alert-dismissible" role="alert">' +

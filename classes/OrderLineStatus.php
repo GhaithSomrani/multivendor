@@ -71,12 +71,15 @@ class OrderLineStatus extends ObjectModel
     public function update($nullValues = false)
     {
         try {
+            $className = Context::getContext()->controller->className ?? 'FrontOffice';
+   
+
             // Auto-determine vendor if not set
             if (empty($this->id_vendor) && !empty($this->id_order_detail)) {
                 $this->id_vendor = self::getVendorByOrderDetail($this->id_order_detail);
 
                 if (!$this->id_vendor) {
-                    $error_msg = 'Impossible de déterminer le vendeur pour l\'ID de détail de commande : ' . $this->id_order_detail;
+                    $error_msg = 'Impossible de déterminer le vendeur pour l\'ID de détail de commande : ' . $this->id_order_detail . ' - Class Name : ' . $className;
                     error_log($error_msg);
                     PrestaShopLogger::addLog($error_msg, 3, null, 'OrderLineStatus', $this->id, true);
 
@@ -88,9 +91,8 @@ class OrderLineStatus extends ObjectModel
                 }
             }
 
-            // Check if status change is allowed (changability validation)
             if (!OrderHelper::isChangableStatusType($this->id_order_detail, $this->id_order_line_status_type)) {
-                $error_msg = 'Changement de statut non autorisé pour le détail de commande : ' . $this->id_order_detail;
+                $error_msg = 'Changement de statut non autorisé pour le détail de commande : ' . $this->id_order_detail . ' - Class Name : ' . $className;
                 error_log($error_msg);
                 PrestaShopLogger::addLog($error_msg, 3, null, 'OrderLineStatus', $this->id, true);
 
@@ -104,7 +106,7 @@ class OrderLineStatus extends ObjectModel
             // Validate status type
             $statusType = new OrderLineStatusType($this->id_order_line_status_type);
             if (!Validate::isLoadedObject($statusType)) {
-                $error_msg = 'ID de type de statut invalide : ' . $this->id_order_line_status_type;
+                $error_msg = 'ID de type de statut invalide : ' . $this->id_order_line_status_type . ' - Class Name : ' . $className;
                 error_log($error_msg);
                 PrestaShopLogger::addLog($error_msg, 3, null, 'OrderLineStatus', $this->id, true);
 
@@ -121,14 +123,14 @@ class OrderLineStatus extends ObjectModel
 
             if (!$is_api_call) {
                 if (!$is_admin && $statusType->is_vendor_allowed != 1) {
-                    $error_msg = 'Vendeur non autorisé à définir le statut : ' . $statusType->name;
+                    $error_msg = 'Vendeur non autorisé à définir le statut : ' . $statusType->name . ' - Class Name : ' . $className;
                     error_log($error_msg);
                     PrestaShopLogger::addLog($error_msg, 3, null, 'OrderLineStatus', $this->id, true);
                     return false;
                 }
 
                 if ($is_admin && $statusType->is_admin_allowed != 1) {
-                    $error_msg = 'Administrateur non autorisé à définir le statut : ' . $statusType->name;
+                    $error_msg = 'Administrateur non autorisé à définir le statut : ' . $statusType->name . ' - Class Name : ' . $className;
                     error_log($error_msg);
                     PrestaShopLogger::addLog($error_msg, 3, null, 'OrderLineStatus', $this->id, true);
                     return false;
@@ -161,7 +163,7 @@ class OrderLineStatus extends ObjectModel
 
             return $success;
         } catch (Exception $e) {
-            $error_msg = 'Erreur dans OrderLineStatus::update : ' . $e->getMessage();
+            $error_msg = 'Erreur dans OrderLineStatus::update : ' . $e->getMessage() . ' - Class Name : ' . $className;
             PrestaShopLogger::addLog($error_msg . ' \n - Trace de la pile : ' . $e->getTraceAsString(), 3, null, 'OrderLineStatus', $this->id, true);
 
             if ($this->isApiCall()) {

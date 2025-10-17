@@ -25,7 +25,7 @@
                 <div id="generated-comment">
                     <textarea id="input-comment" class="mv-form-control" rows="3"
                         placeholder="Si vous ne trouvez pas votre suggestion dans la recherche, vous pouvez nous fournir des informations à ce sujet ici. Exemple (nom - référence - lien)"
-                        style="resize: none;"></textarea>
+                        style="resize: none; display: none;" ></textarea>
                 </div>
             </div>
 

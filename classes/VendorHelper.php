@@ -761,10 +761,7 @@ class VendorHelper
         vod.vendor_amount,
         olst.name as line_status
     ');
-        // vp.reference as payment_reference,
-        // vp.date_add as payment_date,
-        // vt.id_vendor_transaction,
-        // vp.status as payment_status
+     
         $query->from('mv_vendor_order_detail', 'vod');
         $query->leftJoin('mv_order_line_status', 'ols', 'ols.id_order_detail = vod.id_order_detail ');
         $query->leftJoin('mv_order_line_status_type', 'olst', 'olst.id_order_line_status_type = ols.id_order_line_status_type');
@@ -790,21 +787,16 @@ class VendorHelper
 
         fprintf($output, chr(0xEF) . chr(0xBB) . chr(0xBF));
 
-        // CSV Header - includes all selected columns
         fputcsv($output, [
             $module->l('Order Detail ID'),
             $module->l('Order Reference'),
             $module->l('Product Name'),
             $module->l('SKU'),
             $module->l('Quantity'),
-            // $module->l('Commission Amount'),
             $module->l('Vendor Amount'),
             $module->l('Status'),
             $module->l('Order Date'),
-            // $module->l('Payment Reference'),
-            // $module->l('Payment Status'),
-            // $module->l('Payment Date'),
-            // $module->l('Transaction ID')
+          
         ]);
 
         // CSV Data - includes all selected columns

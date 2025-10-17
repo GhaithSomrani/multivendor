@@ -12,7 +12,7 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
 {
     public $auth = true;
     public $ssl = true;
-
+    public $filter = [];
     public function init()
     {
         parent::init();
@@ -35,6 +35,10 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
     {
         parent::initContent();
 
+        // get ajax actions from template
+
+
+
         $id_vendor = $this->context->smarty->getTemplateVars('id_vendor');
         $id_supplier = $this->context->smarty->getTemplateVars('id_supplier');
         // Get Vendor Address 
@@ -42,38 +46,32 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
 
         $this->getVendorAddress($id_vendor);
 
-        // Handle status update submission
         if (Tools::isSubmit('submitStatusUpdate')) {
             $this->processStatusUpdate();
         }
-        $filter_status = Tools::getValue('status', 'all');
+        $filter_status = Tools::getValue('status', '');
 
-        // Get order summary data
         $orderSummary = $this->getOrderSummary($id_vendor, $id_supplier);
-
-        // Pagination
+        $filter = Tools::getValue('filter', []);
+        $filter['status'] = $filter_status;
+        $this->filter = $filter;
         $page = (int)Tools::getValue('page', 1);
 
-        $per_page = (int)Tools::getValue('per_page', 16);
-        $offset = ($page - 1) * $per_page;
 
-        // Get order lines specific to this vendor's supplier ID
-        $orderLines = $this->getVendorOrderLines($id_vendor, $per_page, $offset, [
-            'status' => $filter_status
-        ]);
-        $total_lines = $this->countVendorOrderLines($id_vendor, [
-            'status' => $filter_status
-        ]);
+
+        $per_page = (int)Tools::getValue('per_page', 25);
+        $offset = ($page - 1) * $per_page;
+        $filter_data = OrderHelper::getVendorOrderDetails($id_vendor, $filter, $per_page, $offset, true);
+        $orderLines  = $filter_data['data'];
+        $total_lines = $filter_data['total'];
         $total_pages = ceil($total_lines / $per_page);
         $changeableStatusInfo = $this->getChangeableStatusInfo($orderLines, $id_vendor);
 
-        // Get available line statuses (only ones that vendor can use)
         $vendorStatuses = [];
         $allStatuses = [];
         $status_colors = [];
 
-        // Get only vendor-allowed statuses for dropdown
-        $vendorStatusTypes = OrderLineStatusType::getAllActiveStatusTypes(true); // true = vendor only
+        $vendorStatusTypes = OrderLineStatusType::getAllActiveStatusTypes(true);
 
         foreach ($vendorStatusTypes as $status) {
             $vendorStatuses[$status['id_order_line_status_type']] = $status['name'];
@@ -87,23 +85,85 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
         }
 
 
-        // Add CSS and JS files
         $this->context->controller->addCSS($this->module->getPathUri() . 'views/css/dashboard.css');
         $this->context->controller->addCSS($this->module->getPathUri() . 'views/css/commissions.css');
 
         $this->context->controller->addCSS($this->module->getPathUri() . 'views/css/orders.css');
         $this->context->controller->addJS($this->module->getPathUri() . 'views/js/orders.js');
-        // $this->context->controller->addJS($this->module->getPathUri() . 'views/js/outofstock.js');
 
-        // Add JS definitions for AJAX
         Media::addJsDef([
             'ordersAjaxUrl' => $this->context->link->getModuleLink('multivendor', 'ajax'),
+            'ordersAjaxLink' => $this->context->link->getModuleLink('multivendor', 'orders'),
             'ordersAjaxToken' => Tools::getToken('multivendor')
         ]);
+
+        $this->context->controller->registerStylesheet(
+            'daterangepicker-css',
+            'https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css',
+            [
+                'media' => 'all',
+                'priority' => 200,
+                'server' => 'remote'
+            ]
+        );
+
+        $this->context->controller->registerJavascript(
+            'moment-js',
+            'https://cdn.jsdelivr.net/npm/moment@2.29.1/moment.min.js',
+            [
+                'position' => 'head',
+                'priority' => 200,
+                'server' => 'remote'
+            ]
+        );
+
+        $this->context->controller->registerJavascript(
+            'module-drift-js',
+            'https://unpkg.com/drift-zoom/dist/Drift.min.js',
+            [
+                'position' => 'head',
+                'priority' => 200,
+                'server' => 'remote'
+
+            ]
+        );
+
+        $this->context->controller->registerStylesheet(
+            'module-drift-css',
+            'https://unpkg.com/drift-zoom/dist/drift-basic.min.css',
+            [
+                'media' => 'all',
+                'priority' => 200,
+                'server' => 'remote'
+
+            ]
+        );
+        $this->context->controller->registerJavascript(
+            'daterangepicker-js',
+            'https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js',
+            [
+                'position' => 'bottom',
+                'priority' => 201,
+                'server' => 'remote'
+            ]
+        );
         $available_status_vendor = new orderlineStatusType(Configuration::get('MV_AVAILABLE_STATUS'));
         $out_of_stock_status = new orderlineStatusType(Configuration::get('MV_OUT_OF_STOCK_STATUS'));
         // Assign data to template
+
+        if (Tools::isSubmit('ajax')) {
+            $action = Tools::getValue('action');
+            switch ($action) {
+                case 'getExportFilteredCSV':
+                    $this->getExportFilteredCSV();
+                    return;
+                    break;
+                default:
+                    break;
+            }
+        }
         $this->context->smarty->assign([
+            'filter' => $filter,
             'first_status' => Configuration::get('MV_FIRST_STATUS'),
             'available_status_vendor' => $available_status_vendor,
             'out_of_stock_status' => $out_of_stock_status,
@@ -132,6 +192,78 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
         $this->setTemplate('module:multivendor/views/templates/front/orders.tpl');
     }
 
+
+    public function getExportFilteredCSV()
+    {
+        try {
+            $id_vendor = $this->context->smarty->getTemplateVars('id_vendor');
+            $filter = Tools::getValue('filter', '');
+            $orderLines = OrderHelper::getVendorOrderDetails($id_vendor, $filter, null, null, true);
+            $orderLines = array_map(function ($line) {
+                $rm = Manifest::getManifestByOrderDetailAndType($line['id_order_detail'], 1);
+                $rt = Manifest::getManifestByOrderDetailAndType($line['id_order_detail'], 2);
+                $p = Vendorpayment::getByOrderDetailAndType($line['id_order_detail'], 'commission');
+                $r = Vendorpayment::getByOrderDetailAndType($line['id_order_detail'], 'refund');
+                return [
+                    'id_order_detail' => $line['id_order_detail'],
+                    'id_order' => $line['id_order'],
+                    'designation' => $line['product_name'],
+                    'reference produit' => $line['product_reference'],
+                    'code barre' => $line['product_mpn'],
+                    'quantite' => $line['product_quantity'],
+                    'prix public' => $line['product_price'],
+                    'montant commission' => $line['commission_amount'],
+                    'montant fournisseur' => $line['vendor_amount'],
+                    'date commande' => $line['order_date'],
+                    'statut commande' => $line['line_status'],
+                    'precentage commission' => $line['commission_rate'],
+                    'action commission' => $line['commission_action'],
+                    'bon de ramassage' => $rm['reference'] ?? '',
+                    'date ramassage' => $rm['date_add'] ?? '',
+                    'bon de retour' => $rt['reference'] ?? '',
+                    'date retour' => $rt['date_add'] ?? '',
+                    'paiement' => $p->reference ?? '',
+                    'date paiement' => $p->date_add ?? '',
+                    'paiement de remboursement' => $r->reference ?? '',
+                    'date paiement de remboursement' => $r->date_add ?? '',
+                ];
+            }, $orderLines);
+
+            if (empty($orderLines)) {
+                die(json_encode(['success' => false, 'error' => 'No data found']));
+            }
+
+
+
+            $csv = $this->generateCSV($orderLines);
+
+            header('Content-Type: text/csv; charset=utf-8');
+            header('Content-Disposition: attachment; filename="vendor_orders_' . date('Y-m-d') . '.csv"');
+            echo $csv;
+            die();
+        } catch (Exception $e) {
+            die(json_encode(['success' => false, 'error' => $e->getMessage()]));
+        }
+    }
+
+    private function generateCSV($data)
+    {
+        $output = fopen('php://temp', 'r+');
+
+        // Add headers (adjust to your data structure)
+        fputcsv($output, array_keys($data[0]));
+
+        // Add rows
+        foreach ($data as $row) {
+            fputcsv($output, $row);
+        }
+
+        rewind($output);
+        $csv = stream_get_contents($output);
+        fclose($output);
+
+        return $csv;
+    }
     protected function getVendorAddress($id_vendor)
     {
         $vendor = new Vendor($id_vendor);
@@ -161,11 +293,26 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
         $defaultStatusTypeId = OrderLineStatus::getDefaultStatusTypeId();
 
         $query = new DbQuery();
-        $query->select('vod.id_order_detail, vod.product_name, vod.product_reference, vod.product_quantity, vod.vendor_amount,
-          o.reference as order_reference, o.date_add as order_date, vod.product_mpn, od.unit_price_tax_incl as product_price,
-          vod.id_vendor, vod.commission_amount, vod.vendor_amount, vod.id_order, vod.product_id, vod.product_attribute_id,
-          COALESCE(ols.id_order_line_status_type, ' . (int)$defaultStatusTypeId . ') as status_type_id,
-          COALESCE(olst.name, "Pending") as line_status');
+        $query->select('
+        vod.id_order_detail, 
+        vod.product_name, 
+        vod.product_reference, 
+        vod.product_quantity, 
+        vod.vendor_amount,
+        o.reference as order_reference, 
+        o.date_add as order_date, 
+        vod.product_mpn, 
+        od.unit_price_tax_incl as product_price,
+        vod.id_vendor, 
+        vod.commission_amount, 
+        vod.id_order, 
+        vod.product_id, 
+        vod.product_attribute_id,
+        ols.id_order_line_status_type as status_type_id,
+        olst.name as line_status , 
+        olst.color as status_color,
+        vod.commission_rate , 
+        olst.commission_action');
         $query->from('mv_vendor_order_detail', 'vod');
         $query->innerJoin('orders', 'o', 'o.id_order = vod.id_order');
         $query->leftJoin('mv_order_line_status', 'ols', 'ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = ' . (int)$id_vendor);
@@ -444,7 +591,6 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
             'status_breakdown' => $statusBreakdown
         ];
     }
-
 
 
 

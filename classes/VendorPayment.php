@@ -81,19 +81,19 @@ class VendorPayment extends ObjectModel
     public static function getPaymentDetails($id_vendor_payment)
     {
         $query = '
-    SELECT vt.*, 
-           vod.product_name, 
-           vod.product_reference, 
-           vod.product_quantity,
-           o.reference as order_reference, 
-           vod.date_add as order_date,
-           vod.id_order,
-           vod.id_vendor
-    FROM ' . _DB_PREFIX_ . 'mv_vendor_transaction vt
-    LEFT JOIN ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod ON vod.id_order_detail = vt.order_detail_id
-    LEFT JOIN ' . _DB_PREFIX_ . 'orders o ON o.id_order = vod.id_order
-    WHERE vt.id_vendor_payment = ' . (int)$id_vendor_payment . '
-    ORDER BY o.date_add DESC';
+        SELECT vt.*, 
+        vod.product_name, 
+        vod.product_reference, 
+        vod.product_quantity,
+        o.reference as order_reference, 
+        vod.date_add as order_date,
+        vod.id_order,
+        vod.id_vendor
+        FROM ' . _DB_PREFIX_ . 'mv_vendor_transaction vt
+        LEFT JOIN ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod ON vod.id_order_detail = vt.order_detail_id
+        LEFT JOIN ' . _DB_PREFIX_ . 'orders o ON o.id_order = vod.id_order
+        WHERE vt.id_vendor_payment = ' . (int)$id_vendor_payment . '
+        ORDER BY o.date_add DESC';
 
         $results = Db::getInstance()->executeS($query);
 
@@ -138,5 +138,26 @@ class VendorPayment extends ObjectModel
         $prefix =  strtoupper(substr($noVowels, 0, 3));
         $id = VendorPayment::getLastId() + 1 ?? 0;
         return $prefix . "-" . $today . "-" . str_pad($id, 5, '0', STR_PAD_LEFT);
+    }
+
+    public static function getByOrderDetailAndType($order_detail_id, $transaction_type)
+    {
+        $transaction = VendorTransaction::getByOrderDetailAndType($order_detail_id, $transaction_type);
+        return  new self((int)$transaction['id_vendor_payment']);;
+    }
+
+    public static function getIdByReference($reference)
+    {
+        $query = new DbQuery();
+        $query->select('id_vendor_payment');
+        $query->from('mv_vendor_payment', 'vp');
+        $query->where('vp.reference = "' . pSQL($reference) . '"');
+        return Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue($query);
+    }
+    public static function getAdminlink($id_vendor_payment)
+    {
+        $link = Context::getContext()->link->getAdminLink('AdminVendorPayments');
+        $link .= '&viewmv_vendor_payment&id_vendor_payment=' . (int)$id_vendor_payment;
+        return $link;
     }
 }

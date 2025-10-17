@@ -25,52 +25,15 @@
     </div>
 {/if}
 
-{* Mobile Actions Card *}
-<div class="mv-card mv-mobile-actions-card">
-    <div class="mv-card-header">
-        <h5 class="mv-card-title">{l s='Actions' mod='multivendor'}</h5>
-    </div>
-    <div class="mv-card-body">
-        <div class="mv-mobile-actions-grid">
-            <button class="mv-btn-mobile mv-btn-export-mobile" onclick="exportTableToCSV()">
-                <i class="mv-icon">📥</i>
-                {l s='Exporter CSV' mod='multivendor'}
-            </button>
-            <button class="mv-btn-mobile mv-btn-select-mobile" onclick="toggleSelectAll()">
-                <i class="mv-icon">☑️</i>
-                {l s='Sélectionner' mod='multivendor'}
-            </button>
-        </div>
 
-        {* Mobile Bulk Actions *}
-        <div class="mv-mobile-bulk-actions" id="mobileBulkActions" style="display: none;">
-            <div class="mv-selected-info">
-                <span id="mobile-selected-count">0</span> {l s='sélectionné(s)' mod='multivendor'}
-            </div>
-            <div class="mv-bulk-controls-mobile">
-                <select id="mobile-bulk-status-select" class="mv-status-select-mobile">
-                    <option value="">{l s='Changer le statut à...' mod='multivendor'}</option>
-                    {foreach from=$vendor_statuses key=status_key item=status_label}
-                        <option value="{$status_key}">
-                            {$status_label|escape:'html':'UTF-8'|capitalize}
-                        </option>
-                    {/foreach}
-                </select>
-                <button id="mobile-apply-bulk-status" class="mv-btn-mobile mv-btn-primary-mobile">
-                    {l s='Appliquer' mod='multivendor'}
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
 
 {* Global MPN Scanner - Mobile *}
-<div class="mv-card mv-mobile-mpn-card">
+{* <div class="mv-card mv-mobile-mpn-card">
     <div class="mv-card-header">
         <h5 class="mv-card-title">{l s='Scanner MPN' mod='multivendor'}</h5>
     </div>
 
-</div>
+</div> *}
 
 {* Orders Cards *}
 <div class="mv-card mv-mobile-orders-card">
@@ -106,7 +69,7 @@
                         <div class="mv-mobile-order-content">
                             <div class="mv-mobile-product-info">
                                 {assign var="product_image" value=OrderHelper::getProductImageLink($line.product_id, $line.product_attribute_id)}
-                                <img src="{$product_image}" alt="{$line.product_name|escape:'html':'UTF-8'}"
+                                <img src="{$product_image}"  alt="{$line.product_name|escape:'html':'UTF-8'}"
                                     class="mv-product-image">
                                 <span class="mv-mobile-product-name">{$line.product_name}
                                     {assign var="product_link" value=VendorHelper::getProductPubliclink($line.product_id, $line.product_attribute_id)}

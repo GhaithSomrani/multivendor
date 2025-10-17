@@ -232,7 +232,7 @@ $sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'mv_manifest_type` (
 $sql[] =  'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'mv_product_commission` (
     `id_product_commission` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
     `id_product` INT(11) UNSIGNED NOT NULL,
-    `id_attribute` INT(11) UNSIGNED NOT NULL,
+    `id_attribute` INT(11) UNSIGNED ,
     `commission_rate` DECIMAL(10,3) NOT NULL,
     `expires_at` DATETIME NULL,
     `changed_by` VARCHAR(256) NULL,

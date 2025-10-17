@@ -6,7 +6,7 @@ const verifiedOrderDetails = new Set();
 let currentProductName = null;
 let currentStatusName = null;
 let currentStatusColor = null;
-
+let filter = [];
 $(document).ready(function () {
     // Set initial colors for status dropdowns
     $('.order-line-status-select').each(function () {
@@ -128,8 +128,6 @@ $(document).ready(function () {
         }
     });
 
-    // Handle bulk actions for order selection
-    initBulkActions();
 
 
     // Close modal when clicking outside or on close button
@@ -150,152 +148,7 @@ $(document).ready(function () {
 
 
 
-/**
- * Initialize bulk actions
- */
-function initBulkActions() {
-    // Variables to track state
-    let selectedOrders = [];
 
-    // Handle "Select All" checkbox
-    $('#select-all-orders').on('change', function () {
-        const isChecked = $(this).prop('checked');
-        $('.mv-row-checkbox').prop('checked', isChecked);
-
-        // Update selected orders array
-        selectedOrders = isChecked ?
-            $('.mv-row-checkbox').map(function () { return $(this).data('id'); }).get() :
-            [];
-
-        updateBulkControls();
-    });
-
-    // Handle individual row checkboxes
-    $(document).on('change', '.mv-row-checkbox', function () {
-        const id = $(this).data('id');
-
-        if ($(this).prop('checked')) {
-            // Add to selected orders if not already in the array
-            if (selectedOrders.indexOf(id) === -1) {
-                selectedOrders.push(id);
-            }
-        } else {
-            // Remove from selected orders
-            const index = selectedOrders.indexOf(id);
-            if (index !== -1) {
-                selectedOrders.splice(index, 1);
-            }
-
-            // Uncheck "Select All" if any row is unchecked
-            $('#select-all-orders').prop('checked', false);
-        }
-
-        updateBulkControls();
-    });
-
-    // Handle bulk status apply - FIXED VERSION
-    $('#apply-bulk-status').on('click', function () {
-        const newStatusTypeId = $('#bulk-status-select').val(); // This is now status type ID
-
-        if (!newStatusTypeId || selectedOrders.length === 0) {
-            return;
-        }
-
-        if (!confirm(bulkStatusChangeConfirmText)) {
-            return;
-        }
-
-        $('#apply-bulk-status').prop('disabled', true).text(processingText);
-
-        $.ajax({
-            url: ordersAjaxUrl,
-            type: 'POST',
-            data: {
-                ajax: true,
-                action: 'bulkUpdateVendorStatus',
-                order_detail_ids: selectedOrders,
-                id_status_type: newStatusTypeId,
-                comment: bulkChangeComment,
-                token: ordersAjaxToken
-            },
-            dataType: 'json',
-            success: function (response) {
-                if (response.success) {
-                    $.each(response.results, function (id, success) {
-                        if (success) {
-                            updateRowStatus(id, newStatusTypeId);
-                        }
-                    });
-
-                    showNotification('success', response.message);
-                    $.each(response.results, function (id, success) {
-                        if (success == true) {
-
-                            checkAndAddToManifestIfNeeded(id, newStatusTypeId);
-                        }
-                    });
-                } else {
-                    showNotification('error', response.message || 'Error updating statuses');
-                }
-
-                resetBulkControls();
-            },
-            error: function () {
-                showNotification('error', errorStatusText);
-                resetBulkControls();
-            }
-        });
-    });
-
-    /**
-     * Update bulk control elements based on selection state
-     */
-    function updateBulkControls() {
-        const count = selectedOrders.length;
-
-        $('#selected-count').text(count + ' ' + selectedText);
-
-        $('#bulk-status-select, #apply-bulk-status').prop('disabled', count === 0);
-    }
-
-    /**
-     * Update row status after bulk update - FIXED VERSION
-     */
-    function updateRowStatus(id, newStatusTypeId) {
-        const row = $(`tr[data-id="${id}"]`);
-        const select = row.find('.order-line-status-select');
-
-        if (select.length) {
-            select.val(newStatusTypeId);
-
-            // Update the visual styling
-            const selectedOption = select.find('option:selected');
-            const color = selectedOption.css('background-color');
-            select.css('background-color', color);
-
-            // Update data attribute
-            select.data('original-status-type-id', newStatusTypeId);
-
-            // Update row status attribute with status name for filtering
-            const statusName = selectedOption.text().trim();
-            row.attr('data-status', statusName.toLowerCase());
-        }
-
-        row.find('.mv-row-checkbox').prop('checked', false);
-    }
-
-    /**
-     * Reset bulk action controls
-     */
-    function resetBulkControls() {
-        $('#apply-bulk-status').prop('disabled', true).text(applyText);
-        $('#bulk-status-select').val('');
-        $('.mv-row-checkbox, #select-all-orders').prop('checked', false);
-
-        selectedOrders = [];
-        updateBulkControls();
-    }
-}
 
 /**
  * Update order line status via AJAX
@@ -515,36 +368,42 @@ function displayStatusHistory(history) {
  * Export table to CSV
  */
 function exportTableToCSV() {
-    // Create a form element
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = ordersAjaxUrl;
-    form.style.display = 'none';
 
-    // Add action parameter
-    const actionInput = document.createElement('input');
-    actionInput.type = 'hidden';
-    actionInput.name = 'action';
-    actionInput.value = 'exportOrdersCSV';
-    form.appendChild(actionInput);
+    var filter_data = {};
+    $('.mv-filter-input').each(function () {
+        var value = $(this).val();
+        var name = $(this).data('filter');
+        if (name == 'datefilter') {
+            value = value.split(' - ');
+            filter_data['date_from'] = value[0];
+            filter_data['date_to'] = value[1];
+        }
+        filter_data[name] = value;
+    })
 
-    // Add token if needed
-    if (typeof ordersAjaxToken !== 'undefined') {
-        const tokenInput = document.createElement('input');
-        tokenInput.type = 'hidden';
-        tokenInput.name = 'token';
-        tokenInput.value = ordersAjaxToken;
-        form.appendChild(tokenInput);
-    }
-
-    // Add the form to the document and submit it
-    document.body.appendChild(form);
-    form.submit();
-
-    // Remove the form after submission
-    setTimeout(function () {
-        document.body.removeChild(form);
-    }, 1000);
+    $.ajax({
+        url: ordersAjaxLink,
+        type: 'POST',
+        data: {
+            ajax: true,
+            filter: filter_data,
+            action: 'getExportFilteredCSV',
+            token: ordersAjaxToken
+        },
+        xhrFields: {
+            responseType: 'blob' // Important for file download
+        },
+        success: function (response, status, xhr) {
+            // Create download link
+            var blob = new Blob([response], { type: 'text/csv' });
+            var link = document.createElement('a');
+            link.href = window.URL.createObjectURL(blob);
+            link.download = 'vendor_orders_' + new Date().toISOString().split('T')[0] + '.csv';
+            link.click();
+        },
+        error: function (xhr, status, error) {
+        }
+    });
 }
 
 /**
@@ -751,7 +610,6 @@ function submitStatusWithComment() {
     const allowedTransitions = window.mvAllowedTransitions[currentOrderDetailId] || {};
     if (!allowedTransitions[newStatusId]) {
         alert('Erreur: Cette transition de statut n\'est plus autorisée');
-        console.error('Invalid transition attempted:', newStatusId, 'Allowed:', allowedTransitions);
         closeStatusCommentModal();
         return;
     }
@@ -818,7 +676,6 @@ function submitStatusWithComment() {
             }
         },
         error: function (xhr, status, error) {
-            console.error('Error updating status:', error);
             showNotification('error', 'Erreur réseau survenue');
 
             // Re-enable submit button
@@ -861,7 +718,6 @@ function updateAllowedTransitionsForOrderDetail(orderDetailId) {
             }
         },
         error: function (xhr, status, error) {
-            console.warn('Could not update allowed transitions:', error);
         }
     });
 }
@@ -953,7 +809,6 @@ let selectedMobileOrders = new Set();
 function initializeMobileFunctionality() {
     if (window.matchMedia('(max-width: 768px)').matches) {
         initializeMobileOrderHandlers();
-        initializeMobileBulkActions();
         initializeMobileMPNScanner();
         initializeMobileStatusSelects();
         initializeMobileHistoryButtons();
@@ -988,38 +843,6 @@ function initializeMobileHistoryButtons() {
 }
 
 /**
- * Toggle select all functionality for mobile
- */
-function toggleSelectAll() {
-    isSelectMode = !isSelectMode;
-    const selectButton = document.querySelector('.mv-btn-select-mobile');
-    const bulkActions = document.getElementById('mobileBulkActions');
-    const checkboxes = document.querySelectorAll('.mv-mobile-checkbox');
-
-    if (isSelectMode) {
-        selectButton.innerHTML = '<i class="mv-icon">✖️</i> Annuler';
-        selectButton.classList.add('active');
-        bulkActions.style.display = 'block';
-
-        checkboxes.forEach(checkbox => {
-            checkbox.style.display = 'block';
-        });
-    } else {
-        selectButton.innerHTML = '<i class="mv-icon">☑️</i> Sélectionner';
-        selectButton.classList.remove('active');
-        bulkActions.style.display = 'none';
-        selectedMobileOrders.clear();
-
-        checkboxes.forEach(checkbox => {
-            checkbox.style.display = 'none';
-            checkbox.checked = false;
-        });
-
-        updateMobileSelectedCount();
-    }
-}
-
-/**
  * Handle mobile checkbox changes
  */
 function handleMobileCheckboxChange(checkbox) {
@@ -1034,97 +857,12 @@ function handleMobileCheckboxChange(checkbox) {
     updateMobileSelectedCount();
 }
 
-/**
- * Update mobile selected count
- */
-function updateMobileSelectedCount() {
-    const countElement = document.getElementById('mobile-selected-count');
-    const applyButton = document.getElementById('mobile-apply-bulk-status');
-    const selectElement = document.getElementById('mobile-bulk-status-select');
-
-    if (countElement) {
-        countElement.textContent = selectedMobileOrders.size;
-    }
-
-    const hasSelection = selectedMobileOrders.size > 0;
-    if (applyButton) {
-        applyButton.disabled = !hasSelection;
-    }
-    if (selectElement) {
-        selectElement.disabled = !hasSelection;
-    }
-}
-
-/**
- * Initialize mobile bulk actions
- */
-function initializeMobileBulkActions() {
-    const applyButton = document.getElementById('mobile-apply-bulk-status');
-    if (applyButton) {
-        applyButton.addEventListener('click', function () {
-            applyMobileBulkStatus();
-        });
-    }
-}
 
 
-/**
- * Apply bulk status change on mobile
- */
-function applyMobileBulkStatus() {
-    const selectElement = document.getElementById('mobile-bulk-status-select');
-    const newStatus = selectElement.value;
 
-    if (!newStatus) {
-        showMobileNotification('Veuillez sélectionner un statut', 'warning');
-        return;
-    }
 
-    if (selectedMobileOrders.size === 0) {
-        showMobileNotification('Aucune commande sélectionnée', 'warning');
-        return;
-    }
 
-    if (!confirm(bulkStatusChangeConfirmText)) {
-        return;
-    }
 
-    const applyButton = document.getElementById('mobile-apply-bulk-status');
-    const originalText = applyButton.textContent;
-    applyButton.textContent = processingText;
-    applyButton.disabled = true;
-
-    // Use existing bulk processing function
-    if (typeof processBulkStatusChange === 'function') {
-        const orderIds = Array.from(selectedMobileOrders);
-        processBulkStatusChange(orderIds, newStatus)
-            .then(results => {
-                const successCount = results.filter(r => r.success).length;
-                const errorCount = results.length - successCount;
-
-                if (successCount > 0) {
-                    showMobileNotification(`${successCount} ${successStatusText}`, 'success');
-                }
-                if (errorCount > 0) {
-                    showMobileNotification(`${errorCount} ${errorStatusText}`, 'error');
-                }
-
-                setTimeout(() => window.location.reload(), 2000);
-            })
-            .catch(error => {
-                console.error('Bulk status change error:', error);
-                showMobileNotification('Erreur lors de la mise à jour', 'error');
-            })
-            .finally(() => {
-                applyButton.textContent = originalText;
-                applyButton.disabled = false;
-            });
-    } else {
-        showMobileNotification('Fonction de mise à jour groupée non disponible', 'error');
-        applyButton.textContent = originalText;
-        applyButton.disabled = false;
-    }
-}
 
 /**
  * Initialize mobile MPN scanner
@@ -1169,7 +907,6 @@ function updateMobileOrderLineStatus(orderDetailId, newStatusId, selectElement) 
                 setTimeout(() => window.location.reload(), 1000);
             })
             .catch(error => {
-                console.error('Error:', error);
                 showMobileNotification('Erreur lors de la mise à jour', 'error');
                 selectElement.removeChild(loadingOption);
                 selectElement.disabled = false;
@@ -1303,7 +1040,6 @@ $(document).ready(function () {
     initializeMobileFunctionality();
 
     // Make functions globally available
-    window.toggleSelectAll = toggleSelectAll;
 });
 
 function changePerPage(value) {
@@ -1485,6 +1221,31 @@ $(document).on('change', '.variant-select', function () {
         button.prop('disabled', true);
     }
 });
+
+$(document).ready(function () {
+    $('input[name="filter[datefilter]"]').daterangepicker({
+        autoUpdateInput: false,
+        locale: {
+            cancelLabel: 'Effacer',
+            applyLabel: 'Appliquer',
+            format: 'YYYY-MM-DD',
+            separator: ' à ',
+        },
+        opens: 'left',
+        maxDate: moment()
+    });
+
+    $('input[name="filter[datefilter]"]').on('apply.daterangepicker', function (ev, picker) {
+        $(this).val(picker.startDate.format('YYYY-MM-DD') + ' - ' + picker.endDate.format(
+            'YYYY-MM-DD'));
+    });
+
+    $('input[name="filter[datefilter]"]').on('cancel.daterangepicker', function (ev, picker) {
+        $(this).val('');
+    });
+});
+
+
 $(document).ready(function () {
 
     $('#input-comment').on('input', function () {
@@ -1503,3 +1264,74 @@ $(document).ready(function () {
     });
 
 });
+
+
+function applyFilters() {
+    var form = $('#mv-filter-form');
+
+    // Remove any previously added hidden inputs
+    form.find('input[type="hidden"]').remove();
+    var currentUrl = new URL(window.location.href);
+    currentUrl.search = '';
+    history.pushState({}, '', currentUrl.toString());
+
+
+
+    // Collect and filter inputs
+    $('.mv-filter-input').each(function () {
+        var value = $(this).val();
+        var name = $(this).attr('name');
+
+        if (value !== '') {
+
+            if (name === 'filter[datefilter]') {
+                var parts = value.split(' - ');
+                var from = parts[0] ? parts[0].trim() : '';
+                var to = parts[1] ? parts[1].trim() : '';
+
+                if (from) {
+                    $('<input>', {
+                        type: 'hidden',
+                        name: 'filter[date_from]',
+                        value: from
+                    }).appendTo(form);
+                }
+
+                if (to) {
+                    $('<input>', {
+                        type: 'hidden',
+                        name: 'filter[date_to]',
+                        value: to
+                    }).appendTo(form);
+                }
+
+            } else {
+                $('<input>', {
+                    type: 'hidden',
+                    name: name,
+                    value: value
+                }).appendTo(form);
+            }
+        }
+    });
+
+    form.submit();
+}
+
+$('.mv-filter-input').keypress(function (e) {
+    if (e.which === 13) {
+        applyFilters();
+    }
+});
+
+$('#apply-filter').on('click', function (e) {
+    e.preventDefault();
+    applyFilters();
+});
+
+$('#reset-filter').on('click', function (e) {
+    e.preventDefault();
+    $('.mv-filter-input').val('');
+    $('#mv-filter-form').submit();
+});
+

@@ -16,7 +16,7 @@ class ProductCommission extends ObjectModel
         'primary' => 'id_product_commission',
         'fields' => [
             'id_product' => ['type' => self::TYPE_INT, 'validate' => 'isUnsignedId', 'required' => true],
-            'id_attribute' => ['type' => self::TYPE_INT, 'validate' => 'isUnsignedId', 'required' => true],
+            'id_attribute' => ['type' => self::TYPE_INT, 'validate' => 'isUnsignedId', 'required' => false],
             'commission_rate' => ['type' => self::TYPE_FLOAT, 'validate' => 'isFloat', 'required' => true],
             'expires_at' => ['type' => self::TYPE_DATE, 'validate' => 'isDate'],
             'changed_by' => ['type' => self::TYPE_STRING, 'validate' => 'isGenericName', 'size' => 256],
@@ -37,6 +37,7 @@ class ProductCommission extends ObjectModel
 
         ],
     ];
+
 
 
 
@@ -77,7 +78,7 @@ class ProductCommission extends ObjectModel
             if ((float)$changedFields['commission_rate']['old'] != (float)$changedFields['commission_rate']['new']) {
                 $productCommissionLogObj->old_commission_rate = (float)$changedFields['commission_rate']['old'];
                 $productCommissionLogObj->new_commission_rate = (float)$changedFields['commission_rate']['new'];
-                $comment .= 'commission rate from : ' . $changedFields['commission_rate']['old'] . ' to : ' . $changedFields['commission_rate']['new'] .' / ' ;
+                $comment .= 'commission rate from : ' . $changedFields['commission_rate']['old'] . ' to : ' . $changedFields['commission_rate']['new'] . ' / ';
             } else {
                 $productCommissionLogObj->old_commission_rate = $old->commission_rate;
                 $productCommissionLogObj->new_commission_rate = $old->commission_rate;
@@ -98,7 +99,14 @@ class ProductCommission extends ObjectModel
             return false;
         }
 
-        if (!$this->doesAttributeBelongToProduct($this->id_product, $this->id_attribute)) {
+        if (empty($this->id_attribute)) {
+            $productobj = new Product((int)$this->id_product);
+            $attributes = $productobj->getAttributeCombinations(Context::getContext()->language->id);
+            if (count($attributes) > 0) {
+                return false;
+            }
+        }
+        if (!empty($this->id_attribute) && !$this->doesAttributeBelongToProduct($this->id_product, $this->id_attribute)) {
             return false;
         }
 
@@ -134,5 +142,4 @@ class ProductCommission extends ObjectModel
         }
         return false;
     }
-
 }

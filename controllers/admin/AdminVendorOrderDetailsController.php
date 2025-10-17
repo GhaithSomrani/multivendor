@@ -21,7 +21,6 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
         $this->_defaultOrderWay = 'DESC';
         $this->list_id = 'vendor_order_details';
 
-        // Enable bulk actions for checkbox selection
         $this->bulk_actions = [
             'updateStatus' => [
                 'text' => 'Mettre à jour le statut',
@@ -29,7 +28,6 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
             ]
         ];
 
-        // Disable add/edit/delete actions but keep view
         $this->addRowAction('view');
         $this->allow_export = true;
         $this->_use_found_rows = true;
@@ -47,6 +45,7 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
                 'filter_key' => 'o!id_order',
                 'havingFilter' => true,
                 'callback' => 'displayOrderReference',
+                'remove_onclick' => true
             ],
             'id_order_detail' => [
                 'title' => $this->l('ID Détail '),
@@ -75,27 +74,34 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
                 'class' => 'fixed-width-xs',
                 'filter_key' => 'a!product_quantity'
             ],
-
             'vendor_amount' => [
                 'title' => $this->l('Montant vendeur'),
                 'type' => 'price',
                 'currency' => true,
                 'callback' => 'displayVendorAmount'
             ],
-            'payment_status' => [
-                'title' => $this->l('Statut de paiement'),
-                'callback' => 'displayPaymentStatus',
-                'orderby' => false,
-                'search' => false
-            ],
-            'order_status_name' => [
-                'title' => $this->l('Statut de commande'),
-                'type' => 'select',
-                'list' => [],
-                'filter_key' => 'osl!name',
+            'manifest_reference' => [
+                'title' => $this->l('Manifeste'),
+                'filter_key' => 'mn!reference',
                 'havingFilter' => true,
-                'callback' => 'displayOrderStatus'
+                'callback' => 'displayManifestReference',
+                'remove_onclick' => true
             ],
+            'payment_reference' => [
+                'title' => $this->l('Statut de paiement'),
+                'orderby' => false,
+                'havingFilter' => true,
+                'callback' => 'displayPaymentReference',
+                'remove_onclick' => true
+            ],
+            // 'order_status_name' => [
+            //     'title' => $this->l('Statut de commande'),
+            //     'type' => 'select',
+            //     'list' => [],
+            //     'filter_key' => 'osl!name',
+            //     'havingFilter' => true,
+            //     'callback' => 'displayOrderStatus'
+            // ],
             'name' => [
                 'title' => $this->l('Statut ligne de commande'),
                 'type' => 'select',
@@ -113,34 +119,51 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
         ];
 
         $this->populateStatusList();
-        $this->populateOrderStatusList();
+        // $this->populateOrderStatusList();
 
         $this->_select = '
-            o.reference as order_reference,
-            o.date_add as order_date,
-            o.id_order,
-            o.current_state as order_current_state,
-            v.shop_name as vendor_name,
-            olst.name as name,
-            COALESCE(olst.color, "#777777") as status_color,
-            vt.id_vendor_payment,
-            vp.status as payment_status,
-            vp.reference as payment_reference,
-            osl.name as order_status_name,
-            COALESCE(os.color, "#777777") as order_status_color
-        ';
+        o.reference as order_reference,
+        o.date_add as order_date,
+        o.id_order,
+        o.current_state as order_current_state,
+        v.shop_name as vendor_name,
+        olst.name as name,
+        olst.color as status_color,
+        vt.id_vendor_payment,
+        vp.status as payment_status,
+        vp.reference as payment_reference,
+        osl.name as order_status_name,
+        os.color as order_status_color,
+        mn.reference as manifest_reference 
+
+    ';
 
         $this->_join = '
-            LEFT JOIN `' . _DB_PREFIX_ . 'orders` o ON (o.id_order = a.id_order)
-            LEFT JOIN `' . _DB_PREFIX_ . 'mv_vendor` v ON (v.id_vendor = a.id_vendor)
-            LEFT JOIN `' . _DB_PREFIX_ . 'mv_order_line_status` ols ON (ols.id_order_detail = a.id_order_detail AND ols.id_vendor = a.id_vendor)
-            LEFT JOIN `' . _DB_PREFIX_ . 'mv_order_line_status_type` olst ON (olst.id_order_line_status_type = ols.id_order_line_status_type)
-            LEFT JOIN `' . _DB_PREFIX_ . 'mv_vendor_transaction` vt ON (vt.order_detail_id = a.id_order_detail AND vt.transaction_type = "commission")
-            LEFT JOIN `' . _DB_PREFIX_ . 'mv_vendor_payment` vp ON (vp.id_vendor_payment = vt.id_vendor_payment)
-            LEFT JOIN `' . _DB_PREFIX_ . 'order_state_lang` osl ON (osl.id_order_state = o.current_state AND osl.id_lang = ' . (int)$this->context->language->id . ')
-            LEFT JOIN `' . _DB_PREFIX_ . 'order_state` os ON (os.id_order_state = o.current_state)
-        ';
+        LEFT JOIN `' . _DB_PREFIX_ . 'orders` o ON (o.id_order = a.id_order)
+        LEFT JOIN `' . _DB_PREFIX_ . 'mv_vendor` v ON (v.id_vendor = a.id_vendor)
+        LEFT JOIN `' . _DB_PREFIX_ . 'mv_order_line_status` ols ON (ols.id_order_detail = a.id_order_detail AND ols.id_vendor = a.id_vendor)
+        LEFT JOIN `' . _DB_PREFIX_ . 'mv_order_line_status_type` olst ON (olst.id_order_line_status_type = ols.id_order_line_status_type)
+        LEFT JOIN `' . _DB_PREFIX_ . 'mv_vendor_transaction` vt ON (
+            vt.order_detail_id = a.id_order_detail 
+            AND vt.transaction_type = CASE 
+                WHEN olst.commission_action = "refund" THEN "refund"
+                WHEN olst.commission_action = "add" THEN "commission"
+            END
+        )
+        LEFT JOIN `' . _DB_PREFIX_ . 'mv_vendor_payment` vp ON (vp.id_vendor_payment = vt.id_vendor_payment)
+        LEFT JOIN `' . _DB_PREFIX_ . 'order_state_lang` osl ON (osl.id_order_state = o.current_state AND osl.id_lang = ' . (int)$this->context->language->id . ')
+        LEFT JOIN `' . _DB_PREFIX_ . 'order_state` os ON (os.id_order_state = o.current_state)
+        LEFT JOIN `' . _DB_PREFIX_ . 'mv_manifest_details` md ON (md.id_order_details = a.id_order_detail)
+        LEFT JOIN `' . _DB_PREFIX_ . 'mv_manifest` mn ON (
+            mn.id_manifest = md.id_manifest 
+            AND mn.id_manifest_type = CASE 
+                WHEN olst.commission_action = "refund" THEN 2 
+                WHEN olst.commission_action = "add" THEN 1 
+            END
+        )
+    ';
     }
+
 
     /**
      * Populate the order status list for the dropdown filter
@@ -504,7 +527,7 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
             Manifest::generateMulipleManifestPDF($orderDetailIds, $export_type, $id_vendor);
         } catch (Exception $e) {
             PrestaShopLogger::addLog('Export PDF Error: ' . $e->getMessage(), 3, null, 'AdminVendorOrderDetails');
-          
+
             $this->errors[] = $this->l('Error generating PDF: ') . $e->getMessage();
         }
     }
@@ -592,7 +615,7 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
         }
 
         // Handle other POST actions
-    
+
 
         if (Tools::getValue('action') === 'massUpdateStatus') {
             $this->processMassUpdateStatus();
@@ -643,6 +666,30 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
         return htmlspecialchars($reference);
     }
 
+    public function displayManifestReference($reference, $row)
+    {
+        $id_manifest = Manifest::getIdByReference($reference);
+        $manifestObj = new Manifest($id_manifest);
+        $manifestStatusObj = new ManifestStatusType($manifestObj->id_manifest_status);
+
+        if ($reference) {
+            return  '<a href="' . Manifest::getAdminLink($id_manifest) . '" target="_blank" class="manifest-reference-link">'
+                . htmlspecialchars($reference) . ' <br> <small> ' . $manifestStatusObj->name . '</small> </a>';
+        }
+        return $this->l('N/A');
+    }
+
+    public function displayPaymentReference($reference, $row)
+    {
+        $id_payement = VendorPayment::getIdByReference($reference);
+        $paymentObj = new VendorPayment($id_payement);
+
+        if ($reference) {
+            return  '<a href="' . VendorPayment::getAdminLink($id_payement) . '" target="_blank" class="payment-reference-link" title="' .
+                $this->l('View Payment Details') . '">' . htmlspecialchars($reference)  . '<br> <small> ' . $paymentObj->status . '</small></a>';
+        }
+        return $this->l('N/A');
+    }
     /**
      * Display order line status with color
      */

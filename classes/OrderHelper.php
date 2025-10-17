@@ -4,6 +4,7 @@
  * OrderHelper - Helper class for managing vendor order details
  */
 
+use PSpell\Config;
 use Symfony\Component\Form\Extension\Core\Type\HiddenType;
 
 if (!defined('_PS_VERSION_')) {
@@ -116,194 +117,191 @@ class OrderHelper
      *
      * @return array The vendor order details
      */
-    public static function getVendorOrderDetails($id_vendor, $filters = [], $limit = null, $offset = 0)
+    public static function getVendorOrderDetails($id_vendor, $filters = [], $limit = null, $offset = 0, $front = false)
     {
-        $defaultStatusTypeId = OrderLineStatus::getDefaultStatusTypeId();
 
-        $sql = 'SELECT ' . ($limit ? 'SQL_CALC_FOUND_ROWS ' : '') . '
-            vod.id_order_detail,
-            vod.id_order,
-            vod.product_name,
-            vod.product_reference,
-            vod.product_mpn,
-            vod.product_quantity,
-            vod.product_price,
-            vod.commission_amount,
-            vod.vendor_amount,
-            vod.date_add as order_date,
-            v.shop_name as vendor_name,
-            o.reference as order_reference,
-            o.current_state as order_state_id,
-            osl.name as order_state_name,
-            o.date_add as order_created_date,
-            vt.status as payment_status,
-            olst.name as line_status,
-            olst.color as status_color,
-            ols.id_order_line_status_type as status_type_id,
-            od.unit_price_tax_incl as unit_price , 
-            md.id_manifest 
-        FROM `' . _DB_PREFIX_ . 'mv_vendor_order_detail` vod
-        LEFT JOIN `' . _DB_PREFIX_ . 'mv_vendor` v ON (vod.id_vendor = v.id_vendor)
-        LEFT JOIN `' . _DB_PREFIX_ . 'orders` o ON (vod.id_order = o.id_order)
-        LEFT JOIN `' . _DB_PREFIX_ . 'order_detail` od ON (od.id_order_detail = vod.id_order_detail)
-        LEFT JOIN `' . _DB_PREFIX_ . 'order_state_lang` osl ON (osl.id_order_state = o.current_state)
-        LEFT JOIN `' . _DB_PREFIX_ . 'order_state` os ON (os.id_order_state = o.current_state)
-        LEFT JOIN `' . _DB_PREFIX_ . 'mv_order_line_status` ols ON (ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor)
-        LEFT JOIN `' . _DB_PREFIX_ . 'mv_order_line_status_type` olst ON (olst.id_order_line_status_type = ols.id_order_line_status_type)
-        LEFT JOIN `' . _DB_PREFIX_ . 'mv_vendor_transaction` vt ON (vt.order_detail_id = vod.id_order_detail )
-        LEFT JOIN `' . _DB_PREFIX_ . 'mv_manifest_details` md ON (md.id_order_details = vod.id_order_detail ) 
-        LEFT JOIN `' . _DB_PREFIX_ . 'mv_manifest` m ON (m.id_manifest = md.id_manifest )
-        WHERE vod.id_vendor = ' . (int)$id_vendor;
-
-        // Order ID filter
-        if (!empty($filters['order_id'])) {
-            $order_id = (int)$filters['order_id'];
-            if ($order_id > 0) {
-                $sql .= ' AND vod.id_order = ' . $order_id;
-            }
+        $query = new DbQuery();
+        if ($limit) {
+            $query->select('SQL_CALC_FOUND_ROWS vod.id_order_detail, vod.id_order, vod.product_id, vod.product_attribute_id, vod.product_name, vod.product_reference, vod.product_mpn, vod.product_quantity, vod.product_price, vod.commission_amount, vod.vendor_amount, vod.date_add as order_date, v.shop_name as vendor_name, o.reference as order_reference, o.current_state as order_state_id, osl.name as order_state_name, o.date_add as order_created_date, vt.status as payment_status, olst.name as line_status, olst.color as status_color, ols.id_order_line_status_type as status_type_id, od.unit_price_tax_incl as unit_price, olst.commission_action, vod.commission_rate, md.id_manifest, ma.name as brand_name');
+        } else {
+            $query->select('vod.id_order_detail, vod.id_order, vod.product_id, vod.product_attribute_id, vod.product_name, vod.product_reference, vod.product_mpn, vod.product_quantity, vod.product_price, vod.commission_amount, vod.vendor_amount, vod.date_add as order_date, v.shop_name as vendor_name, o.reference as order_reference, o.current_state as order_state_id, osl.name as order_state_name, o.date_add as order_created_date, vt.status as payment_status, olst.name as line_status, olst.color as status_color, ols.id_order_line_status_type as status_type_id, od.unit_price_tax_incl as unit_price, olst.commission_action, vod.commission_rate, md.id_manifest, ma.name as brand_name');
         }
 
-        // Order Detail ID filter
-        if (!empty($filters['id_order_detail'])) {
-            $id_order_detail = (int)$filters['id_order_detail'];
-            if ($id_order_detail > 0) {
-                $sql .= ' AND vod.id_order_detail = ' . $id_order_detail;
+        $query->from('mv_vendor_order_detail', 'vod');
+
+        $query->leftJoin('mv_vendor', 'v', 'vod.id_vendor = v.id_vendor');
+        $query->leftJoin('orders', 'o', 'vod.id_order = o.id_order');
+        $query->leftJoin('order_detail', 'od', 'od.id_order_detail = vod.id_order_detail');
+        $query->leftJoin('product', 'p', 'p.id_product = vod.product_id');
+        $query->leftJoin('manufacturer', 'ma', 'ma.id_manufacturer = p.id_manufacturer');
+        $query->leftJoin('order_state_lang', 'osl', 'osl.id_order_state = o.current_state');
+        $query->leftJoin('order_state', 'os', 'os.id_order_state = o.current_state');
+        $query->leftJoin('mv_order_line_status', 'ols', 'ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor');
+        $query->leftJoin('mv_order_line_status_type', 'olst', 'olst.id_order_line_status_type = ols.id_order_line_status_type');
+        $query->leftJoin('mv_vendor_transaction', 'vt', 'vt.order_detail_id = vod.id_order_detail');
+        $query->leftJoin('mv_manifest_details', 'md', 'md.id_order_details = vod.id_order_detail');
+        $query->leftJoin('mv_manifest', 'm', 'm.id_manifest = md.id_manifest');
+
+        // WHERE - Base vendor filter
+        $query->where('vod.id_vendor = ' . (int)$id_vendor);
+
+        // Order ID filter
+        if (!empty($filters['order_id']) || !empty($filters['id_order_detail'])) {
+            $order_id = $filters['order_id'] ?? $filters['id_order_detail'];
+            if ($order_id) {
+                $query->where('(vod.id_order_detail like "%' . $order_id . '%" OR vod.id_order like "%' . $order_id . '%")');
             }
         }
 
         // Product name filter
         if (!empty($filters['product_name'])) {
             $product_name = pSQL($filters['product_name']);
-            $sql .= ' AND vod.product_name LIKE "%' . $product_name . '%"';
+            $query->where('vod.product_name LIKE "%' . $product_name . '%"');
         }
 
         // Order current state filter
         if (!empty($filters['order_status']) && is_numeric($filters['order_status'])) {
             $current_state = (int)$filters['order_status'];
-            $sql .= ' AND o.current_state = ' . $current_state;
+            $query->where('o.current_state = ' . $current_state);
         }
 
         // Product reference filter
         if (!empty($filters['reference'])) {
             $reference = pSQL($filters['reference']);
-            $sql .= ' AND vod.product_reference LIKE "%' . $reference . '%"';
+            $query->where('vod.product_reference LIKE "%' . $reference . '%"');
         }
 
         // Status filter
         if (!empty($filters['status']) && is_numeric($filters['status'])) {
             $status_id = (int)$filters['status'];
-            $sql .= ' AND COALESCE(ols.id_order_line_status_type, ' . (int)$defaultStatusTypeId . ') = ' . $status_id;
+            $query->where('ols.id_order_line_status_type = ' . $status_id);
+        }
+
+        // Brand filter 
+        if (!empty($filters['brand'])) {
+            $brand = $filters['brand'];
+            $query->where('ma.name like "%' . $brand . '%"');
         }
 
         // Quantity filters
         if (!empty($filters['quantity']) && is_numeric($filters['quantity'])) {
-            $sql .= ' AND vod.product_quantity = ' . (int)$filters['quantity'];
+            $query->where('vod.product_quantity = ' . (int)$filters['quantity']);
         }
-
         if (!empty($filters['quantity_min']) && is_numeric($filters['quantity_min'])) {
-            $sql .= ' AND vod.product_quantity >= ' . (int)$filters['quantity_min'];
+            $query->where('vod.product_quantity >= ' . (int)$filters['quantity_min']);
         }
-
         if (!empty($filters['quantity_max']) && is_numeric($filters['quantity_max'])) {
-            $sql .= ' AND vod.product_quantity <= ' . (int)$filters['quantity_max'];
+            $query->where('vod.product_quantity <= ' . (int)$filters['quantity_max']);
         }
 
         // Price filters
         if (!empty($filters['price_min']) && is_numeric($filters['price_min'])) {
-            $sql .= ' AND od.unit_price_tax_incl >= ' . (float)$filters['price_min'];
+            $query->where('od.unit_price_tax_incl >= ' . (float)$filters['price_min']);
         }
-
         if (!empty($filters['price_max']) && is_numeric($filters['price_max'])) {
-            $sql .= ' AND od.unit_price_tax_incl <= ' . (float)$filters['price_max'];
+            $query->where('od.unit_price_tax_incl <= ' . (float)$filters['price_max']);
         }
 
         // Date filters
         if (!empty($filters['date_from'])) {
             $date_from = pSQL($filters['date_from']);
-            $sql .= ' AND DATE(o.date_add) >= "' . $date_from . '"';
+            $query->where('DATE(o.date_add) >= "' . $date_from . '"');
         }
-
         if (!empty($filters['date_to'])) {
             $date_to = pSQL($filters['date_to']);
-            $sql .= ' AND DATE(o.date_add) <= "' . $date_to . '"';
+            $query->where('DATE(o.date_add) <= "' . $date_to . '"');
         }
 
         // MPN filter
         if (!empty($filters['mpn'])) {
             $mpn = pSQL($filters['mpn']);
-            $sql .= ' AND vod.product_mpn LIKE "%' . $mpn . '%"';
+            $query->where('vod.product_mpn LIKE "%' . $mpn . '%"');
         }
 
         // Order reference filter
         if (!empty($filters['order_reference'])) {
             $order_ref = pSQL($filters['order_reference']);
-            $sql .= ' AND o.reference LIKE "%' . $order_ref . '%"';
+            $query->where('o.reference LIKE "%' . $order_ref . '%"');
         }
 
         // Payment status filter
         if (!empty($filters['payment_status'])) {
             $payment_status = pSQL($filters['payment_status']);
-            $sql .= ' AND vt.status = "' . $payment_status . '"';
+            $query->where('vt.status = "' . $payment_status . '"');
         }
 
         // Commission amount filters
         if (!empty($filters['commission_min']) && is_numeric($filters['commission_min'])) {
-            $sql .= ' AND vod.commission_amount >= ' . (float)$filters['commission_min'];
+            $query->where('vod.commission_amount >= ' . (float)$filters['commission_min']);
         }
-
         if (!empty($filters['commission_max']) && is_numeric($filters['commission_max'])) {
-            $sql .= ' AND vod.commission_amount <= ' . (float)$filters['commission_max'];
+            $query->where('vod.commission_amount <= ' . (float)$filters['commission_max']);
         }
 
         // Vendor amount filters
         if (!empty($filters['vendor_amount_min']) && is_numeric($filters['vendor_amount_min'])) {
-            $sql .= ' AND vod.vendor_amount >= ' . (float)$filters['vendor_amount_min'];
+            $query->where('vod.vendor_amount >= ' . (float)$filters['vendor_amount_min']);
         }
-
         if (!empty($filters['vendor_amount_max']) && is_numeric($filters['vendor_amount_max'])) {
-            $sql .= ' AND vod.vendor_amount <= ' . (float)$filters['vendor_amount_max'];
+            $query->where('vod.vendor_amount <= ' . (float)$filters['vendor_amount_max']);
         }
 
+        // Commission action filter
+        if (!empty($filters['commission_action'])) {
+            $query->where('olst.commission_action = "' . $filters['commission_action'] . '"');
+        }
 
         // Available for manifest filter
         if (!empty($filters['available_for_manifest'])) {
             $allowedStatusTypes = $filters['available_for_manifest'];
-            $sql .= ' AND ols.id_order_line_status_type IN (' . $allowedStatusTypes . ')';
+            $query->where('ols.id_order_line_status_type IN (' . $allowedStatusTypes . ')');
         }
+
         // Manifest filter
         if (!empty($filters['manifest'])) {
             $manifest_id = (int)$filters['manifest'];
-
             if ($manifest_id > 0) {
-                $sql .= ' AND md.id_manifest = ' . $manifest_id;
+                $query->where('md.id_manifest = ' . $manifest_id);
             } else {
-                $sql .= ' AND md.id_manifest IS NULL';
+                $query->where('md.id_manifest IS NULL');
             }
         }
+
         // Manifest Type filter
         if (!empty($filters['id_manifest_type'])) {
             $manifest_type_id = (int)$filters['id_manifest_type'];
-            $sql .= ' AND m.id_manifest_type = ' . $manifest_type_id;
+            $query->where('m.id_manifest_type = ' . $manifest_type_id);
         }
 
+        // Allowed order line status types filter
         if (!empty($filters['allowed_order_line_status_types'])) {
             $allowedStatusTypes = $filters['allowed_order_line_status_types'];
-            $sql .= ' AND ols.id_order_line_status_type IN (' . $allowedStatusTypes . ')';
+            $query->where('ols.id_order_line_status_type IN (' . $allowedStatusTypes . ')');
         }
 
-        // Group by 
-        $sql .= ' GROUP BY vod.id_order_detail';
+        // Frontend filter - hide certain statuses
+        if ($front) {
+            $hiddenStatusTypes = Configuration::get('MV_HIDE_FROM_VENDOR');
+            $query->where('olst.id_order_line_status_type NOT IN (' . $hiddenStatusTypes . ')');
+        }
 
-        // Order by
+        // GROUP BY
+        $query->groupBy('vod.id_order_detail');
+
+        // ORDER BY
         $orderBy = !empty($filters['order_by']) ? pSQL($filters['order_by']) : 'vod.date_add';
         $orderWay = !empty($filters['order_way']) && strtoupper($filters['order_way']) === 'ASC' ? 'ASC' : 'DESC';
-        $sql .= ' ORDER BY ' . $orderBy . ' ' . $orderWay;
+        $query->orderBy($orderBy . ' ' . $orderWay);
 
-        // Apply pagination if specified
+        // LIMIT
         if ($limit !== null) {
-            $sql .= ' LIMIT ' . (int)$offset . ', ' . (int)$limit;
+            $query->limit((int)$limit, (int)$offset);
         }
-        $results = Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS($sql);
+
+        // Execute query
+        $results = Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS($query);
+
+
 
         // If using pagination, also return total count
         if ($limit !== null) {
@@ -317,7 +315,6 @@ class OrderHelper
 
         return $results;
     }
-
     /**
      * Update vendor order detail when order detail is modified
      *

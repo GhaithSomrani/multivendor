@@ -101,5 +101,15 @@ class VendorTransaction extends ObjectModel
         return parent::update($null_values);
     }
 
+    public static function getByOrderDetailAndType($order_detail_id, $transaction_type)
+    {
+        $query = new DbQuery();
+        $query->select('*');
+        $query->from('mv_vendor_transaction');
+        $query->where('order_detail_id = ' . (int)$order_detail_id);
+        $query->where('transaction_type = "' . pSQL($transaction_type) . '"');
+        $query->orderBy('date_add DESC');
 
+        return Db::getInstance()->getRow($query);
+    }
 }

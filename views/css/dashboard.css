@@ -2,15 +2,17 @@
 
 
 @media (min-width: 1200px) {
-    section>div.container {
-        width: 100%;
-        max-width: 100%;
-    }
+
 
     .content-wrapper-bottom.mb-5.mt-5 {
         margin: auto;
         width: 1440px;
     }
+}
+
+section>div.container {
+    width: 100%;
+    max-width: 100%;
 }
 
 .page-content.card-block {
@@ -33,7 +35,7 @@ header.page-header {
 .mv-container {
     display: flex;
     gap: 24px;
-    max-width: 90%;
+    max-width: 100%;
     margin: 0 auto;
     flex-direction: column;
 }
@@ -155,7 +157,8 @@ span.mv-status-badge {
     color: rgb(255, 255, 255);
     font-weight: 600;
     cursor: pointer;
-    min-width: 120px;
+    width: 100%;
+    min-width: max-content;
     display: block;
 }
 
@@ -278,6 +281,7 @@ span.mv-status-badge {
     text-align: center;
     margin-top: 16px;
 }
+
 
 .mv-empty-state {
     text-align: center;

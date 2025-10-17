@@ -70,14 +70,13 @@ class Manifest extends ObjectModel
      * @param bool $null_values Allow null values
      * @return bool
      */
-    public function update($null_values = false)
+    public function update($null_values = false, $auto_date = true)
     {
         $nextOrderlineStatus = ManifestStatusType::getTheNextOrderlineStatus($this->id_manifest_status);
         $orderDetailIds = Manifest::getOrderdetailsIDs($this->id);
 
         foreach ($orderDetailIds as $id_order_detail) {
             try {
-                // to do remove the vendor id 
                 OrderLineStatus::updateStatus(
                     $id_order_detail['id_order_details'],
                     (int)$this->id_vendor,
@@ -92,7 +91,7 @@ class Manifest extends ObjectModel
         }
 
 
-        return parent::update($null_values);
+        return parent::update($null_values, $auto_date);
     }
 
     // functio that selecte the last id
@@ -563,7 +562,14 @@ class Manifest extends ObjectModel
 
         return Db::getInstance(_PS_USE_SQL_SLAVE_)->getRow($query);
     }
-
+    public static function getIdByReference($reference)
+    {
+        $query = new DbQuery();
+        $query->select('id_manifest');
+        $query->from('mv_manifest', 'm');
+        $query->where('m.reference = "' . pSQL($reference) . '"');
+        return Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue($query);
+    }
     public static function getAdminLink($id_manifest)
     {
         $link = Context::getContext()->link->getAdminLink('AdminManifest');
