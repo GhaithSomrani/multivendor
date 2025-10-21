@@ -74,7 +74,7 @@ class VendorCommission extends ObjectModel
             'id_vendor' => (int)$id_vendor,
             'old_commission_rate' => (float)$old_rate,
             'new_commission_rate' => (float)$new_rate,
-            'changed_by' => (int)$changed_by,
+            'changed_by' => $changed_by,
             'comment' => pSQL($comment),
             'date_add' => date('Y-m-d H:i:s')
         ]);

@@ -25,7 +25,7 @@
                 <div id="generated-comment">
                     <textarea id="input-comment" class="mv-form-control" rows="3"
                         placeholder="Si vous ne trouvez pas votre suggestion dans la recherche, vous pouvez nous fournir des informations à ce sujet ici. Exemple (nom - référence - lien)"
-                        style="resize: none; display: none;" ></textarea>
+                        style="resize: none; "></textarea>
                 </div>
             </div>
 
@@ -60,10 +60,8 @@
             <div class="mv-modal-footer">
 
                 <div class="no-suggestion"> <input type="checkbox" id="no-suggestion"
-                        value="n'existe aucune autre variante, produit similaire ou suggestion alternative disponible.">
-                    <span> Il
-                        n’existe aucune autre
-                        variante, produit similaire ou suggestion alternative disponible. </span>
+                        value="Il n’existe aucune alternative">
+                    <span> Il n’existe aucune alternative</span>
                 </div>
                 <button class="mv-btn mv-btn-primary" value="{$out_of_stock_status->id}" id='outofstock-btn'
                     onclick="confirmOutOfStock()" disabled>

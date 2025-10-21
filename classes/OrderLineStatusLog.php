@@ -23,7 +23,7 @@ class OrderLineStatusLog extends ObjectModel
     /** @var string Comment */
     public $comment;
 
-    /** @var int Changed by (employee/customer ID) */
+    /** @var string Changed by (employee/customer ID) */
     public $changed_by;
 
     /** @var string Creation date */
@@ -41,7 +41,7 @@ class OrderLineStatusLog extends ObjectModel
             'old_id_order_line_status_type' => ['type' => self::TYPE_INT, 'validate' => 'isUnsignedId'],
             'new_id_order_line_status_type' => ['type' => self::TYPE_INT, 'validate' => 'isUnsignedId', 'required' => true],
             'comment' => ['type' => self::TYPE_STRING, 'validate' => 'isCleanHtml'],
-            'changed_by' => ['type' => self::TYPE_INT, 'validate' => 'isUnsignedId', 'required' => true],
+            'changed_by' => ['type' => self::TYPE_STRING, 'validate' => 'isUnsignedId', 'required' => true],
             'date_add' => ['type' => self::TYPE_DATE, 'validate' => 'isDate']
         ]
     ];
@@ -77,7 +77,7 @@ class OrderLineStatusLog extends ObjectModel
             'old_id_order_line_status_type' => $old_status_type_id ? (int)$old_status_type_id : null,
             'new_id_order_line_status_type' => (int)$new_status_type_id,
             'comment' => pSQL($comment),
-            'changed_by' => (int)$changed_by,
+            'changed_by' => $changed_by,
             'date_add' => date('Y-m-d H:i:s')
         ]);
     }
@@ -95,14 +95,10 @@ class OrderLineStatusLog extends ObjectModel
             old_st.name as old_status_name, 
             new_st.name as new_status_name,
             old_st.color as old_status_color, 
-            new_st.color as new_status_color,
-            COALESCE(e.firstname, c.firstname) as changed_by_firstname, 
-            COALESCE(e.lastname, c.lastname) as changed_by_lastname');
+            new_st.color as new_status_color',);
         $query->from('mv_order_line_status_log', 'l');
         $query->leftJoin('mv_order_line_status_type', 'old_st', 'old_st.id_order_line_status_type = l.old_id_order_line_status_type');
         $query->leftJoin('mv_order_line_status_type', 'new_st', 'new_st.id_order_line_status_type = l.new_id_order_line_status_type');
-        $query->leftJoin('employee', 'e', 'e.id_employee = l.changed_by');
-        $query->leftJoin('customer', 'c', 'c.id_customer = l.changed_by');
         $query->where('l.id_order_detail = ' . (int)$id_order_detail);
         $query->orderBy('l.date_add DESC');
 

@@ -2,20 +2,23 @@
 {if $order_details && count($order_details) > 0}
     {foreach $order_details as $detail}
         {assign var='ischecked'  value=in_array($detail.id_order_detail,  $selected_ids )}
+        {assign var='selected' value=Manifest::getManifestByOrderDetailAndType($detail.id_order_detail,$id_manifest_type)}
         {if !$ischecked}
 
             <tr data-order-detail-id="{$detail.id_order_detail}">
+
                 <td class="text-center">
-                    <input type="checkbox" class="order-detail-checkbox" name="selected_order_details[]"
-                        value="{$detail.id_order_detail}" data-order-id="{$detail.id_order}" {if $ischecked}checked="checked" {/if}
-                        {if $detail.checkbox_disabled && !$ischecked}disabled="disabled" {/if} />
+                    <input type="checkbox" class="order-detail-checkbox" name="selected_order_details[]" data-selected="{}"
+                        value="{$detail.id_order_detail}" data-order-id="{$detail.id_order}"
+                        {if $selected.id_manifest }disabled="disabled" {/if} />
+
                 </td>
 
                 <td class="center">
                     {if $detail.id_manifest }
-                        <a href="{Context::getContext()->link->getAdminLink('AdminManifest')}&viewmv_manifest=&id_manifest={$detail.id_manifest}&token={Tools::getAdminTokenLite('AdminManifest')}"
+                        <a href="{Context::getContext()->link->getAdminLink('AdminManifest')}&viewmv_manifest=&id_manifest={$selected.id_manifest}&token={Tools::getAdminTokenLite('AdminManifest')}"
                             class="order-reference-link" target="_blank">
-                            {$detail.id_manifest}
+                            {$selected.id_manifest}
                         </a>
                     {else}
                         -

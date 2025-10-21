@@ -211,7 +211,7 @@
                                                 </span>
                                             </td>
                                             <td>
-                                                {$log.changed_by_firstname} {$log.changed_by_lastname}
+                                                {$log.changed_by}
                                             </td>
                                             <td>
                                                 <pre>{$log.comment}</pre>    

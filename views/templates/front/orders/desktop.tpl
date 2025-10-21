@@ -151,7 +151,7 @@
                                     <div class="zoom-container">
 
                                         <img src="{$product_image}" data-zoom="{$large_image}"
-                                            alt="{$line.product_name|escape:'html':'UTF-8'}" class="zoomable-image">
+                                            alt="{$line.product_name|escape:'html':'UTF-8'}" class="zoomable-image mv-product-image">
                                     </div>
 
                                 </td>
@@ -294,8 +294,7 @@
                                                                     <pre class="mv-history-change">{$h.comment}</pre>
                                                                 </div>
                                                             {/if}
-                                                            <div class="mv-history-user">by {$h.changed_by_firstname|default:'System'}
-                                                                {$h.changed_by_lastname|default:''}</div>
+                                                            <div class="mv-history-user">by {$h.changed_by|default:'System'}</div>
                                                         </div>
                                                     {/foreach}
                                                 {else}
@@ -411,6 +410,7 @@
         document.querySelectorAll('.zoomable-image').forEach(function(img) {
             new Drift(img, {
                 inlineOffsetX: 200,
+                zoomFactor :6,
             });
         });
     });

@@ -223,7 +223,6 @@ class Manifest extends ObjectModel
         try {
 
             $existingManifest = self::getModifiableManifest($id_vendor, $type);
-            $existedOrderDetails = self::getOrderDetailsByType($type) ?? [];
             if ($existingManifest) {
                 if (!$isadmin) {
                     $vendorObj = new Vendor($existingManifest['id_vendor']);
@@ -250,8 +249,8 @@ class Manifest extends ObjectModel
                 if (!Validate::isUnsignedId($id_order_detail)) {
                     continue;
                 }
-                if (!in_array($id_order_detail, $existedOrderDetails)) {
-
+                $manifestrecord = Manifest::getManifestByOrderDetailAndType($id_order_detail, $type);
+                if (!$manifestrecord && empty($manifestrecord)) {
                     $manifest->addOrderDetail($id_order_detail);
                 } else {
                     throw new Exception('Le détail de commande ' . $id_order_detail . ' existe déjà dans ce manifeste.');
@@ -313,20 +312,7 @@ class Manifest extends ObjectModel
     }
 
 
-    public static function getOrderDetailsByType($id_manifest_type)
-    {
-        try {
-            $query = new DbQuery();
-            $query->select('md.id_order_details');
-            $query->from('mv_manifest_details', 'md');
-            $query->leftJoin('mv_manifest', 'm', 'm.id_manifest = md.id_manifest');
-            $query->where('m.id_manifest_type = ' . (int)$id_manifest_type);
-            return Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS($query);
-        } catch (Exception $e) {
-            PrestaShopLogger::addLog('Get Order Details By Type Error: ' . $e->getMessage(), 3, null, 'AdminVendorOrderDetails');
-            return false;
-        }
-    }
+
     public static function getManifestTypeByOrderDetail($id_order_detail)
     {
         if (!Validate::isUnsignedId($id_order_detail)) {

@@ -63,12 +63,10 @@
                 </div>
 
                 {* Mobile/Desktop Detection for Content *}
-                {if Context::getContext()->isMobile() == 1}
-                    {* Load Mobile Template *}
-                    {include file="module:multivendor/views/templates/front/orders/mobile.tpl"}
-                {else}
-                    {* Load Desktop Template *}
+                {if !Context::getContext()->isMobile() || Context::getContext()->isTablet() }
                     {include file="module:multivendor/views/templates/front/orders/desktop.tpl"}
+                {else}
+                    {include file="module:multivendor/views/templates/front/orders/mobile.tpl"}
                 {/if}
 
             </main>

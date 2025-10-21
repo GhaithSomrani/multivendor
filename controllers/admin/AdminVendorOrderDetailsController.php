@@ -82,7 +82,7 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
             ],
             'manifest_reference' => [
                 'title' => $this->l('Manifeste'),
-                'filter_key' => 'mn!reference',
+                'filter_key' => 'manifest_reference',
                 'havingFilter' => true,
                 'callback' => 'displayManifestReference',
                 'remove_onclick' => true
@@ -90,6 +90,7 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
             'payment_reference' => [
                 'title' => $this->l('Statut de paiement'),
                 'orderby' => false,
+                'filter_key' => 'payment_reference',
                 'havingFilter' => true,
                 'callback' => 'displayPaymentReference',
                 'remove_onclick' => true
@@ -131,11 +132,10 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
         olst.color as status_color,
         vt.id_vendor_payment,
         vp.status as payment_status,
-        vp.reference as payment_reference,
+        MAX(vp.reference) as payment_reference, 
         osl.name as order_status_name,
         os.color as order_status_color,
-        mn.reference as manifest_reference 
-
+        MAX(mn.reference) as manifest_reference
     ';
 
         $this->_join = '
@@ -162,6 +162,8 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
             END
         )
     ';
+
+        $this->_group = 'GROUP BY a.id_vendor_order_detail';
     }
 
 
@@ -772,12 +774,10 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
             '
         SELECT olsl.*, 
                old_st.name as old_status_name, old_st.color as old_status_color,
-               new_st.name as new_status_name, new_st.color as new_status_color,
-               e.firstname as changed_by_firstname, e.lastname as changed_by_lastname
+               new_st.name as new_status_name, new_st.color as new_status_color
         FROM ' . _DB_PREFIX_ . 'mv_order_line_status_log olsl
         LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status_type old_st ON old_st.id_order_line_status_type = olsl.old_id_order_line_status_type
         LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status_type new_st ON new_st.id_order_line_status_type = olsl.new_id_order_line_status_type
-        LEFT JOIN ' . _DB_PREFIX_ . 'employee e ON e.id_employee = olsl.changed_by
         WHERE olsl.id_order_detail = ' . (int)$vendorOrderDetail->id_order_detail . '
         AND olsl.id_vendor = ' . (int)$vendorOrderDetail->id_vendor . '
         ORDER BY olsl.date_add DESC'

@@ -1171,7 +1171,7 @@ function addSuggestion(idProduct, btn) {
 }
 function updateVariantSelect() {
 
-    if (selectedSuggestions.length < 1 && !noSuggestion && $('#input-comment').val() == '') {
+    if (selectedSuggestions.length < 1 && !noSuggestion) {
         $('#outofstock-btn').attr('disabled', true);
     } else {
         $('#outofstock-btn').attr('disabled', false);
@@ -1249,7 +1249,7 @@ $(document).ready(function () {
 $(document).ready(function () {
 
     $('#input-comment').on('input', function () {
-        if (selectedSuggestions.length < 1 && $(this).val() == '' && !noSuggestion) {
+        if (selectedSuggestions.length < 1  && !noSuggestion) {
             $('#outofstock-btn').attr('disabled', true);
         } else {
             $('#outofstock-btn').attr('disabled', false);

@@ -37,8 +37,7 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
 
         // get ajax actions from template
 
-
-
+ 
         $id_vendor = $this->context->smarty->getTemplateVars('id_vendor');
         $id_supplier = $this->context->smarty->getTemplateVars('id_supplier');
         // Get Vendor Address 

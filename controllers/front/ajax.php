@@ -371,6 +371,7 @@ class MultivendorAjaxModuleFrontController extends ModuleFrontController
 
 
             $productsData[] = [
+                'current_product_id' => $orderDetailObj->product_id,
                 'id_product' => $product['id_product'],
                 'name' => $product['name'],
                 'reference' => $product['reference'],

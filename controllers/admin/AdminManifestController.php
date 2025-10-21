@@ -270,13 +270,13 @@ class AdminManifestController extends ModuleAdminController
                 $selected_ids = !empty($selected_data) ? array_column($selected_data, 'id_order_details') : [];
             }
         }
-        
+
 
         $filters['id_vendor'] = $vendorId;
 
         $details = OrderHelper::getVendorOrderDetails($vendorId, $filters);
 
-        
+
         $this->context->smarty->assign([
             'orderStatuses' => $orderStatuses,
             'selected_ids' => $selected_ids,
@@ -783,6 +783,7 @@ class AdminManifestController extends ModuleAdminController
             $detail['checkbox_disabled'] = $checkboxState['disabled'];
         }
         $this->context->smarty->assign([
+            'id_manifest_type' => $manifesTypeId,
             'manifest_id' => $currentManifestId,
             'is_edit_mode' => $isEditMode,
             'order_details' => $details,

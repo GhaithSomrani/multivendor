@@ -1413,7 +1413,7 @@ tr.mv-mpn-found {
 
 /* Hide desktop elements on mobile */
 @media (max-width: 768px) {
-
+/* 
     .mv-status-breakdown,
     .mv-bulk-actions,
     .mv-global-mpn-container,
@@ -1421,7 +1421,7 @@ tr.mv-mpn-found {
     .mv-pagination,
     #pickup-manifest-block {
         display: none !important;
-    }
+    } */
 
 }
 
@@ -1576,8 +1576,8 @@ div#load-more {
 }
 
 #variant-selected {
-    height: 4rem;
-    padding: 1rem;
+    height: min-content;
+    padding: 0.5rem;
     max-width: 100%;
     width: 100%;
     border-radius: 8px;
@@ -1604,6 +1604,9 @@ div#load-more {
     flex-shrink: 0;
     justify-content: space-between;
     gap: 1rem;
+}
+.variant-selected-item span {
+    font-size: 0.8rem;
 }
 
 .no-suggestion {

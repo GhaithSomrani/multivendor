@@ -32,7 +32,12 @@ class OrderLineStatus extends ObjectModel
     /** @var string Last update date */
     public $date_upd;
 
+    /** @var bool Is admin change */
     public $is_admin = false;
+
+    /** @var string Last update date */
+    public $changed_by;
+
     /**
      * @see ObjectModel::$definition
      */
@@ -59,7 +64,8 @@ class OrderLineStatus extends ObjectModel
             'id_order_line_status_type' => [],
             'comment' => [],
             'date_add' => [],
-            'date_upd' => []
+            'date_upd' => [],
+            'changed_by' => ['required' => false],
         ],
 
 
@@ -72,7 +78,7 @@ class OrderLineStatus extends ObjectModel
     {
         try {
             $className = Context::getContext()->controller->className ?? 'FrontOffice';
-   
+
 
             // Auto-determine vendor if not set
             if (empty($this->id_vendor) && !empty($this->id_order_detail)) {
@@ -219,13 +225,23 @@ class OrderLineStatus extends ObjectModel
      */
     protected function getChangedBy()
     {
-        if (Context::getContext()->employee && Context::getContext()->employee->id) {
-            return (int)Context::getContext()->employee->id;
+        if (!$this->isApiCall()) {
+            if (Context::getContext()->employee && Context::getContext()->employee->id) {
+                $employeeObject = new Employee((int)Context::getContext()->employee->id);
+                return 'PR/'.$employeeObject->firstname . ' ' . $employeeObject->lastname;
+            }
+
+            if (Context::getContext()->customer && Context::getContext()->customer->id) {
+                $customerObject = new Customer((int)Context::getContext()->customer->id);
+                return 'VD/'.$customerObject->firstname . ' ' . $customerObject->lastname;
+            }
+        } else {
+            if (!empty($this->changed_by)) {
+                return 'OD/'.$this->changed_by;
+            }
         }
-        if (Context::getContext()->customer && Context::getContext()->customer->id) {
-            return (int)Context::getContext()->customer->id;
-        }
-        return 0; // System/webservice
+
+        return 'System';
     }
 
     /**

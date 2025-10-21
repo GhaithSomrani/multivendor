@@ -621,7 +621,7 @@ class VendorHelper
                     'old_status' => $log['old_status_name'] ?: 'Initial',
                     'new_status' => $log['new_status_name'],
                     'comment' => $log['comment'],
-                    'changed_by' => $log['changed_by_firstname'] . ' ' . $log['changed_by_lastname']
+                    'changed_by' => $log['changed_by']
                 ];
             }
 
