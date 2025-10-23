@@ -71,15 +71,14 @@ class OrderLineStatusLog extends ObjectModel
      */
     public static function logStatusChange($id_order_detail, $id_vendor, $old_status_type_id, $new_status_type_id, $changed_by, $comment = null)
     {
-        return Db::getInstance()->insert('mv_order_line_status_log', [
-            'id_order_detail' => (int)$id_order_detail,
-            'id_vendor' => (int)$id_vendor,
-            'old_id_order_line_status_type' => $old_status_type_id ? (int)$old_status_type_id : null,
-            'new_id_order_line_status_type' => (int)$new_status_type_id,
-            'comment' => pSQL($comment),
-            'changed_by' => $changed_by,
-            'date_add' => date('Y-m-d H:i:s')
-        ]);
+        $log = new OrderLineStatusLog();
+        $log->id_order_detail = (int)$id_order_detail;
+        $log->id_vendor = (int)$id_vendor;
+        $log->old_id_order_line_status_type = $old_status_type_id ? (int)$old_status_type_id : null;
+        $log->new_id_order_line_status_type = (int)$new_status_type_id;
+        $log->comment = $comment;
+        $log->changed_by = $changed_by;
+        return $log->save();
     }
 
     /**

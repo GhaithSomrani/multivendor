@@ -354,27 +354,16 @@ class OrderHelper
                 $vendor_amount = $total_price - $commission_amount;
 
                 // Update the vendor order detail with new product info including reference
-                $result = Db::getInstance()->update('mv_vendor_order_detail', [
-                    'product_name' => pSQL($orderDetail->product_name),
-                    'product_reference' => pSQL($orderDetail->product_reference),
-                    'product_mpn' => pSQL($product->mpn ?: $orderDetail->product_reference),
-                    'product_price' => (float)$orderDetail->unit_price_tax_incl,
-                    'product_quantity' => (int)$orderDetail->product_quantity,
-                    'commission_rate' => (float)$commission_rate,
-                    'commission_amount' => (float)$commission_amount,
-                    'vendor_amount' => (float)$vendor_amount,
-                ], 'id_vendor_order_detail = ' . (int)$vendorOrderDetail['id_vendor_order_detail']);
-
-                // OrderLineStatusLog::logStatusChange(
-                //     $orderDetail->id_order_detail,
-                //     $vendor['id_vendor'],
-                //     'updated',
-                //     'updated',
-                //     $currentStatus,
-                //     'commande modifiée de l\'administration - mise à jour de la ligne de commande pour le vendeur'
-                // );
-
-                return $result;
+                $vendorOrderDetailObj = new VendorOrderDetail($vendorOrderDetail['id_vendor_order_detail']);
+                $vendorOrderDetailObj->product_name = $orderDetail->product_name;
+                $vendorOrderDetailObj->product_reference = $orderDetail->product_reference;
+                $vendorOrderDetailObj->product_mpn = $product->mpn ?: $orderDetail->product_reference;
+                $vendorOrderDetailObj->product_price = $orderDetail->unit_price_tax_incl;
+                $vendorOrderDetailObj->product_quantity = $orderDetail->product_quantity;
+                $vendorOrderDetailObj->commission_rate = $commission_rate;
+                $vendorOrderDetailObj->commission_amount = $commission_amount;
+                $vendorOrderDetailObj->vendor_amount = $vendor_amount;
+                return $vendorOrderDetailObj->save();
             } else {
                 // If vendor order detail doesn't exist, create it
                 return self::processOrderDetailForVendor($orderDetail);

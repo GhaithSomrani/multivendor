@@ -88,7 +88,7 @@ class ProductCommission extends ObjectModel
             }
             $productCommissionLogObj->comment  = $comment;
             $productCommissionLogObj->changed_by = $this->changed_by;
-            return  $productCommissionLogObj->add();
+            return  $productCommissionLogObj->save();
         }
         return true;
     }
@@ -118,7 +118,7 @@ class ProductCommission extends ObjectModel
             $productCommissionLogObj->new_commission_rate = $this->commission_rate;
             $productCommissionLogObj->comment = 'Ajout une nouvelle commission';
             $productCommissionLogObj->changed_by = $this->changed_by;
-            return $productCommissionLogObj->add();
+            return $productCommissionLogObj->save();
         }
         return false;
     }

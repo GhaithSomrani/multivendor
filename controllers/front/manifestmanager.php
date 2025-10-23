@@ -313,6 +313,10 @@ class MultivendorManifestManagerModuleFrontController extends ModuleFrontControl
         $orderDetails = Tools::getValue('order_details', []);
         $id_manifest_type = (int)Tools::getValue('id_manifest_type');
         $manifest = new Manifest($id_manifest);
+        $old_ids = ManifestDetails::getOrderDetailsByManifest($id_manifest);
+        $new_ids = $orderDetails;
+        $ids_to_add = array_diff($new_ids, $old_ids);
+        $ids_to_remove = array_diff($old_ids, $new_ids);
         if ($manifest->id_vendor != $this->vendor['id_vendor']) {
             $this->ajaxResponse(['error' => 'Access denied'], 403);
             return;
@@ -332,14 +336,17 @@ class MultivendorManifestManagerModuleFrontController extends ModuleFrontControl
         try {
             if ($manifest->id_manifest_type == Manifest::TYPE_PICKUP) {
                 $manifest->id_manifest_status = Configuration::get('mv_pickup');
-                $manifest->update();
+                $manifest->save();
             } elseif ($manifest->id_manifest_type == Manifest::TYPE_RETURNS) {
                 $manifest->id_manifest_status = configuration::get('mv_returns');
-                $manifest->update();
+                $manifest->save();
             }
 
-            $manifest->clearOrderDetails();
-            foreach ($orderDetails as $id_order_detail) {
+            foreach ($ids_to_remove as $id_order_detail) {
+                $manifest->removeOrderDetail($id_order_detail);
+            }
+
+            foreach ($ids_to_add as $id_order_detail) {
                 $manifest->addOrderDetail($id_order_detail);
             }
 
@@ -427,14 +434,19 @@ class MultivendorManifestManagerModuleFrontController extends ModuleFrontControl
                     $this->ajaxResponse(['error' => 'Manifest cannot be modified'], 400);
                     return;
                 }
-
-                $manifest->clearOrderDetails();
-                foreach ($orderDetails as $id_order_detail) {
+                $manifest = new Manifest($id_manifest);
+                $old_ids = ManifestDetails::getOrderDetailsByManifest($id_manifest);
+                $new_ids = $orderDetails;
+                $ids_to_add = array_diff($new_ids, $old_ids);
+                $ids_to_remove = array_diff($old_ids, $new_ids);
+                foreach ($ids_to_remove as $id_order_detail) {
+                    $manifest->removeOrderDetail($id_order_detail);
+                }
+                foreach ($ids_to_add as $id_order_detail) {
                     $manifest->addOrderDetail($id_order_detail);
                 }
             } else {
-                // Create new manifest without changing status
-                $manifest_id = Manifest::addNewManifest(
+                $manifest = Manifest::addNewManifest(
                     $orderDetails,
                     $this->vendor['id_vendor'],
                     Manifest::TYPE_PICKUP,

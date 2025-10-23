@@ -129,6 +129,7 @@ class AdminVendorPaymentsController extends ModuleAdminController
             return false;
         }
 
+
         $resetTransaction = Db::getInstance()->execute('UPDATE ' . _DB_PREFIX_ . 'mv_vendor_transaction SET id_vendor_payment = 0  , status = "pending" WHERE id_vendor_payment = ' . (int)$id_payment);
         if (!$resetTransaction) {
             $this->errors[] = $this->l('Error resetting transactions for this payment.');
@@ -430,14 +431,11 @@ class AdminVendorPaymentsController extends ModuleAdminController
             }
 
             // Remove transaction from payment
-            $result = Db::getInstance()->update(
-                'mv_vendor_transaction',
-                [
-                    'status' => 'pending',
-                    'id_vendor_payment' => 0
-                ],
-                'id_vendor_transaction = ' . (int)$transaction_id
-            );
+            $transactionObj = new VendorTransaction($transaction_id);
+            $transactionObj->status = 'pending';
+            $transactionObj->id_vendor_payment = 0;
+            $result = $transactionObj->save();
+
 
             if ($result) {
                 // Update payment amount
@@ -518,15 +516,11 @@ class AdminVendorPaymentsController extends ModuleAdminController
                 die(json_encode(['success' => false, 'message' => $this->l('Transaction not available')]));
             }
 
-            // Add transaction to payment
-            $result = Db::getInstance()->update(
-                'mv_vendor_transaction',
-                [
-                    'status' => 'paid',
-                    'id_vendor_payment' => (int)$payment_id
-                ],
-                'id_vendor_transaction = ' . (int)$transaction_id
-            );
+            $transactionObj = new VendorTransaction($transaction_id);
+            $transactionObj->status = 'paid';
+            $transactionObj->id_vendor_payment = (int)$payment_id;
+            $result = $transactionObj->save();
+
 
             if ($result) {
                 // Update payment amount
@@ -555,11 +549,9 @@ class AdminVendorPaymentsController extends ModuleAdminController
         );
 
         if ($total !== false) {
-            Db::getInstance()->update(
-                'mv_vendor_payment',
-                ['amount' => (float)$total],
-                'id_vendor_payment = ' . (int)$payment_id
-            );
+            $vendorPaymentOBJ = new VendorPayment($payment_id);
+            $vendorPaymentOBJ->amount = (float)$total;
+            $vendorPaymentOBJ->save();
         }
     }
 
@@ -781,14 +773,13 @@ class AdminVendorPaymentsController extends ModuleAdminController
             return false;
         }
 
-        return Db::getInstance()->update(
-            'mv_vendor_transaction',
-            [
-                'status' => 'paid',
-                'id_vendor_payment' => (int)$paymentId
-            ],
-            'id_vendor_transaction IN (' . implode(',', array_map('intval', $transactionIds)) . ')'
-        );
+        foreach ($transactionIds as $id) {
+            $transaction = new VendorTransaction($id);
+            $transaction->status = 'paid';
+            $transaction->id_vendor_payment = (int)$paymentId;
+            $transaction->save();
+        }
+        return true;
     }
 
     /**

@@ -27,6 +27,7 @@ require_once(dirname(__FILE__) . '/classes/TransactionHelper.php');
 require_once(dirname(__FILE__) . '/classes/Manifest.php');
 require_once(dirname(__FILE__) . '/classes/ManifestStatusType.php');
 require_once(dirname(__FILE__) . '/classes/ManifestType.php');
+require_once(dirname(__FILE__) . '/classes/ManifestDetails.php');
 require_once(dirname(__FILE__) . '/classes/ProductCommission.php');
 require_once(dirname(__FILE__) . '/classes/ProductCommissionLog.php');
 class multivendor extends Module
