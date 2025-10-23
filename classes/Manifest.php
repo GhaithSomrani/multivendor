@@ -4,6 +4,7 @@
  * Manifest model class
  */
 
+
 if (!defined('_PS_VERSION_')) {
     exit;
 }
@@ -14,6 +15,7 @@ class Manifest extends ObjectModel
     public $id;
 
     /** @var string Manifest reference */
+
     public $reference;
 
     /** @var int Vendor ID */
@@ -115,23 +117,40 @@ class Manifest extends ObjectModel
         if (!$this->id || !$id_order_detail) {
             return false;
         }
-
-        $sql = 'INSERT INTO `' . _DB_PREFIX_ . 'mv_manifest_details` 
-                (id_manifest, id_order_details, date_add, date_upd)
-                VALUES (' . (int)$this->id . ', ' . (int)$id_order_detail . ', NOW(), NOW())';
-
-        return Db::getInstance()->execute($sql);
+        $manifestDetailsObj = new ManifestDetails();
+        $manifestDetailsObj->id_manifest = (int)$this->id;
+        $manifestDetailsObj->id_order_details = (int)$id_order_detail;
+        return $manifestDetailsObj->save();
     }
 
 
 
+    /**
+     * Remove order detail from manifest
+     * 
+     * @param int $id_manifest Manifest ID
+     * @param int $id_order_detail Order detail ID
+     * @return bool
+     */
+    public function removeOrderDetail($id_order_detail)
+    {
+        if (!$this->id || !$id_order_detail) {
+            return false;
+        }
+        $manifestDetailsID = ManifestDetails::getByManifestAndOrderDetails($this->id, $id_order_detail);
+        $manifestdetailsObj = new ManifestDetails($manifestDetailsID);
+        return $manifestdetailsObj->delete();
+    }
+
 
     public function clearOrderDetails()
     {
-        return Db::getInstance()->delete(
-            'mv_manifest_details',
-            'id_manifest = ' . (int)$this->id
-        );
+        $manifestDetails = ManifestDetails::getOrderDetailsByManifest($this->id);
+        foreach ($manifestDetails as $detail) {
+            $manifestDetailsObj = new ManifestDetails($detail['id_manifest_details']);
+            $manifestDetailsObj->delete();
+        }
+        return true;
     }
 
 
@@ -223,16 +242,17 @@ class Manifest extends ObjectModel
         try {
 
             $existingManifest = self::getModifiableManifest($id_vendor, $type);
+            $old_ids = ManifestDetails::getOrderDetailsByManifest($existingManifest['id_manifest']) ?? [];
+            $new_ids = $orderdetails;
+            $ids_to_add = array_diff($new_ids, $old_ids);
             if ($existingManifest) {
                 if (!$isadmin) {
                     $vendorObj = new Vendor($existingManifest['id_vendor']);
                     throw new Exception('Un manifeste pour le fournisseur ' . $vendorObj->shop_name . ' existe deja avec la reference :' . $existingManifest['reference'] . '. <br> Veuillez le compléter ou créer un nouveau manifeste après avoir validé celui en cours.');
-                    return false;
                 } else {
                     $manifest = new Manifest($existingManifest['id_manifest']);
                     $manifest->id_address = $id_address;
-                    $manifest->clearOrderDetails();
-                    $manifest->update();
+                    $manifest->save();
                 }
             } else {
                 $manifest = new Manifest();
@@ -241,20 +261,23 @@ class Manifest extends ObjectModel
                 $manifest->id_address = $id_address;
                 $manifest->id_manifest_status = $id_manifest_status ?? 1;
                 $manifest->id_manifest_type = $type;
-                if (!$manifest->add()) {
+
+                if (!$manifest->save()) {
                     return false;
                 }
             }
-            foreach ($orderdetails as $id_order_detail) {
+            foreach ($ids_to_add as $id_order_detail) {
                 if (!Validate::isUnsignedId($id_order_detail)) {
                     continue;
                 }
                 $manifestrecord = Manifest::getManifestByOrderDetailAndType($id_order_detail, $type);
                 if (!$manifestrecord && empty($manifestrecord)) {
                     $manifest->addOrderDetail($id_order_detail);
-                } else {
-                    throw new Exception('Le détail de commande ' . $id_order_detail . ' existe déjà dans ce manifeste.');
                 }
+            }
+            if ($manifest->id) {
+                $msg = 'Manifest ' . $manifest->reference . ' add : '  . implode(',', $ids_to_add);
+                PrestaShopLogger::addLog($msg, 1, null, 'Manifest', $manifest->id, Context::getContext()->employee->id ?? Context::getContext()->customer->id ?? null);
             }
             return $manifest;
         } catch (Exception $e) {

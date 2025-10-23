@@ -381,19 +381,28 @@ class AdminManifestController extends ModuleAdminController
 
         if ($this->object->id) {
             $manifest = new Manifest($this->object->id);
-            $manifest->clearOrderDetails();
             if ((int)Tools::getValue('id_manifest_status')) {
                 $manifest->id_manifest_status = (int)Tools::getValue('id_manifest_status');
             }
-            $manifest->update();
+            $manifest->save();
         }
 
 
         $selectedOrderDetails = Tools::getValue('selected_order_details');
-        if ($selectedOrderDetails) {
-            $orderDetailIds = array_map('intval', explode(',', $selectedOrderDetails));
-            foreach ($orderDetailIds as $id_order_detail) {
+        $orderDetailIds = array_map('intval', explode(',', $selectedOrderDetails));
+
+        $old_ids = ManifestDetails::getOrderDetailsByManifest($this->object->id);
+        $new_ids = $orderDetailIds;
+        $ids_to_add = array_diff($new_ids, $old_ids);
+        $ids_to_remove = array_diff($old_ids, $new_ids);
+        if ($ids_to_add) {
+            foreach ($ids_to_add as $id_order_detail) {
                 $this->addOrderDetailToManifest($result->id, $id_order_detail);
+            }
+        }
+        if ($ids_to_remove) {
+            foreach ($ids_to_remove as $id_order_detail) {
+                $this->removeOrderDetail($result->id, $id_order_detail);
             }
         }
 
@@ -415,6 +424,16 @@ class AdminManifestController extends ModuleAdminController
         $manifest = new Manifest($id_manifest);
         return $manifest->addOrderDetail($id_order_detail);
     }
+
+    /**
+     * Remove order detail from manifest
+     */
+    private function removeOrderDetail($id_manifest, $id_order_detail)
+    {
+        $manifest = new Manifest($id_manifest);
+        return $manifest->removeOrderDetail($id_order_detail);
+    }
+
     /**
      * Render view page
      */
@@ -463,7 +482,7 @@ class AdminManifestController extends ModuleAdminController
             $id_manifest_status = (int)Tools::getValue('id_manifest_status');
             $manifest = new Manifest($id_manifest);
             $manifest->id_manifest_status = $id_manifest_status;
-            $manifest->update();
+            $manifest->save();
         } catch (Exception $e) {
             return $this->errors[] = $e->getMessage();
         }

@@ -316,20 +316,15 @@ class AdminVendorsController extends ModuleAdminController
                 );
 
                 if ($existingCommission) {
-
-                    // Update existing commission
-                    Db::getInstance()->update('mv_vendor_commission', [
-                        'commission_rate' => $commission_rate,
-                        'date_upd' => date('Y-m-d H:i:s')
-                    ], '`id_vendor_commission` = ' . (int)$existingCommission['id_vendor_commission']);
+                    $commsionObj = new VendorCommission($existingCommission['id_vendor_commission']);
+                    $commsionObj->commission_rate = $commission_rate;
+                    $commsionObj->save();
                 } else {
-                    // Create new commission
-                    Db::getInstance()->insert('mv_vendor_commission', [
-                        'id_vendor' => (int)$this->object->id,
-                        'commission_rate' => $commission_rate,
-                        'date_add' => date('Y-m-d H:i:s'),
-                        'date_upd' => date('Y-m-d H:i:s')
-                    ]);
+
+                    $commsionObj = new VendorCommission();
+                    $commsionObj->id_vendor = (int)$this->object->id;
+                    $commsionObj->commission_rate = $commission_rate;
+                    $commsionObj->save();
                 }
 
                 return true;

@@ -358,7 +358,7 @@ class OrderLineStatus extends ObjectModel
             $orderLineStatus->id_order_line_status_type = (int)$id_status_type;
             $orderLineStatus->comment = $comment;
             $orderLineStatus->is_admin = $is_admin;
-            return $orderLineStatus->update();
+            return $orderLineStatus->save();
         } else {
             // Create new status
             $orderLineStatus = new OrderLineStatus();

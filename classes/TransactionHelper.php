@@ -30,16 +30,14 @@ class TransactionHelper
         try {
             $existing = self::getExistingTransaction($order_detail_id, $transaction_type);
             if ($existing) {
+                $id_vendor_payment = $id_vendor_payment ?? $existing['id_vendor_payment'];
+                $status = $id_vendor_payment ? $existing['status'] : $status;
                 if ($existing['status'] !== $status) {
-                    return Db::getInstance()->update(
-                        'mv_vendor_transaction',
-                        [
-                            'status' => pSQL($status),
-                            'id_vendor_payment' => $id_vendor_payment ? (int)$id_vendor_payment : null,
-                            'date_add' => date('Y-m-d H:i:s')
-                        ],
-                        'id_vendor_transaction = ' . (int)$existing['id_vendor_transaction']
-                    );
+                    $transactionObj = new VendorTransaction($existing['id_vendor_transaction']);
+                    $transactionObj->status = pSQL($status);
+                    $transactionObj->id_vendor_payment = $id_vendor_payment ? (int)$id_vendor_payment : null;
+                    $transactionObj->date_add = date('Y-m-d H:i:s');
+                    return $transactionObj->save();
                 }
                 return true;
             }
@@ -51,7 +49,6 @@ class TransactionHelper
             $transaction->status = pSQL($status);
             $transaction->id_vendor_payment = $id_vendor_payment ? (int)$id_vendor_payment : null;
             $transaction->date_add = date('Y-m-d H:i:s');
-
             return $transaction->save();
         } catch (Exception $e) {
             PrestaShopLogger::addLog(
@@ -151,7 +148,7 @@ class TransactionHelper
 
                 case 'none':
                 default:
-                    return self::removeTransaction($id_order_detail);
+                    break;
             }
         } catch (Exception $e) {
             PrestaShopLogger::addLog(
@@ -173,10 +170,17 @@ class TransactionHelper
      */
     public static function removeTransaction($order_detail_id)
     {
-        return Db::getInstance()->delete(
-            'mv_vendor_transaction',
-            'order_detail_id = ' . (int)$order_detail_id
+
+        $transactionIds = Db::getInstance()->executeS(
+            'SELECT id_vendor_transaction FROM ' . _DB_PREFIX_ . 'mv_vendor_transaction
+            WHERE order_detail_id = ' . (int)$order_detail_id
         );
+
+        foreach ($transactionIds as $transactionId) {
+            $transaction = new VendorTransaction($transactionId['id_vendor_transaction']);
+            $transaction->delete();
+        }
+        return true;
     }
 
     /**

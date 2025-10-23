@@ -41,14 +41,14 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
                 'class' => 'fixed-width-xs'
             ],
             'id_order' => [
-                'title' => $this->l('ID Order'),
+                'title' => $this->l('ID Commande'),
                 'filter_key' => 'o!id_order',
                 'havingFilter' => true,
                 'callback' => 'displayOrderReference',
                 'remove_onclick' => true
             ],
             'id_order_detail' => [
-                'title' => $this->l('ID Détail '),
+                'title' => $this->l('ID Détail'),
                 'align' => 'center',
                 'class' => 'fixed-width-sm',
                 'filter_key' => 'a!id_order_detail'
@@ -59,14 +59,9 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
                 'havingFilter' => true
             ],
             'product_name' => [
-                'title' => $this->l('Nom'),
+                'title' => $this->l('Nom produit'),
                 'filter_key' => 'a!product_name',
                 'maxlength' => 60
-            ],
-            'product_reference' => [
-                'title' => $this->l('Référence produit'),
-                'filter_key' => 'a!product_reference',
-                'align' => 'center'
             ],
             'product_quantity' => [
                 'title' => $this->l('QTÉ'),
@@ -80,29 +75,36 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
                 'currency' => true,
                 'callback' => 'displayVendorAmount'
             ],
-            'manifest_reference' => [
-                'title' => $this->l('Manifeste'),
-                'filter_key' => 'manifest_reference',
-                'havingFilter' => true,
+            'manifest_rm' => [
+                'title' => $this->l('RM'),
+                'align' => 'center',
                 'callback' => 'displayManifestReference',
-                'remove_onclick' => true
-            ],
-            'payment_reference' => [
-                'title' => $this->l('Statut de paiement'),
                 'orderby' => false,
-                'filter_key' => 'payment_reference',
-                'havingFilter' => true,
-                'callback' => 'displayPaymentReference',
-                'remove_onclick' => true
+                'havingFilter' => true
             ],
-            // 'order_status_name' => [
-            //     'title' => $this->l('Statut de commande'),
-            //     'type' => 'select',
-            //     'list' => [],
-            //     'filter_key' => 'osl!name',
-            //     'havingFilter' => true,
-            //     'callback' => 'displayOrderStatus'
-            // ],
+            'manifest_rt' => [
+                'title' => $this->l('RT'),
+                'align' => 'center',
+                'callback' => 'displayManifestReference',
+                'orderby' => false,
+                'havingFilter' => true
+            ],
+            'payment_refund' => [
+                'title' => $this->l('Paiement retourné'),
+                'align' => 'center',
+                'type' => 'price',
+                'callback' => 'displayPaymentReference',
+                'orderby' => false,
+                'havingFilter' => true
+            ],
+            'payment_commission' => [
+                'title' => $this->l('Paiement commission'),
+                'align' => 'center',
+                'type' => 'price',
+                'callback' => 'displayPaymentReference',
+                'orderby' => false,
+                'havingFilter' => true
+            ],
             'name' => [
                 'title' => $this->l('Statut ligne de commande'),
                 'type' => 'select',
@@ -120,52 +122,34 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
         ];
 
         $this->populateStatusList();
-        // $this->populateOrderStatusList();
 
         $this->_select = '
-        o.reference as order_reference,
-        o.date_add as order_date,
+        o.reference AS order_reference,
+        o.date_add AS order_date,
         o.id_order,
-        o.current_state as order_current_state,
-        v.shop_name as vendor_name,
-        olst.name as name,
-        olst.color as status_color,
-        vt.id_vendor_payment,
-        vp.status as payment_status,
-        MAX(vp.reference) as payment_reference, 
-        osl.name as order_status_name,
-        os.color as order_status_color,
-        MAX(mn.reference) as manifest_reference
-    ';
+        v.shop_name AS vendor_name,
+        olst.name AS name,
+        olst.color AS status_color,
+        -- Manifestes
+        MAX(CASE WHEN mn.id_manifest_type = 1 THEN mn.reference END) AS manifest_rm,
+        MAX(CASE WHEN mn.id_manifest_type = 2 THEN mn.reference END) AS manifest_rt,
+        -- Paiements
+        MAX(CASE WHEN vt.transaction_type = "refund" THEN vp.reference END) AS payment_refund,
+        MAX(CASE WHEN vt.transaction_type = "commission" THEN vp.reference END) AS payment_commission';
 
         $this->_join = '
         LEFT JOIN `' . _DB_PREFIX_ . 'orders` o ON (o.id_order = a.id_order)
         LEFT JOIN `' . _DB_PREFIX_ . 'mv_vendor` v ON (v.id_vendor = a.id_vendor)
-        LEFT JOIN `' . _DB_PREFIX_ . 'mv_order_line_status` ols ON (ols.id_order_detail = a.id_order_detail AND ols.id_vendor = a.id_vendor)
-        LEFT JOIN `' . _DB_PREFIX_ . 'mv_order_line_status_type` olst ON (olst.id_order_line_status_type = ols.id_order_line_status_type)
-        LEFT JOIN `' . _DB_PREFIX_ . 'mv_vendor_transaction` vt ON (
-            vt.order_detail_id = a.id_order_detail 
-            AND vt.transaction_type = CASE 
-                WHEN olst.commission_action = "refund" THEN "refund"
-                WHEN olst.commission_action = "add" THEN "commission"
-            END
-        )
+        LEFT JOIN `' . _DB_PREFIX_ . 'mv_order_line_status` ols  ON (ols.id_order_detail = a.id_order_detail AND ols.id_vendor = a.id_vendor)
+        LEFT JOIN `' . _DB_PREFIX_ . 'mv_order_line_status_type` olst  ON (olst.id_order_line_status_type = ols.id_order_line_status_type)
+        LEFT JOIN `' . _DB_PREFIX_ . 'mv_vendor_transaction` vt ON (vt.order_detail_id = a.id_order_detail)
         LEFT JOIN `' . _DB_PREFIX_ . 'mv_vendor_payment` vp ON (vp.id_vendor_payment = vt.id_vendor_payment)
-        LEFT JOIN `' . _DB_PREFIX_ . 'order_state_lang` osl ON (osl.id_order_state = o.current_state AND osl.id_lang = ' . (int)$this->context->language->id . ')
-        LEFT JOIN `' . _DB_PREFIX_ . 'order_state` os ON (os.id_order_state = o.current_state)
         LEFT JOIN `' . _DB_PREFIX_ . 'mv_manifest_details` md ON (md.id_order_details = a.id_order_detail)
-        LEFT JOIN `' . _DB_PREFIX_ . 'mv_manifest` mn ON (
-            mn.id_manifest = md.id_manifest 
-            AND mn.id_manifest_type = CASE 
-                WHEN olst.commission_action = "refund" THEN 2 
-                WHEN olst.commission_action = "add" THEN 1 
-            END
-        )
+        LEFT JOIN `' . _DB_PREFIX_ . 'mv_manifest` mn ON (mn.id_manifest = md.id_manifest)
     ';
 
         $this->_group = 'GROUP BY a.id_vendor_order_detail';
     }
-
 
     /**
      * Populate the order status list for the dropdown filter

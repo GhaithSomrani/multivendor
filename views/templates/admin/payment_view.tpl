@@ -142,7 +142,7 @@
                                             <td>{dateFormat date=$detail.order_date full=0}</td>
                                             <td>
                                                 <span
-                                                    class="badge badge-{if $detail.status == 'completed'}success{elseif $detail.status == 'pending'}warning{elseif $detail.status == 'cancelled'}danger{else}info{/if}">
+                                                    class="badge badge-{if $detail.status == 'paid'}success{elseif $detail.status == 'pending'}warning{elseif $detail.status == 'cancelled'}danger{else}info{/if}">
                                                     {$detail.status|default:'pending'|ucfirst}
                                                 </span>
                                             </td>
