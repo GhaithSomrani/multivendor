@@ -8,8 +8,14 @@ if (!defined('_PS_VERSION_')) {
     exit;
 }
 
+require_once _PS_MODULE_DIR_ . 'multivendor/classes/AuditLogTrait.php';
+require_once _PS_MODULE_DIR_ . 'multivendor/classes/AuditLog.php';
+
 class OrderLineStatus extends ObjectModel
 {
+    use AuditLogTrait {
+        update as protected traitUpdate;
+    }
 
     /** @var int Order line status ID */
     public $id;
@@ -147,8 +153,8 @@ class OrderLineStatus extends ObjectModel
             $currentStatus = self::getByOrderDetailAndVendor($this->id_order_detail, $this->id_vendor);
             $old_status_type_id = $currentStatus ? $currentStatus['id_order_line_status_type'] : null;
 
-            // Perform the update
-            $success = parent::update($nullValues);
+            // Perform the update with audit logging
+            $success = $this->traitUpdate($nullValues);
 
             // Log status change if successful
             if ($success) {

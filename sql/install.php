@@ -254,6 +254,25 @@ $sql[] =  'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'mv_product_commission_
     PRIMARY KEY (`id_product_commission_log`)
 ) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8;';
 
+// Create Audit Log table for tracking all CRUD operations
+$sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'mv_audit_log` (
+    `id_audit_log` int(10) unsigned NOT NULL AUTO_INCREMENT,
+    `model_name` varchar(128) NOT NULL,
+    `record_id` int(10) unsigned NOT NULL,
+    `operation` varchar(32) NOT NULL,
+    `data_before` LONGTEXT,
+    `data_after` LONGTEXT,
+    `changed_by` varchar(256) DEFAULT NULL,
+    `context` TEXT,
+    `ip_address` varchar(45) DEFAULT NULL,
+    `user_agent` varchar(512) DEFAULT NULL,
+    `date_add` datetime NOT NULL,
+    PRIMARY KEY (`id_audit_log`),
+    KEY `model_record` (`model_name`, `record_id`),
+    KEY `operation` (`operation`),
+    KEY `date_add` (`date_add`)
+) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8;';
+
 
 // Execute all SQL queries
 

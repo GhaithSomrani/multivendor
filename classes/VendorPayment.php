@@ -3,8 +3,13 @@
 /**
  * VendorPayment model class
  */
+
+require_once _PS_MODULE_DIR_ . 'multivendor/classes/AuditLogTrait.php';
+require_once _PS_MODULE_DIR_ . 'multivendor/classes/AuditLog.php';
+
 class VendorPayment extends ObjectModel
 {
+    use AuditLogTrait;
     /** @var int Payment ID */
     public $id;
 

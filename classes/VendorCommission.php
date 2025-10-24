@@ -8,8 +8,12 @@ if (!defined('_PS_VERSION_')) {
     exit;
 }
 
+require_once _PS_MODULE_DIR_ . 'multivendor/classes/AuditLogTrait.php';
+require_once _PS_MODULE_DIR_ . 'multivendor/classes/AuditLog.php';
+
 class VendorCommission extends ObjectModel
 {
+    use AuditLogTrait;
     /** @var int Commission ID */
     public $id;
 

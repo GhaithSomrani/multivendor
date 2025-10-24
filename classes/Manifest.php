@@ -9,8 +9,14 @@ if (!defined('_PS_VERSION_')) {
     exit;
 }
 
+require_once _PS_MODULE_DIR_ . 'multivendor/classes/AuditLogTrait.php';
+require_once _PS_MODULE_DIR_ . 'multivendor/classes/AuditLog.php';
+
 class Manifest extends ObjectModel
 {
+    use AuditLogTrait {
+        update as protected traitUpdate;
+    }
     /** @var int Manifest ID */
     public $id;
 
@@ -68,7 +74,7 @@ class Manifest extends ObjectModel
 
     /**
      * Update the date_upd before saving
-     * 
+     *
      * @param bool $null_values Allow null values
      * @return bool
      */
@@ -92,8 +98,8 @@ class Manifest extends ObjectModel
             }
         }
 
-
-        return parent::update($null_values, $auto_date);
+        // Use trait's update method which includes audit logging
+        return $this->traitUpdate($null_values);
     }
 
     // functio that selecte the last id

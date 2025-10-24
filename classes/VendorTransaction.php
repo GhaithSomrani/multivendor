@@ -10,8 +10,15 @@ if (!defined('_PS_VERSION_')) {
     exit;
 }
 
+require_once _PS_MODULE_DIR_ . 'multivendor/classes/AuditLogTrait.php';
+require_once _PS_MODULE_DIR_ . 'multivendor/classes/AuditLog.php';
+
 class VendorTransaction extends ObjectModel
 {
+    use AuditLogTrait {
+        add as protected traitAdd;
+        update as protected traitUpdate;
+    }
     /** @var int Order detail ID */
     public $order_detail_id;
 
@@ -78,7 +85,8 @@ class VendorTransaction extends ObjectModel
             return false;
         }
 
-        return parent::add($auto_date, $null_values);
+        // Use trait's add method which includes audit logging
+        return $this->traitAdd($auto_date, $null_values);
     }
 
     /**
@@ -98,7 +106,8 @@ class VendorTransaction extends ObjectModel
             $this->id
         );
 
-        return parent::update($null_values);
+        // Use trait's update method which includes audit logging
+        return $this->traitUpdate($null_values);
     }
 
     public static function getByOrderDetailAndType($order_detail_id, $transaction_type)
