@@ -54,6 +54,14 @@ class ManifestDetails extends ObjectModel
         parent::__construct($id, $id_lang);
     }
 
+    public static function getManiestDetailsbyManifest($id_manifest)
+    {
+        $query = new DbQuery();
+        $query->select('*');
+        $query->from('mv_manifest_details');
+        $query->where('id_manifest = ' . (int)$id_manifest);
+        return Db::getInstance()->executeS($query);
+    }
 
 
     public static function getOrderDetailsByManifest($id_manifest)

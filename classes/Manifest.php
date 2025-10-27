@@ -145,7 +145,7 @@ class Manifest extends ObjectModel
 
     public function clearOrderDetails()
     {
-        $manifestDetails = ManifestDetails::getOrderDetailsByManifest($this->id);
+        $manifestDetails = ManifestDetails::getManiestDetailsbyManifest($this->id);
         foreach ($manifestDetails as $detail) {
             $manifestDetailsObj = new ManifestDetails($detail['id_manifest_details']);
             $manifestDetailsObj->delete();

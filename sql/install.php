@@ -254,8 +254,19 @@ $sql[] =  'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'mv_product_commission_
     PRIMARY KEY (`id_product_commission_log`)
 ) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8;';
 
+$sql[] = ' CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'mv_audit_logs` (
+                `id` INT(11) NOT NULL AUTO_INCREMENT,
+                `entity_type` VARCHAR(100) NOT NULL,
+                `entity_id` INT(11) NOT NULL,
+                `context` TEXT NULL,
+                `changed_data` TEXT NULL,
+                `changed_by` VARCHAR(255) NULL,
+                `action` VARCHAR(20) NOT NULL,
+                `date_add` DATETIME NOT NULL,
+                PRIMARY KEY (`id`),
+                INDEX (`entity_type`, `entity_id`)
+            ) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8;';
 
-// Execute all SQL queries
 
 Configuration::updateValue('mv_pickup', 0);
 Configuration::updateValue('mv_returns', 0);

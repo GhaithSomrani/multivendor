@@ -30,8 +30,12 @@ require_once(dirname(__FILE__) . '/classes/ManifestType.php');
 require_once(dirname(__FILE__) . '/classes/ManifestDetails.php');
 require_once(dirname(__FILE__) . '/classes/ProductCommission.php');
 require_once(dirname(__FILE__) . '/classes/ProductCommissionLog.php');
+require_once(dirname(__FILE__) . '/classes/EntityLogHelper.php');
+require_once(dirname(__FILE__) . '/classes/AuditLogs.php');
 class multivendor extends Module
 {
+    private $beforeData = [];
+
     public function __construct()
     {
         $this->name = 'multivendor';
@@ -85,6 +89,10 @@ class multivendor extends Module
             !$this->registerHook('actionObjectOrderDetailUpdateAfter') ||
             !$this->registerHook('actionObjectOrderDetailDeleteAfter') ||
             !$this->registerHook('addWebserviceResources') ||
+            !$this->registerHook('actionObjectAddAfter') ||
+            !$this->registerHook('actionObjectUpdateBefore') ||
+            !$this->registerHook('actionObjectUpdateAfter') ||
+            !$this->registerHook('actionObjectDeleteAfter') ||
             !$this->installTab()
         ) {
             return false;
@@ -343,6 +351,8 @@ class multivendor extends Module
         $result = VendorHelper::getOrderLineStatusesForAdmin($id_order);
         die(json_encode($result));
     }
+
+
 
     /**
      * Handle admin order line status updates
@@ -839,6 +849,77 @@ class multivendor extends Module
 
             // Log for debugging
             PrestaShopLogger::addLog('Multivendor admin AJAX URL: ' . $adminAjaxUrl, 1, null, 'multivendor');
+        }
+    }
+
+
+
+
+    public function hookActionObjectAddAfter($params)
+    {
+        $entity = $params['object'];
+        $className = get_class($entity);
+
+        if (EntityLogHelper::isLoggable($className)) {
+            AudityLog::setLogs($entity, 'add', []);
+        }
+
+        if (EntityLogHelper::ischildisLoggable($className)) {
+        }
+    }
+
+    public function hookActionObjectUpdateBefore($params)
+    {
+        $object = $params['object'];
+        $className = get_class($object);
+
+        if (EntityLogHelper::isLoggable($className)) {
+            $old_object = new $className($object->id);
+            $key = $className . '_' . $object->id;
+            $this->beforeData[$key] = $old_object->getFields();
+        }
+
+        if (EntityLogHelper::ischildisLoggable($className)) {
+            $old_object = new $className($object->id);
+            $key = 'child_' . $className . '_' . $object->id;
+            $this->beforeData[$key] = $old_object->getFields();
+        }
+    }
+
+
+    public function hookActionObjectDeleteAfter($params)
+    {
+        $entity = $params['object'];
+        $className = get_class($entity);
+
+        if (EntityLogHelper::isLoggable($className)) {
+            AudityLog::setLogs($entity, 'delete', $entity->getFields());
+        }
+        $new_entity = new $className();
+        if (EntityLogHelper::ischildisLoggable($className)) {
+        }
+    }
+
+    public function hookActionObjectUpdateAfter($params)
+    {
+        $object = $params['object'];
+        $className = get_class($object);
+
+        if (EntityLogHelper::isLoggable($className)) {
+            $key = $className . '_' . $object->id;
+            $before = isset($this->beforeData[$key]) ? $this->beforeData[$key] : [];
+            if (!empty($before)) {
+                AudityLog::setLogs($object, 'update', $before);
+                unset($this->beforeData[$key]);
+            }
+        }
+
+        if (EntityLogHelper::ischildisLoggable($className)) {
+            $key = 'child_' . $className . '_' . $object->id;
+            $before = isset($this->beforeData[$key]) ? $this->beforeData[$key] : [];
+            if (!empty($before)) {
+                unset($this->beforeData[$key]);
+            }
         }
     }
 }

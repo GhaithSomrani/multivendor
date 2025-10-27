@@ -761,7 +761,7 @@ class VendorHelper
         vod.vendor_amount,
         olst.name as line_status
     ');
-     
+
         $query->from('mv_vendor_order_detail', 'vod');
         $query->leftJoin('mv_order_line_status', 'ols', 'ols.id_order_detail = vod.id_order_detail ');
         $query->leftJoin('mv_order_line_status_type', 'olst', 'olst.id_order_line_status_type = ols.id_order_line_status_type');
@@ -796,7 +796,7 @@ class VendorHelper
             $module->l('Vendor Amount'),
             $module->l('Status'),
             $module->l('Order Date'),
-          
+
         ]);
 
         // CSV Data - includes all selected columns
