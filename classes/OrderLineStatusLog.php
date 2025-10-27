@@ -41,7 +41,7 @@ class OrderLineStatusLog extends ObjectModel
             'old_id_order_line_status_type' => ['type' => self::TYPE_INT, 'validate' => 'isUnsignedId'],
             'new_id_order_line_status_type' => ['type' => self::TYPE_INT, 'validate' => 'isUnsignedId', 'required' => true],
             'comment' => ['type' => self::TYPE_STRING, 'validate' => 'isCleanHtml'],
-            'changed_by' => ['type' => self::TYPE_STRING, 'validate' => 'isUnsignedId', 'required' => true],
+            'changed_by' => ['type' => self::TYPE_STRING, 'required' => true],
             'date_add' => ['type' => self::TYPE_DATE, 'validate' => 'isDate']
         ]
     ];

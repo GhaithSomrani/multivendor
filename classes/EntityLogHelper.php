@@ -15,7 +15,7 @@ class EntityLogHelper
             'parent_id' => 'id_manifest',
             'child' => 'ManifestDetails',
             'child_id' => 'id_manifest_details',
-            'relation' => 'manifest_id',
+            'relation' => 'id_manifest',
             'status' => 'id_manifest_status',
             'statusObject' => 'ManifestStatusType',
             'action' => ['add', 'update', 'delete']
@@ -25,7 +25,7 @@ class EntityLogHelper
             'parent_id' => 'id_vendor_payment',
             'child' => 'VendorTransaction',
             'child_id' => 'id_vendor_transaction',
-            'relation' => 'vendor_payment_id',
+            'relation' => 'id_vendor_payment',
             'status' => 'status',
             'statusObject' => null,
             'action' => ['add', 'update', 'delete']
@@ -33,9 +33,9 @@ class EntityLogHelper
         [
             'parent' => 'VendorTransaction',
             'parent_id' => 'id_vendor_transaction',
-            'child' => 'VendorOrderDetail',
-            'child_id' => 'id_order_detail',
-            'relation' => 'order_detail_id',
+            'child' => null,
+            'child_id' => null,
+            'relation' => null,
             'status' => 'status',
             'statusObject' => null,
             'action' => ['add', 'update', 'delete']
@@ -44,9 +44,9 @@ class EntityLogHelper
         [
             'parent' => 'ManifestDetails',
             'parent_id' => 'id_manifest_details',
-            'child' => 'VendorOrderDetail',
-            'child_id' => 'id_order_detail',
-            'relation' => 'id_order_details',
+            'child' => null,
+            'child_id' => null,
+            'relation' => null,
             'status' => null,
             'statusObject' => null,
             'action' => ['add', 'delete']
@@ -75,6 +75,16 @@ class EntityLogHelper
         [
             'parent' => 'VendorOrderDetail',
             'parent_id' => 'id_order_detail',
+            'child' => null,
+            'child_id' => null,
+            'relation' => null,
+            'status' => null,
+            'statusObject' => null,
+            'action' => ['add', 'update', 'delete']
+        ],
+        [
+            'parent' => 'VendorCommission',
+            'parent_id' => 'id_vendor_commission',
             'child' => null,
             'child_id' => null,
             'relation' => null,
@@ -150,17 +160,70 @@ class EntityLogHelper
         return array_column(self::ENTITIES, 'parent');
     }
 
-    public static function getSpecificEntity($parent)
-    {
-        return array_filter(self::ENTITIES, function ($entity) use ($parent) {
-            return $entity['parent'] === $parent;
-        });
-    }
 
     public static function getChildren()
     {
         return array_column(self::ENTITIES, 'child');
     }
+
+
+    public static function isLoggable($className)
+    {
+        return in_array($className, self::getAllParents());
+    }
+
+    public static function ischildisLoggable($className)
+    {
+        return in_array($className, self::getChildren());
+    }
+
+    public static function getParentName($className)
+    {
+        return array_values(array_filter(self::ENTITIES, function ($entity) use ($className) {
+            return $entity['child'] === $className;
+        }))[0]['parent'];
+    }
+    public static function getParentId($entity_type, $entity_id)
+    {
+        foreach (self::ENTITIES as $config) {
+            if ($config['child'] === $entity_type) {
+                $obj = new $entity_type($entity_id);
+
+                return $obj->{$config['relation']};
+            }
+        }
+        return null;
+    }
+
+    public static function getRelationField($entity_type)
+    {
+        foreach (self::ENTITIES as $config) {
+            if ($config['child'] === $entity_type) {
+                return $config['relation'];
+            }
+        }
+        return null;
+    }
+
+    public static function getStatusField($entity_type)
+    {
+        foreach (self::ENTITIES as $config) {
+            if ($config['parent'] === $entity_type || $config['child'] === $entity_type) {
+                return $config['status'];
+            }
+        }
+        return null;
+    }
+    public static function getStatusObjectField($entity_type)
+    {
+        foreach (self::ENTITIES as $config) {
+            if ($config['parent'] === $entity_type || $config['child'] === $entity_type) {
+                return $config['statusObject'];
+            }
+        }
+        return null;
+    }
+
 
     public static function getContext($backtrace)
     {
@@ -188,6 +251,9 @@ class EntityLogHelper
             'Employee',
             'EmployeeCore',
             'ControllerCore',
+            'AudityLog',
+            'StatusChangeLog',
+            'ChildRelationLog',
         ];
 
         $skipFunctions = [
@@ -221,16 +287,5 @@ class EntityLogHelper
         }
 
         return !empty($chain) ? implode(' > ', array_reverse($chain)) : 'Unknown';
-    }
-
-
-    public static function isLoggable($className)
-    {
-        return in_array($className, self::getAllParents());
-    }
-
-    public static function ischildisLoggable($className)
-    {
-        return in_array($className, self::getChildren());
     }
 }

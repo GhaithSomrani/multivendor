@@ -32,6 +32,9 @@ require_once(dirname(__FILE__) . '/classes/ProductCommission.php');
 require_once(dirname(__FILE__) . '/classes/ProductCommissionLog.php');
 require_once(dirname(__FILE__) . '/classes/EntityLogHelper.php');
 require_once(dirname(__FILE__) . '/classes/AuditLogs.php');
+require_once(dirname(__FILE__) . '/classes/ChildRelationLog.php');
+require_once(dirname(__FILE__) . '/classes/StatusChangeLog.php');
+
 class multivendor extends Module
 {
     private $beforeData = [];
@@ -878,12 +881,6 @@ class multivendor extends Module
             $key = $className . '_' . $object->id;
             $this->beforeData[$key] = $old_object->getFields();
         }
-
-        if (EntityLogHelper::ischildisLoggable($className)) {
-            $old_object = new $className($object->id);
-            $key = 'child_' . $className . '_' . $object->id;
-            $this->beforeData[$key] = $old_object->getFields();
-        }
     }
 
 
@@ -894,9 +891,6 @@ class multivendor extends Module
 
         if (EntityLogHelper::isLoggable($className)) {
             AudityLog::setLogs($entity, 'delete', $entity->getFields());
-        }
-        $new_entity = new $className();
-        if (EntityLogHelper::ischildisLoggable($className)) {
         }
     }
 
@@ -910,14 +904,6 @@ class multivendor extends Module
             $before = isset($this->beforeData[$key]) ? $this->beforeData[$key] : [];
             if (!empty($before)) {
                 AudityLog::setLogs($object, 'update', $before);
-                unset($this->beforeData[$key]);
-            }
-        }
-
-        if (EntityLogHelper::ischildisLoggable($className)) {
-            $key = 'child_' . $className . '_' . $object->id;
-            $before = isset($this->beforeData[$key]) ? $this->beforeData[$key] : [];
-            if (!empty($before)) {
                 unset($this->beforeData[$key]);
             }
         }

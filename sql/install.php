@@ -255,21 +255,43 @@ $sql[] =  'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'mv_product_commission_
 ) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8;';
 
 $sql[] = ' CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'mv_audit_logs` (
-                `id` INT(11) NOT NULL AUTO_INCREMENT,
-                `entity_type` VARCHAR(100) NOT NULL,
-                `entity_id` INT(11) NOT NULL,
-                `context` TEXT NULL,
-                `changed_data` TEXT NULL,
-                `changed_by` VARCHAR(255) NULL,
-                `action` VARCHAR(20) NOT NULL,
-                `date_add` DATETIME NOT NULL,
-                PRIMARY KEY (`id`),
-                INDEX (`entity_type`, `entity_id`)
-            ) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8;';
+        `id` INT(11) NOT NULL AUTO_INCREMENT,
+        `entity_type` VARCHAR(100) NOT NULL,
+        `entity_id` INT(11) NOT NULL,
+        `context` TEXT NULL,
+        `changed_data` TEXT NULL,
+        `changed_by` VARCHAR(255) NULL,
+        `action` VARCHAR(20) NOT NULL,
+        `date_add` DATETIME NOT NULL,
+        PRIMARY KEY (`id`),
+        INDEX (`entity_type`, `entity_id`)
+    ) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8;';
 
+$sql[] = "CREATE TABLE IF NOT EXISTS `" . _DB_PREFIX_ . "mv_child_relation_logs` (
+        `id` int(11) NOT NULL AUTO_INCREMENT,
+        `parent_entity` varchar(255) NOT NULL,
+        `parent_id` int(11) NOT NULL,
+        `child_entity` varchar(255) NOT NULL,
+        `child_id` int(11) NOT NULL,
+        `action` varchar(50) NOT NULL,
+        `changed_by` varchar(255) DEFAULT NULL,
+        `date_add` datetime NOT NULL,
+        PRIMARY KEY (`id`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8;";
 
-Configuration::updateValue('mv_pickup', 0);
-Configuration::updateValue('mv_returns', 0);
+$sql[] = "CREATE TABLE IF NOT EXISTS `" . _DB_PREFIX_ . "mv_status_change_logs` (
+        `id` int(11) NOT NULL AUTO_INCREMENT,
+        `entity_type` varchar(255) NOT NULL,
+        `entity_id` int(11) NOT NULL,
+        `old_status` varchar(255) DEFAULT NULL,
+        `new_status` varchar(255) DEFAULT NULL,
+        `changed_by` varchar(255) DEFAULT NULL,
+        `date_add` datetime NOT NULL,
+        PRIMARY KEY (`id`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8;";
+
+// Configuration::updateValue('mv_pickup', 0);
+// Configuration::updateValue('mv_returns', 0);
 foreach ($sql as $query) {
     if (!Db::getInstance()->execute($query)) {
         return false;
