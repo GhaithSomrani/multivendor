@@ -19,13 +19,23 @@
                     </a>
                 </div>
                 {foreach from=$order_summary.status_breakdown item=statusData}
-                    <div class="mv-status-item">
-                        <a href="{$link->getModuleLink('multivendor', 'orders', ['status' => $statusData.id_order_line_status_type])}"
-                            class="mv-status-badge mv-filter-status {if $filter_status == $statusData.id_order_line_status_type}active{/if}"
-                            style="background-color: {$status_colors[$statusData.status]|default:'#777'};">
-                            {$statusData.status|capitalize} : {$statusData.count}
-                        </a>
-                    </div>
+                    {if $statusData.id_order_line_status_type != 26 }
+                        <div class="mv-status-item">
+                            <a href="{$link->getModuleLink('multivendor', 'orders', ['status' => $statusData.id_order_line_status_type])}"
+                                class="mv-status-badge mv-filter-status {if $filter_status == $statusData.id_order_line_status_type}active{/if}"
+                                style="background-color: {$status_colors[$statusData.status]|default:'#777'};">
+                                {$statusData.status|capitalize} : {$statusData.count}
+                            </a>
+                        </div>
+                    {elseif $statusData.id_order_line_status_type == 26 && $id_vendor == 7}
+                        <div class="mv-status-item">
+                            <a href="{$link->getModuleLink('multivendor', 'orders', ['status' => $statusData.id_order_line_status_type])}"
+                                class="mv-status-badge mv-filter-status {if $filter_status == $statusData.id_order_line_status_type}active{/if}"
+                                style="background-color: {$status_colors[$statusData.status]|default:'#777'};">
+                                {$statusData.status|capitalize} : {$statusData.count}
+                            </a>
+                        </div>
+                    {/if}
                 {/foreach}
             </div>
         </div>
@@ -135,7 +145,7 @@
                             <tr data-id="{$line.id_order_detail}" data-status="{$line.line_status|default:'En attente'|lower}"
                                 data-product-mpn="{$line.product_mpn}"
                                 data-commission-action="{if isset($line.commission_action)}{$line.commission_action}{else}none{/if}"
-                                class="data-row">
+                                class="data-row" onclick="toggledown(this)">
 
                                 <td>
                                     <a href="#" class="mv-link">
@@ -151,7 +161,8 @@
                                     <div class="zoom-container">
 
                                         <img src="{$product_image}" data-zoom="{$large_image}"
-                                            alt="{$line.product_name|escape:'html':'UTF-8'}" class="zoomable-image mv-product-image">
+                                            alt="{$line.product_name|escape:'html':'UTF-8'}"
+                                            class="zoomable-image mv-product-image">
                                     </div>
 
                                 </td>
@@ -180,12 +191,19 @@
                                             {else}
                                                 {assign var="nextstatut" value=$available_status_vendor->id }
                                             {/if}
-
                                             <button class="mv-status-btn" style="color: black" id="available-product"
                                                 onclick="mkAvailble({$line.id_order_detail},  {$nextstatut})">✅
                                                 Oui</button>
-
-
+                                        </div>
+                                    {elseif $line.status_type_id == 26 && $id_vendor == 7}
+                                        <small style="text-align: center; display: block;"> En Stock ?</small>
+                                        <div class="mv-quick-action">
+                                            <button class="mv-status-btn" style="color: black" id="outofstock"
+                                                onclick="openOutOfStockModal({$line.id_order_detail})">🚫 Non</button>
+                                            {assign var="nextstatut" value=6 }
+                                            <button class="mv-status-btn" style="color: black" id="available-product"
+                                                onclick="mkAvailble({$line.id_order_detail},  {$nextstatut})">✅
+                                                Oui</button>
                                         </div>
                                     {else}
                                         <span class="mv-status-badge"
@@ -214,13 +232,28 @@
                                                 <div class="mv-detail-item" style="width: 33%">
                                                     <span class="mv-detail-label">Prix Public</span>
                                                     <span class="mv-detail-value">{$line.product_price|number_format:3}
-                                                        TND</span>
+                                                        <small>TND</small></span>
+                                                </div>
+
+                                                {assign var="oldcommision" value="{(VendorCommission::getCommissionRate($id_vendor))}"
+                                                }
+
+                                                {assign var='oldPrice' value="{$line.vendor_amount/(1-($oldcommision/100)) }"}
+                                                <div class="mv-detail-item" style="width: 33%">
+                                                    <span class="mv-detail-label">Action</span>
+                                                    <span class="mv-detail-value">
+                                                        {(($line.product_price * $line.product_quantity)  - $oldPrice)|number_format:3}
+                                                        <small>TND</small>
+                                                        <small> <strong>
+                                                                {((($line.product_price * $line.product_quantity)  - $oldPrice)/ ($line.product_price * $line.product_quantity))*100|number_format:3}%
+                                                            </strong></small>
+                                                    </span>
                                                 </div>
                                                 <div class="mv-detail-item" style="width: 33%">
                                                     <span class="mv-detail-label">Commission</span>
                                                     <span class="mv-detail-value">
-                                                        {$line.commission_amount|number_format:3} TND<small><strong>
-                                                                {$line.commission_rate|string_format:'%.2f'}% </strong></small>
+                                                        {($oldPrice*($oldcommision/100))|number_format:3} <small>TND</small>
+                                                        <small> <strong>{$oldcommision|string_format:'%.2f'}% </strong></small>
                                                     </span>
                                                 </div>
                                             </div>
@@ -393,6 +426,14 @@
 {include file="module:multivendor/views/templates/front/orders/_outofstock_modal.tpl"}
 
 <script>
+    function toggledown(element) {
+        // Find the collapse button inside the clicked row
+        const btn = element.querySelector('.mv-collapse-btn');
+        if (btn) {
+            toggleCollapse(btn);
+        }
+    }
+
     function toggleCollapse(btn) {
         const row = btn.closest('tr');
         const detailsRow = row.nextElementSibling;
@@ -410,7 +451,7 @@
         document.querySelectorAll('.zoomable-image').forEach(function(img) {
             new Drift(img, {
                 inlineOffsetX: 200,
-                zoomFactor :6,
+                zoomFactor: 6,
             });
         });
     });

@@ -62,7 +62,6 @@
                     </div>
                 </div>
 
-                {* Mobile/Desktop Detection for Content *}
                 {if !Context::getContext()->isMobile() || Context::getContext()->isTablet() }
                     {include file="module:multivendor/views/templates/front/orders/desktop.tpl"}
                 {else}

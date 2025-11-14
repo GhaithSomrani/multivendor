@@ -548,6 +548,7 @@ function saveManifest() {
         return;
     }
 
+
     var addressId = $('#addressSelect').val();
     if (!addressId) {
         showNotification('info', window.manifestConfig.translations.selectAddress);
@@ -558,7 +559,7 @@ function saveManifest() {
         return order.id;
     });
 
-    executeManifestSave(addressId, orderDetailIds);
+    executeManifestSave(addressId, orderDetailIds, true);
 }
 
 function printManifest() {
@@ -598,11 +599,12 @@ function loadVendorAddresses() {
 }
 
 
-function executeManifestSave(addressId, orderDetailIds) {
+function executeManifestSave(addressId, orderDetailIds, validate = false) {
     var ajaxData = {
         ajax: true,
         action: currentManifestId ? 'updateManifest' : 'createManifest',
-        order_details: orderDetailIds
+        order_details: orderDetailIds,
+        validate: validate
     };
 
     if (currentManifestId) {

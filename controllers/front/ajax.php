@@ -283,9 +283,11 @@ class MultivendorAjaxModuleFrontController extends ModuleFrontController
         $currentOrderDetailId = (int)Tools::getValue('currentOrderDetailId');
         $orderDetailObj = new OrderDetail($currentOrderDetailId);
         $idVendor = (int)VendorHelper::getVendorByCustomer(Context::getContext()->customer->id)['id_vendor'];
+        $priceFrom = (float)Tools::getValue('priceFrom');
+        $priceTo = (float)Tools::getValue('priceTo');
 
-        $priceFrom = $orderDetailObj->unit_price_tax_incl * 0.7;
-        $priceTo = $orderDetailObj->unit_price_tax_incl * 1.3;
+        // $priceFrom =  $orderDetailObj->unit_price_tax_incl * 0.7;
+        // $priceTo = $orderDetailObj->unit_price_tax_incl * 1.3;
 
         $currentProductObj = new Product($orderDetailObj->product_id);
         $defaultCategory = $currentProductObj->id_category_default;

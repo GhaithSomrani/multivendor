@@ -14,11 +14,20 @@
                     {l s='Tout' mod='multivendor'} ({$order_summary.total_lines})
                 </option>
                 {foreach from=$order_summary.status_breakdown item=statusData}
-                    <option
-                        value="{$link->getModuleLink('multivendor', 'orders', ['status' => $statusData.id_order_line_status_type])}"
-                        {if $filter_status == $statusData.id_order_line_status_type}selected{/if}>
-                        {$statusData.status|capitalize} ({$statusData.count})
-                    </option>
+                    {if  $statusData.id_order_line_status_type != 26 }
+                        <option
+                            value="{$link->getModuleLink('multivendor', 'orders', ['status' => $statusData.id_order_line_status_type])}"
+                            {if $filter_status == $statusData.id_order_line_status_type}selected{/if}>
+                            {$statusData.status|capitalize} ({$statusData.count})
+                        </option>
+                    {elseif  $statusData.id_order_line_status_type == 26 && $id_vendor == 7}
+                        <option
+                            value="{$link->getModuleLink('multivendor', 'orders', ['status' => $statusData.id_order_line_status_type])}"
+                            {if $filter_status == $statusData.id_order_line_status_type}selected{/if}>
+                            {$statusData.status|capitalize} ({$statusData.count})
+                        </option>
+                    {/if}
+
                 {/foreach}
             </select>
         </div>
@@ -27,13 +36,6 @@
 
 
 
-{* Global MPN Scanner - Mobile *}
-{* <div class="mv-card mv-mobile-mpn-card">
-    <div class="mv-card-header">
-        <h5 class="mv-card-title">{l s='Scanner MPN' mod='multivendor'}</h5>
-    </div>
-
-</div> *}
 
 {* Orders Cards *}
 <div class="mv-card mv-mobile-orders-card">
@@ -48,88 +50,182 @@
                         data-status="{$line.line_status|default:'En attente'|lower}" data-product-mpn="{$line.product_mpn}"
                         data-commission-action="{if isset($line.commission_action)}{$line.commission_action}{else}none{/if}">
 
-                        <div class="mv-mobile-order-header">
-                            <div class="mv-mobile-order-ref">
-                                <input type="checkbox" class="mv-mobile-checkbox" data-id="{$line.id_order_detail}"
-                                    style="display: none;">
-                                <a href="#" class="mv-mobile-link">
-                                    #{$line.id_order}#{$line.id_order_detail}
-                                    <span class="view-status-history" data-order-detail-id="{$line.id_order_detail}"
-                                        title="{l s='Voir l\'historique' mod='multivendor'}">
-                                        <i class="mv-icon">📜</i>
-                                    </span>
-                                </a>
+                        {* Main Content *}
+                        <div class="mv-main-content">
+                            <div class="mv-mobile-order-header">
+                                <div class="mv-mobile-order-ref">
+                                    <input type="checkbox" class="mv-mobile-checkbox" data-id="{$line.id_order_detail}"
+                                        style="display: none;">
+                                    <a href="#" class="mv-mobile-link">
+                                        <strong>{$line.id_order} </strong><small>{$line.id_order_detail}</small>
+                                        <span class="view-status-history" data-order-detail-id="{$line.id_order_detail}"
+                                            title="{l s='Voir l\'historique' mod='multivendor'}">
+                                            <i class="mv-icon">📜</i>
+                                        </span>
+                                    </a>
+                                </div>
+
+                                <div class="mv-mobile-order-date">
+                                    {$line.order_date|date_format:'%d/%m/%Y'}
+                                </div>
+
+                                {* Slide Arrow Button *}
+                                <button class="mv-slide-arrow" onclick="toggleSlide(this)">
+                                    ▶ Détail </button>
                             </div>
 
-                            <div class="mv-mobile-order-date">
-                                {$line.order_date|date_format:'%d/%m/%Y'}
+                            <div class="mv-mobile-order-content">
+                                <div class="mv-mobile-product-info">
+                                    {assign var="product_image" value=OrderHelper::getProductImageLink($line.product_id, $line.product_attribute_id,'medium_default')}
+                                    {assign var="large_image" value=OrderHelper::getProductImageLink($line.product_id, $line.product_attribute_id, 'medium_default')}
+
+                                    <div class="zoom-container">
+                                        <img src="{$product_image}" data-zoom="{$large_image}"
+                                            alt="{$line.product_name|escape:'html':'UTF-8'}"
+                                            class="zoomable-image mv-product-image">
+                                    </div>
+
+                                    <span class="mv-mobile-product-name">{$line.product_name}
+                                        {if $line.product_mpn} <p class="mv-mobile-product-sku">Code barre:
+                                                {$line.product_mpn}
+                                            </p>
+                                        {/if}
+
+                                        {assign var="product_link" value=VendorHelper::getProductPubliclink($line.product_id, $line.product_attribute_id)}
+                                        <i> <a href="{$product_link}">🔗</a></i>
+                                    </span>
+                                </div>
+
+                                <div class="mv-mobile-order-details">
+
+                                    <div class="mv-mobile-detail-row">
+                                        <span class="mv-mobile-label">
+                                            <small>{l s='Prix Public:' mod='multivendor'}</small></span>
+                                        <span class="mv-mobile-value mv-mobile-amount"> {$line.product_price|number_format:3}
+                                            TND</span>
+                                    </div>
+                                    <div class="mv-mobile-detail-row ">
+                                        <span class="mv-mobile-label {if $line.product_quantity > 1 } flash-fast {/if}"> <small>
+                                                {l s='Quantité' mod='multivendor'} </small></span>
+                                        <span
+                                            class="mv-mobile-value {if $line.product_quantity > 1 } flash-fast {/if}">{$line.product_quantity}</span>
+                                    </div>
+                                    <div class="mv-mobile-detail-row">
+                                        <span class="mv-mobile-label"> <small>{l s='Total' mod='multivendor'} </small></span>
+                                        <span class="mv-mobile-value mv-mobile-amount">{($line.vendor_amount)|number_format:3}
+                                            TND</span>
+                                    </div>
+                                </div>
+
+                                <div class="mv-mobile-status-section">
+                                    <div class="mv-mobile-current-status">
+                                        {if $line.status_type_id == $first_status }
+                                            <small style="text-align: center; display: block;"> Disponible ?</small>
+                                            <div class="mv-quick-action">
+                                                <button class="mv-status-btn" style="color: black" id="outofstock"
+                                                    onclick="openOutOfStockModal({$line.id_order_detail})">🚫 Non</button>
+                                                {if $id_vendor == 7}
+                                                    {assign var="nextstatut" value=26 }
+                                                {else}
+                                                    {assign var="nextstatut" value=$available_status_vendor->id }
+                                                {/if}
+                                                <button class="mv-status-btn" style="color: black" id="available-product"
+                                                    onclick="mkAvailble({$line.id_order_detail},  {$nextstatut})">✅
+                                                    Oui</button>
+                                            </div>
+                                        {elseif $line.status_type_id == 26 && $id_vendor == 7}
+                                            <small style="text-align: center; display: block;"> En Stock ?</small>
+                                            <div class="mv-quick-action">
+                                                <button class="mv-status-btn" style="color: black" id="outofstock"
+                                                    onclick="openOutOfStockModal({$line.id_order_detail})">🚫 Non</button>
+                                                {assign var="nextstatut" value=6 }
+                                                <button class="mv-status-btn" style="color: black" id="available-product"
+                                                    onclick="mkAvailble({$line.id_order_detail},  {$nextstatut})">✅
+                                                    Oui</button>
+                                            </div>
+                                        {else}
+                                            <span class="mv-status-badge"
+                                                style="background-color: {$status_colors[$line.line_status]|default:'#777'};">
+                                                {$line.line_status|capitalize}
+                                            </span>
+                                        {/if}
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
-                        <div class="mv-mobile-order-content">
-                            <div class="mv-mobile-product-info">
-                                {assign var="product_image" value=OrderHelper::getProductImageLink($line.product_id, $line.product_attribute_id)}
-                                <img src="{$product_image}"  alt="{$line.product_name|escape:'html':'UTF-8'}"
-                                    class="mv-product-image">
-                                <span class="mv-mobile-product-name">{$line.product_name}
-                                    {assign var="product_link" value=VendorHelper::getProductPubliclink($line.product_id, $line.product_attribute_id)}
-                                    <i> <a href="{$product_link}">🔗</a></i>
+                        {* Hidden Content (slides in from right) *}
+                        <div class="mv-hidden-content">
+                            {* Return Button *}
+                            <div style="display: flex;justify-content: space-between;align-items: center;">
+                                <h6>Informations Supplémentaires</h6>
+                                <button class="mv-slide-arrow" onclick="toggleSlide(this)">◀ Retour</button>
+                            </div>
+                            <div class="mv-detail-item">
+                                <span class="mv-detail-label">SKU:</span>
+                                <span class="mv-detail-value">{$line.product_reference|default:'-'}</span>
+                            </div>
+
+
+
+                            {assign var="oldcommision" value="{(VendorCommission::getCommissionRate($id_vendor))}"
+                            }
+
+                            {assign var='oldPrice' value="{$line.vendor_amount/(1-($oldcommision/100)) }"}
+                            <div class="mv-detail-item">
+                                <span class="mv-detail-label">Action</span>
+                                <span class="mv-detail-value">
+                                    {(($line.product_price * $line.product_quantity)  - $oldPrice)|number_format:3}
+                                    <small>TND</small>
+                                    <small> <strong>
+                                            {((($line.product_price * $line.product_quantity)  - $oldPrice)/ ($line.product_price * $line.product_quantity))*100|string_format:'%.2f'}%
+                                        </strong></small>
                                 </span>
                             </div>
-                            <div class="mv-mobile-product-info">
-                                <p class="mv-mobile-product-sku">SKU: {$line.product_reference}</p>
-                                {if $line.product_mpn} <p class="mv-mobile-product-sku">MPN: {$line.product_mpn}</p> {/if}
-                                {assign var="brand" value=VendorOrderDetail::getBrandByProductId($line.product_id)}
-                                {if ($brand)}
-                                    <p class="mv-mobile-product-sku">Marque: {$brand}</p>
-                                {/if}
-                                <p class="mv-mobile-product-sku mv-mobile-value mv-mobile-amount">Prix Public:
-                                    {$line.product_price|number_format:3}</p>
-
+                            <div class="mv-detail-item">
+                                <span class="mv-detail-label">Commission</span>
+                                <span class="mv-detail-value">
+                                    {($oldPrice*($oldcommision/100))|number_format:3} <small>TND</small>
+                                    <small> <strong>{$oldcommision|string_format:'%.2f'}% </strong></small>
+                                </span>
                             </div>
 
+                            {assign var="rm" value=Manifest::getManifestByOrderDetailAndType($line.id_order_detail, 1)}
+                            <div class="mv-detail-item">
+                                <span class="mv-detail-label">Bon de Ramassage</span>
+                                <span class="mv-detail-value">
+                                    <span class="mv-detail-badge ">{if $rm}{$rm.reference}{else}-{/if}</span>
 
+                                </span>
+                            </div>
 
-                            <div class="mv-mobile-order-details">
-                                <div class="mv-mobile-detail-row ">
+                            {assign var="rt" value=Manifest::getManifestByOrderDetailAndType($line.id_order_detail, 2)}
+                            <div class="mv-detail-item">
+                                <span class="mv-detail-label">Bon de Retour</span>
+                                <span class="mv-detail-value">
+                                    <span class="mv-detail-badge ">{if $rt}{$rt.reference}{else}-{/if}</span>
+
+                                </span>
+                            </div>
+
+                            {assign var="pay" value=Vendorpayment::getByOrderDetailAndType($line.id_order_detail, 'commission')}
+                            <div class="mv-detail-item">
+                                <span class="mv-detail-label">Paiement</span>
+                                <span class="mv-detail-value">
+                                    <span class="mv-detail-badge ">{if $pay && $pay->id}{$pay->reference}{else}-{/if}</span>
+
+                                </span>
+                            </div>
+
+                            {assign var="refund" value=Vendorpayment::getByOrderDetailAndType($line.id_order_detail, 'refund')}
+                            <div class="mv-detail-item">
+                                <span class="mv-detail-label">Paiement de Retour</span>
+                                <span class="mv-detail-value">
                                     <span
-                                        class="mv-mobile-label {if $line.product_quantity > 1 } flash-fast {/if}">{l s='Quantité' mod='multivendor'}</span>
-                                    <span
-                                        class="mv-mobile-value {if $line.product_quantity > 1 } flash-fast {/if}">{$line.product_quantity}</span>
-                                </div>
-                                <div class="mv-mobile-detail-row">
-                                    <span class="mv-mobile-label">{l s='Total' mod='multivendor'}</span>
-                                    <span class="mv-mobile-value mv-mobile-amount">{($line.vendor_amount)|number_format:3}
-                                        TND</span>
-                                </div>
+                                        class="mv-detail-badge ">{if $refund && $refund->id}{$refund->reference}{else}-{/if}</span>
+
+                                </span>
                             </div>
-
-                            <div class="mv-mobile-status-section">
-                                <div class="mv-mobile-current-status">
-                                    {if $line.status_type_id == $first_status}
-                                        <small style="text-align: center; display: block; margin-bottom: 8px;">Disponible ?</small>
-                                        <div class="mv-quick-action" style="display: flex; gap: 8px;">
-                                            <button class="mv-mobile-btn" style="background-color: #ff4444; color: white;"
-                                                onclick="openOutOfStockModal({$line.id_order_detail})">
-                                                🚫 Non
-                                            </button>
-                                            <button class="mv-mobile-btn" style="background-color: #44ff44; color: black;"
-                                                onclick="mkAvailble({$line.id_order_detail},{$available_status_vendor->id})">
-                                                ✅ Oui
-                                            </button>
-                                        </div>
-                                    {else}
-                                        <button class="mv-mobile-status-badge mv-mobile-btn"
-                                            onclick='openStatusCommentModal({$line.id_order_detail}, "{$line.product_name}", "{$line.line_status}", "{$status_colors[$line.line_status]|default:'#777'}")'
-                                            style="background-color: {$status_colors[$line.line_status]|default:'#777'};">
-                                            <i class="mv-icon">📃</i>
-                                            <span>{$line.line_status|capitalize}</span>
-                                        </button>
-                                    {/if}
-                                </div>
-                            </div>
-
-
                         </div>
                     </div>
                 {/foreach}
@@ -165,5 +261,22 @@
         {/if}
     </div>
 </div>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.zoomable-image').forEach(function(img) {
+            new Drift(img, {
+                inlineOffsety: 200,
+                zoomFactor: 2,
+            });
+        });
+    });
 
-{include file="module:multivendor/views/templates/front/orders/_outofstock_modal.tpl"}
+    function toggleSlide(button) {
+        const orderItem = button.closest('.mv-mobile-order-item');
+        orderItem.classList.toggle('slided');
+    }
+</script>
+
+<div class="mobile">
+    {include file="module:multivendor/views/templates/front/orders/_outofstock_modal.tpl"}
+</div>

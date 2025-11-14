@@ -4,8 +4,10 @@
 <head>
     <meta charset="utf-8">
     <title>{if isset($pdf_title)}{$pdf_title}{else}BON DE LIVRAISON - FACTURE{/if}</title>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+
     <style>
-           body {
+        body {
             font-family: Arial, sans-serif;
             font-size: 12px;
             line-height: 1.4;
@@ -26,6 +28,25 @@
             cursor: pointer;
             font-size: 14px;
             z-index: 1000;
+        }
+
+        .return {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            padding: 5px;
+            background: #00ba54;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            z-index: 1000;
+        }
+
+        .return:hover {
+            background: #008722;
+
         }
 
         .no-print:hover {
@@ -54,7 +75,6 @@
         }
 
         .website-info {
-            flex: 1;
             text-align: left;
             padding-top: 20px;
         }
@@ -103,7 +123,8 @@
             border: 1px solid #ddd;
             /* margin-bottom: 20px; */
         }
-         .payment-info {
+
+        .payment-info {
             display: flex;
             justify-content: space-around;
             margin: 5px 0px;
@@ -117,6 +138,10 @@
 
         @media print {
             .no-print {
+                display: none;
+            }
+
+            .return {
                 display: none;
             }
         }
@@ -235,6 +260,10 @@
 <body>
 
     <body>
+        {if !$manifest_id}
+            {assign var="linkretrun" value=VendorOrderDetail::getAdminLink() }
+            <a class="return" href="{$linkretrun}"> ↩️ Retour</a>
+        {/if}
         <button class="no-print" onclick="window.print()">🖨️ Imprimer</button>
 
         <div class="print-container">
@@ -259,7 +288,7 @@
                             +216 70 284 274<br>
                         </div>
                     </div>
-
+                    <div id="qrcode"></div>
                     <div class="vendor-info">
                         <h3>Informations Vendeur</h3>
                         <div class="details">
@@ -282,7 +311,10 @@
                 </div>
 
                 <div class="payment-header payment-info-row">
-                    <h2>{$manifest_type} </h2>
+                    <h2>
+                        {$manifest_type}
+                        {if !$manifest_id} interne
+                        {/if}</h2>
                 </div>
 
                 <div class="payment-info">
@@ -328,7 +360,7 @@
                             {assign var=line_total value=$manifest.orderDetail.vendor_amount}
                             {assign var=commission_amount value=($line_total * $commissionRate)}
                             <tr>
-                                <td class="text-center">
+                                <td class="text-center" {if !$manifest_id} rowspan="2" {/if}>
                                     <strong>{$manifest.order.id}<br>#{$manifest.orderDetail.id}</strong>
                                 </td>
                                 <td>
@@ -341,20 +373,32 @@
                                     <img src="{$manifest.orderDetail.barcode nofilter}" width="100px">
                                     <span>{$manifest.orderDetail.product_mpn}</span>
                                 </td>
-                                <td class="text-center">
+                                <td class="text-center" >
                                     {$manifest.orderDetail.unit_price_tax_incl|string_format:"%.3f"}
                                 </td>
-                                <td class="text-center">
+                                <td class="text-center" >
                                     {$manifest.orderDetail.product_quantity|default:0}
                                 </td>
-                                <td class="text-right">
+                                <td class="text-right" {if !$manifest_id} rowspan="2" {/if}>
                                     {$vendor_price_ht|string_format:"%.3f"}
                                 </td>
 
-                                <td class="text-right">
+                                <td class="text-right" {if !$manifest_id} rowspan="2" {/if}>
                                     {$line_total|string_format:"%.3f"}
                                 </td>
+
                             </tr>
+                            {if !$manifest_id}
+                                {assign var="rm" value=Manifest::getManifestByOrderDetailAndType($manifest.orderDetail.id ,1)}
+                                {assign var="rt" value=Manifest::getManifestByOrderDetailAndType($manifest.orderDetail.id ,2)}
+                                {assign var="rms" value=ManifestStatusType::getName($rm.id_manifest_status)}
+                                {assign var="rts" value=ManifestStatusType::getName($rt.id_manifest_status)}
+                                <tr>
+                                    <td colspan=5 class="text-center">Bon de Ramasage : {$rm.reference} - ({$rms}) / Bon de
+                                        Retour :
+                                        {$rt.reference} - ({$rts}) </td>
+                                </tr>
+                            {/if}
                             {assign var=total_qty value=$total_qty + $manifest.orderDetail.product_quantity}
                             {assign var=total_ht value=$total_ht + ($line_total / 1.19)}
                             {assign var=total_commission value=$total_commission + $commission_amount}
@@ -365,7 +409,8 @@
                         <tr class="total-row">
                             <td colspan="5" class="text-left"><strong>TOTAL HT</strong></td>
                             <td class="text-center"><strong>{$total_qty}</strong></td>
-                            <td class="text-right" colspan="2"><strong>{$total_ht|string_format:"%.3f"} TND</strong></td>
+                            <td class="text-right" colspan="2"><strong>{$total_ht|string_format:"%.3f"} TND</strong>
+                            </td>
                         </tr>
                         <tr class="total-row">
                             <td colspan="5" class="text-left"><strong>TVA (19%)</strong></td>
@@ -389,10 +434,10 @@
                         <tr>
                         <tr>
                             <td class="signature-info">
-                                
+
                             </td>
                             <td class="signature-info">
-                                
+
                             </td>
                         <tr>
                     </tbody>
@@ -401,6 +446,21 @@
             {/if}
 
         </div>
+        {if $manifest_id}
+            <script>
+                window.addEventListener("DOMContentLoaded", () => {
+                    const baseUrl = window.location.origin;
+                    const fullUrl ='{$qrcodelink}';
+                    QRCode.toCanvas(
+                        fullUrl, { width: 90, margin: 1 },
+                        (err, canvas) => {
+                            if (err) return console.error(err);
+                            document.getElementById("qrcode").appendChild(canvas);
+                        }
+                    );
+                });
+            </script>
+        {/if}
     </body>
 
 </html>

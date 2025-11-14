@@ -8,7 +8,7 @@
             <input type="hidden" name="action" value="exportFilteredPDF" />
 
             <div class="row">
-                <div class="col-md-3">
+                {* <div class="col-md-3">
                     <div class="form-group">
                         <label for="export_status_type">Order Line Status*:</label>
                         <select name="export_status_type" id="export_status_type" class="form-control">
@@ -19,7 +19,7 @@
                             {/foreach}
                         </select>
                     </div>
-                </div>
+                </div> *}
                 <div class="col-md-3">
                     <div class="form-group">
                         <label for="export_vendor">Vendor:</label>
@@ -44,13 +44,13 @@
                 </div>
             </div>
             <div class="row">
-                <div class="col-md-1">
+                {* <div class="col-md-1">
                     <div class="form-group">
                         <button type="submit" class="btn btn-primary">
                             <i class="icon-download"></i> Export PDF
                         </button>
                     </div>
-                </div>
+                </div> *}
                 <div class="col-md-1">
                     <div class="form-group">
                         <button id="exportselectd" class="btn btn-primary">

@@ -223,7 +223,7 @@
     text-transform: uppercase;
 }
 
-.mv-action-add {
+.mv-action-commission {
     background-color: #d1fae5;
     color: #065f46;
 }
@@ -447,7 +447,7 @@
     font-size: 13px;
 }
 
-.mv-status-completed{  
+.mv-status-completed {
     background-color: #34d399;
     color: #064e3b;
 }
@@ -583,7 +583,7 @@
     font-size: 11px;
 }
 
-.mv-action-add {
+.mv-action-commission {
     background: #dcfce7;
     color: #166534;
 }
@@ -781,20 +781,55 @@
 }
 
 @media (max-width: 480px) {
+
     .mv-mobile-transaction-item,
     .mv-mobile-payment-item {
         padding: 12px;
     }
-    
+
     .mv-mobile-transaction-footer {
         flex-direction: column;
         align-items: flex-start;
         gap: 8px;
     }
-    
+
     .mv-mobile-payment-main {
         flex-direction: column;
         align-items: flex-start;
         gap: 8px;
     }
+}
+
+.mv-clickable {
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.mv-clickable:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+
+.mv-sort-header {
+    color: inherit;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.mv-sort-header:hover {
+    color: #007bff;
+}
+
+.mv-sort-both {
+    opacity: 0.3;
+    font-size: 14px;
+}
+
+.mv-sort-header:hover .mv-sort-both {
+    opacity: 0.6;
 }

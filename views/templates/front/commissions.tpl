@@ -38,63 +38,70 @@
 
             <main class="mv-main-content">
                 {* Commission Summary Cards *}
-                <div class="mv-commission-summary">
-                    <div class="mv-summary-card mv-summary-card-add">
+                <<div class="mv-commission-summary">
+                    <div class="mv-summary-card mv-summary-card-add mv-clickable"
+                        onclick="window.location.href='{$link->getModuleLink('multivendor', 'commissions')}'">
                         <h6 class="mv-stat-label">{l s='Chiffre d\'affaires total' mod='multivendor'}</h6>
                         <h3 class="mv-stat-value">{$commission_summary.total_commission_added.total|number_format:3} TND
                         </h3>
                     </div>
-                    <div class="mv-summary-card mv-summary-card-paid">
+
+                    <div class="mv-summary-card mv-summary-card-paid mv-clickable"
+                        onclick="window.location.href='{$link->getModuleLink('multivendor', 'commissions', ['transaction_status' => 'paid'])}'">
                         <h6 class="mv-stat-label">{l s='Total payé' mod='multivendor'}</h6>
                         <h3 class="mv-stat-value">{$commission_summary.paid_commission.total|number_format:3} TND</h3>
-                        {* <p class="mv-stat-description">{$commission_summary.paid_commission.count_details}   commande(s)  </p> *}
-
                     </div>
-                    <div class="mv-summary-card mv-summary-card-add">
+
+                    <div class="mv-summary-card mv-summary-card-add mv-clickable"
+                        onclick="window.location.href='{$link->getModuleLink('multivendor', 'commissions', ['transaction_status' => 'pending', 'line_status' => 'delivered'])}'">
                         <h6 class="mv-stat-label">{l s='Livré non payé' mod='multivendor'}</h6>
                         <h3 class="mv-stat-value">{$commission_summary.total_commission_pending.total|number_format:3} TND
                         </h3>
                         <p class="mv-stat-description">{$commission_summary.total_commission_pending.count_details}
-                            commande(s) </p>
+                            commande(s)</p>
                     </div>
-                    <div class="mv-summary-card mv-summary-card-pending">
+
+                    <div class="mv-summary-card mv-summary-card-pending mv-clickable"
+                        onclick="window.location.href='{$link->getModuleLink('multivendor', 'commissions', ['transaction_status' => 'pending', 'line_status' => 'in_progress'])}'">
                         <h6 class="mv-stat-label">{l s='Commandes en cours' mod='multivendor'}</h6>
                         <h3 class="mv-stat-value">{$commission_summary.pending_amount.total|number_format:3} TND</h3>
-                        <p class="mv-stat-description">{$commission_summary.pending_amount.count_details} commande(s) </p>
+                        <p class="mv-stat-description">{$commission_summary.pending_amount.count_details} commande(s)</p>
                     </div>
-                    <div class="mv-summary-card mv-summary-card-refund">
+
+                    <div class="mv-summary-card mv-summary-card-refund mv-clickable"
+                        onclick="window.location.href='{$link->getModuleLink('multivendor', 'commissions', ['commission_action' => 'refund'])}'">
                         <h6 class="mv-stat-label">{l s='Retours en cours' mod='multivendor'}</h6>
                         <h3 class="mv-stat-value">{$commission_summary.total_commission_refunded.total|number_format:3} TND
                         </h3>
                         <p class="mv-stat-description">{$commission_summary.total_commission_refunded.count_details}
-                            commande(s) </p>
+                            commande(s)</p>
                     </div>
-                </div>
-
-                {* Commission Rates Card *}
-                <div class="mv-card">
-                    <div class="mv-card-header">
-                        <h3 class="mv-card-title">{l s='Taux de commission' mod='multivendor'}</h3>
-                    </div>
-                    <div class="mv-card-body">
-                        <div class="mv-commission-detail">
-                            <span
-                                class="mv-commission-detail-label">{l s='Votre taux de commission standard :' mod='multivendor'}</span>
-                            <span class="mv-commission-detail-value">{$vendor_commission_rate}%</span>
-                        </div>
-                    </div>
-                </div>
-
-                {* Mobile/Desktop Detection for Content *}
-                {if Context::getContext()->isMobile() == 1}
-                    {* Load Mobile Commissions Template *}
-                    {include file="module:multivendor/views/templates/front/commissions/mobile.tpl"}
-                {else}
-                    {* Load Desktop Commissions Template *}
-                    {include file="module:multivendor/views/templates/front/commissions/desktop.tpl"}
-                {/if}
-            </main>
         </div>
+
+        {* Commission Rates Card *}
+        <div class="mv-card">
+            <div class="mv-card-header">
+                <h3 class="mv-card-title">{l s='Taux de commission' mod='multivendor'}</h3>
+            </div>
+            <div class="mv-card-body">
+                <div class="mv-commission-detail">
+                    <span
+                        class="mv-commission-detail-label">{l s='Votre taux de commission standard :' mod='multivendor'}</span>
+                    <span class="mv-commission-detail-value">{$vendor_commission_rate}%</span>
+                </div>
+            </div>
+        </div>
+
+        {* Mobile/Desktop Detection for Content *}
+        {if Context::getContext()->isMobile() == 1}
+            {* Load Mobile Commissions Template *}
+            {include file="module:multivendor/views/templates/front/commissions/mobile.tpl"}
+        {else}
+            {* Load Desktop Commissions Template *}
+            {include file="module:multivendor/views/templates/front/commissions/desktop.tpl"}
+        {/if}
+        </main>
+    </div>
     </div>
 
     <script>

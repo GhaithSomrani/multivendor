@@ -144,40 +144,14 @@ class multivendor extends Module
 
         // Sub-tabs
         $tabs = [
-            [
-                'class_name' => 'AdminVendors',
-                'name' => 'Vendors'
-            ],
-            [
-                'class_name' => 'AdminVendorCommissions',
-                'name' => 'Commissions'
-            ],
-            [
-                'class_name' => 'AdminManifest',
-                'name' => 'Manifests'
-            ],
-            [
-                'class_name' => 'AdminManifestType',
-                'name' => 'Manifest Types'
-            ],
-
-            [
-                'class_name' => 'AdminVendorPayments',
-                'name' => 'Payments'
-            ],
-            [
-                'class_name' => 'AdminOrderLineStatus',
-                'name' => 'Order Line Statuses'
-            ],
-            [
-                'class_name' => 'AdminManifestStatusType',
-                'name' => 'Manifest Status Setting'
-            ],
-            [
-                'class_name' => 'AdminVendorOrderDetails',
-                'name' => 'Order Details'
-            ],
-
+            ['class_name' => 'AdminVendorOrderDetails', 'name' => 'Lignes des Commandes', 'icon' => 'shopping-cart'],
+            ['class_name' => 'AdminManifest', 'name' => 'Manifests', 'icon' => 'file-truck'],
+            ['class_name' => 'AdminVendorPayments', 'name' => 'Paiements', 'icon' => 'wallet'],
+            ['class_name' => 'AdminVendors', 'name' => 'Fournisseurs', 'icon' => 'storefront'],
+            ['class_name' => 'AdminVendorCommissions', 'name' => 'Commissions', 'icon' => 'money-off'],
+            ['class_name' => 'AdminOrderLineStatus', 'name' => 'Statut des Lignes de Commande', 'icon' => 'mi-settings'],
+            ['class_name' => 'AdminManifestStatusType', 'name' => 'Statut du Manifest', 'icon' => 'mi-settings'],
+            ['class_name' => 'AdminManifestType', 'name' => 'Types de Manifests', 'icon' => 'mi-settings'],
         ];
 
         foreach ($tabs as $t) {
@@ -266,6 +240,15 @@ class multivendor extends Module
 
         if (Tools::isSubmit('submit' . $this->name)) {
             // In getContent() method, after existing Configuration::updateValue calls:
+            Configuration::updateValue('MULTIVENDOR_COLLECT_GROUP', (int)Tools::getValue('MULTIVENDOR_COLLECT_GROUP'));
+            Configuration::updateValue('MULTIVENDOR_RECEIVE_GROUP', (int)Tools::getValue('MULTIVENDOR_RECEIVE_GROUP'));
+            Configuration::updateValue('MULTIVENDOR_STATUS_COLLECTED', (int)Tools::getValue('MULTIVENDOR_STATUS_COLLECTED'));
+            Configuration::updateValue('MULTIVENDOR_STATUS_RECEIVED', (int)Tools::getValue('MULTIVENDOR_STATUS_RECEIVED'));
+            Configuration::updateValue('MULTIVENDOR_STATUS_REFUND_PROCESSING', (int)Tools::getValue('MULTIVENDOR_STATUS_REFUND_PROCESSING'));
+            Configuration::updateValue('MULTIVENDOR_STATUS_REFUND_COLLECTED', (int)Tools::getValue('MULTIVENDOR_STATUS_REFUND_COLLECTED'));
+            Configuration::updateValue('MANIFEST_PICKUP_DRAFT', (int)Tools::getValue('MANIFEST_PICKUP_DRAFT'));
+            Configuration::updateValue('MANIFEST_RETURN_DRAFT', (int)Tools::getValue('MANIFEST_RETURN_DRAFT'));
+            $output .= $this->displayConfirmation($this->l('Configuration mise à jour'));
 
             Configuration::updateValue('MV_FIRST_STATUS', (int)Tools::getValue('MV_FIRST_STATUS'));
             Configuration::updateValue('MV_AVAILABLE_STATUS', (int)Tools::getValue('MV_AVAILABLE_STATUS'));
@@ -407,35 +390,60 @@ class multivendor extends Module
                 'input' => [
                     [
                         'type' => 'text',
-                        'label' => $this->l('Default Commission Rate (%)'),
+                        'label' => $this->l('Taux de Commission par Défaut (%)'),
                         'name' => 'MV_DEFAULT_COMMISSION',
-                        'desc' => $this->l('Default commission rate for all vendors (in percentage)'),
+                        'desc' => $this->l('Taux de commission par défaut pour tous les vendeurs (en pourcentage)'),
                         'size' => 5,
                         'required' => true
                     ],
                     [
                         'type' => 'switch',
-                        'label' => $this->l('Auto-approve Vendors'),
+                        'label' => $this->l('Approbation Automatique des Vendeurs'),
                         'name' => 'MV_AUTO_APPROVE_VENDORS',
-                        'desc' => $this->l('Automatically approve new vendor registrations'),
+                        'desc' => $this->l('Approuver automatiquement les nouvelles inscriptions de vendeurs'),
                         'values' => [
                             [
                                 'id' => 'active_on',
                                 'value' => 1,
-                                'label' => $this->l('Yes')
+                                'label' => $this->l('Oui')
                             ],
                             [
                                 'id' => 'active_off',
                                 'value' => 0,
-                                'label' => $this->l('No')
+                                'label' => $this->l('Non')
                             ]
                         ]
                     ],
+
+
                     [
                         'type' => 'select',
-                        'label' => $this->l('Pickup Manifest Status'),
+                        'label' => $this->l('Groupe de Collecte'),
+                        'name' => 'MULTIVENDOR_COLLECT_GROUP',
+                        'desc' => $this->l('Groupe autorisé à collecter les manifestes'),
+                        'options' => [
+                            'query' => Group::getGroups($this->context->language->id),
+                            'id' => 'id_group',
+                            'name' => 'name'
+                        ],
+                    ],
+
+                    [
+                        'type' => 'select',
+                        'label' => $this->l('Groupe de Réception'),
+                        'name' => 'MULTIVENDOR_RECEIVE_GROUP',
+                        'desc' => $this->l('Groupe autorisé à recevoir les manifestes'),
+                        'options' => [
+                            'query' => Group::getGroups($this->context->language->id),
+                            'id' => 'id_group',
+                            'name' => 'name'
+                        ],
+                    ],
+                    [
+                        'type' => 'select',
+                        'label' => $this->l('Statut du Manifeste de Ramassage'),
                         'name' => 'mv_pickup',
-                        'desc' => $this->l('Default manifest status for pickup manifests'),
+                        'desc' => $this->l('Statut par défaut du manifeste pour les manifestes de ramassage'),
                         'options' => [
                             'query' => $pickup_options,
                             'id' => 'id_manifest_status_type',
@@ -444,9 +452,77 @@ class multivendor extends Module
                     ],
                     [
                         'type' => 'select',
-                        'label' => $this->l('Returns Manifest Status'),
+                        'label' => $this->l('Statut du Manifeste de Retours'),
                         'name' => 'mv_returns',
-                        'desc' => $this->l('Default manifest status for returns manifests'),
+                        'desc' => $this->l('Statut par défaut du manifeste pour les manifestes de retours'),
+                        'options' => [
+                            'query' => $returns_options,
+                            'id' => 'id_manifest_status_type',
+                            'name' => 'name'
+                        ],
+                    ],
+
+                    [
+                        'type' => 'select',
+                        'label' => $this->l('Statut du Manifeste Collecté'),
+                        'name' => 'MULTIVENDOR_STATUS_COLLECTED',
+                        'desc' => $this->l('Statut du manifeste pour les articles collectés'),
+                        'options' => [
+                            'query' => $pickup_options,
+                            'id' => 'id_manifest_status_type',
+                            'name' => 'name'
+                        ],
+                    ],
+                    [
+                        'type' => 'select',
+                        'label' => $this->l('Statut du Manifeste Reçu'),
+                        'name' => 'MULTIVENDOR_STATUS_RECEIVED',
+                        'desc' => $this->l('Statut du manifeste pour les articles reçus'),
+                        'options' => [
+                            'query' => $pickup_options,
+                            'id' => 'id_manifest_status_type',
+                            'name' => 'name'
+                        ],
+                    ],
+                    [
+                        'type' => 'select',
+                        'label' => $this->l('Statut du Manifeste de Traitement des Remboursements'),
+                        'name' => 'MULTIVENDOR_STATUS_REFUND_PROCESSING',
+                        'desc' => $this->l('Statut pour les articles de remboursement en traitement'),
+                        'options' => [
+                            'query' => $returns_options,
+                            'id' => 'id_manifest_status_type',
+                            'name' => 'name'
+                        ],
+                    ],
+                    [
+                        'type' => 'select',
+                        'label' => $this->l('Statut du Manifeste de Remboursement Collecté'),
+                        'name' => 'MULTIVENDOR_STATUS_REFUND_COLLECTED',
+                        'desc' => $this->l('Statut pour les articles de remboursement collectés'),
+                        'options' => [
+                            'query' => $returns_options,
+                            'id' => 'id_manifest_status_type',
+                            'name' => 'name'
+                        ],
+                    ],
+
+                    [
+                        'type' => 'select',
+                        'label' => $this->l('Brouillion de Ramassage'),
+                        'name' => 'MANIFEST_PICKUP_DRAFT',
+                        'desc' => $this->l('statut du manifeste par défaut pour les nouveaux manifestes de ramassage'),
+                        'options' => [
+                            'query' => $pickup_options,
+                            'id' => 'id_manifest_status_type',
+                            'name' => 'name'
+                        ],
+                    ],
+                    [
+                        'type' => 'select',
+                        'label' => $this->l('Brouillion de Retours'),
+                        'name' => 'MANIFEST_RETURN_DRAFT',
+                        'desc' => $this->l('Statut du manifeste par défaut pour les nouveaux manifestes de retours'),
                         'options' => [
                             'query' => $returns_options,
                             'id' => 'id_manifest_status_type',
@@ -455,9 +531,9 @@ class multivendor extends Module
                     ],
                     [
                         'type' => 'checkbox',
-                        'label' => $this->l('Hide Order Line Status Types from Vendors'),
+                        'label' => $this->l('Masquer les Types de Statut de Ligne de Commande aux Vendeurs'),
                         'name' => 'MV_HIDE_FROM_VENDOR',
-                        'desc' => $this->l('Select order line status types that should be hidden from vendors and only accessible by admin'),
+                        'desc' => $this->l('Sélectionner les types de statut de ligne de commande qui doivent être masqués aux vendeurs et accessibles uniquement par l\'administrateur'),
                         'values' => [
                             'query' => $statusOptions,
                             'id' => 'value',
@@ -466,15 +542,15 @@ class multivendor extends Module
                         'expand' => [
                             'print_total' => count($statusOptions),
                             'default' => 'show',
-                            'show' => ['text' => $this->l('Show all'), 'icon' => 'plus-sign-alt'],
-                            'hide' => ['text' => $this->l('Hide all'), 'icon' => 'minus-sign-alt']
+                            'show' => ['text' => $this->l('Afficher tout'), 'icon' => 'plus-sign-alt'],
+                            'hide' => ['text' => $this->l('Masquer tout'), 'icon' => 'minus-sign-alt']
                         ]
                     ],
                     [
                         'type' => 'select',
-                        'label' => $this->l('First Order Line Status'),
+                        'label' => $this->l('Premier Statut de Ligne de Commande'),
                         'name' => 'MV_FIRST_STATUS',
-                        'desc' => $this->l('Initial status for new order lines'),
+                        'desc' => $this->l('Statut initial pour les nouvelles lignes de commande'),
                         'options' => [
                             'query' => $statusTypes,
                             'id' => 'id_order_line_status_type',
@@ -483,9 +559,9 @@ class multivendor extends Module
                     ],
                     [
                         'type' => 'select',
-                        'label' => $this->l('Product Available at Supplier Status'),
+                        'label' => $this->l('Statut Produit Disponible chez le Fournisseur'),
                         'name' => 'MV_AVAILABLE_STATUS',
-                        'desc' => $this->l('Status indicating product is available at supplier'),
+                        'desc' => $this->l('Statut indiquant que le produit est disponible chez le fournisseur'),
                         'options' => [
                             'query' => $statusTypes,
                             'id' => 'id_order_line_status_type',
@@ -494,9 +570,9 @@ class multivendor extends Module
                     ],
                     [
                         'type' => 'select',
-                        'label' => $this->l('Out of Stock Status'),
+                        'label' => $this->l('Statut Rupture de Stock'),
                         'name' => 'MV_OUT_OF_STOCK_STATUS',
-                        'desc' => $this->l('Status indicating product is out of stock'),
+                        'desc' => $this->l('Statut indiquant que le produit est en rupture de stock'),
                         'options' => [
                             'query' => $statusTypes,
                             'id' => 'id_order_line_status_type',
@@ -507,52 +583,15 @@ class multivendor extends Module
                         'type' => 'html',
                         'name' => 'stats_display',
                         'html_content' => '
-                    <div class="alert alert-info">
-                        <h4>' . $this->l('Vendor Order Statistics') . '</h4>
-                        <p><strong>' . $this->l('Total Order Details:') . '</strong> ' . (int)$stats['total_order_details'] . '</p>
-                        <p><strong>' . $this->l('Total Commission:') . '</strong> ' . Tools::displayPrice($stats['total_commission']) . '</p>
-                        <p><strong>' . $this->l('Total Vendor Amount:') . '</strong> ' . Tools::displayPrice($stats['total_vendor_amount']) . '</p>
-                        <p><strong>' . $this->l('Average Commission Rate:') . '</strong> ' . number_format($stats['avg_commission_rate'], 2) . '%</p>
-                    </div>
-                    <div class="alert alert-warning">
-                        <h4>' . $this->l('Synchronization') . '</h4>
-                        <p>' . $this->l('If you have existing orders that were created before installing this module, you can synchronize them with vendor order details.') . '</p>
-                        <button type="submit" name="syncOrderDetails" class="btn btn-warning">
-                            <i class="icon-refresh"></i> ' . $this->l('Synchronize Existing Orders') . '
-                        </button>
-                    </div>
-                    '
+            <div class="alert alert-info">
+                <h4>' . $this->l('Statistiques des Commandes Vendeur') . '</h4>
+                <p><strong>' . $this->l('Total des Détails de Commande :') . '</strong> ' . (int)$stats['total_order_details'] . '</p>
+                <p><strong>' . $this->l('Commission Totale :') . '</strong> ' . Tools::displayPrice($stats['total_commission']) . '</p>
+                <p><strong>' . $this->l('Montant Total Vendeur :') . '</strong> ' . Tools::displayPrice($stats['total_vendor_amount']) . '</p>
+                <p><strong>' . $this->l('Taux de Commission Moyen :') . '</strong> ' . number_format($stats['avg_commission_rate'], 2) . '%</p>
+            </div>
+            '
                     ],
-                    [
-                        'type' => 'html',
-                        'name' => 'reset_status_section',
-                        'html_content' => '
-                    <div class="alert alert-info">
-                        <h4><i class="icon-info"></i> ' . $this->l('Order Status Information') . '</h4>
-                        <p><strong>' . $this->l('Current Status Count:') . '</strong> ' . $statusCount . ' ' . $this->l('status types configured') . '</p>
-                        <p>' . $this->l('You can manage individual statuses in the "Order Line Statuses" tab or reset all to defaults below.') . '</p>
-                    </div>
-                    <div class="alert alert-warning">
-                        <h4><i class="icon-warning"></i> ' . $this->l('Reset Order Status Types') . '</h4>
-                        <p>' . $this->l('Reset all order line statuses to default French statuses with proper commission settings.') . '</p>
-                        <p><strong>' . $this->l('Warning:') . '</strong> ' . $this->l('This action will delete all existing custom statuses and cannot be undone.') . '</p>
-                        <button type="submit" name="resetStatus" class="btn btn-warning" onclick="return confirm(\'' . $this->l('Are you sure you want to reset all order line statuses? This action cannot be undone.') . '\');">
-                            <i class="icon-refresh"></i> ' . $this->l('Reset to Default French Statuses') . '
-                        </button>
-                    </div>
-                    <style>
-                    .btn-warning {
-                        background-color: #f0ad4e !important;
-                        border-color: #eea236 !important;
-                        color: #fff !important;
-                    }
-                    .btn-warning:hover {
-                        background-color: #ec971f !important;
-                        border-color: #d58512 !important;
-                    }
-                    </style>
-                    '
-                    ]
                 ],
                 'submit' => [
                     'title' => $this->l('Save'),
@@ -575,13 +614,22 @@ class multivendor extends Module
 
         $hiddenStatusTypes = $this->getHiddenStatusTypesArray();
         $fieldsValue = [
+
             'MV_FIRST_STATUS' => Configuration::get('MV_FIRST_STATUS'),
             'MV_AVAILABLE_STATUS' => Configuration::get('MV_AVAILABLE_STATUS'),
             'MV_OUT_OF_STOCK_STATUS' => Configuration::get('MV_OUT_OF_STOCK_STATUS'),
             'MV_DEFAULT_COMMISSION' => Configuration::get('MV_DEFAULT_COMMISSION', 10),
             'MV_AUTO_APPROVE_VENDORS' => Configuration::get('MV_AUTO_APPROVE_VENDORS', 0),
             'mv_pickup' => Configuration::get('mv_pickup'),
-            'mv_returns' => Configuration::get('mv_returns')
+            'mv_returns' => Configuration::get('mv_returns'),
+            'MULTIVENDOR_COLLECT_GROUP' => Configuration::get('MULTIVENDOR_COLLECT_GROUP'),
+            'MULTIVENDOR_RECEIVE_GROUP' => Configuration::get('MULTIVENDOR_RECEIVE_GROUP'),
+            'MULTIVENDOR_STATUS_COLLECTED' => Configuration::get('MULTIVENDOR_STATUS_COLLECTED'),
+            'MULTIVENDOR_STATUS_RECEIVED' => Configuration::get('MULTIVENDOR_STATUS_RECEIVED'),
+            'MULTIVENDOR_STATUS_REFUND_PROCESSING' => Configuration::get('MULTIVENDOR_STATUS_REFUND_PROCESSING'),
+            'MULTIVENDOR_STATUS_REFUND_COLLECTED' => Configuration::get('MULTIVENDOR_STATUS_REFUND_COLLECTED'),
+            'MANIFEST_PICKUP_DRAFT' => Configuration::get('MANIFEST_PICKUP_DRAFT'),
+            'MANIFEST_RETURN_DRAFT' => Configuration::get('MANIFEST_RETURN_DRAFT'),
         ];
         foreach ($statusOptions as $option) {
             $fieldsValue['MV_HIDE_FROM_VENDOR_' . $option['value']] = in_array($option['value'], $hiddenStatusTypes);
@@ -802,7 +850,12 @@ class multivendor extends Module
                 'specific_management' => false,
                 'forbidden_method' => ['DELETE']
             ],
-
+            'payments' => [
+                'description' => 'Multi-vendor payments',
+                'class' => 'VendorPayment',
+                'specific_management' => false,
+                'forbidden_method' => ['POST', 'PUT', 'DELETE']
+            ],
         ];
     }
 

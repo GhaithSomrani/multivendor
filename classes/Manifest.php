@@ -275,10 +275,7 @@ class Manifest extends ObjectModel
                     $manifest->addOrderDetail($id_order_detail);
                 }
             }
-            if ($manifest->id) {
-                $msg = 'Manifest ' . $manifest->reference . ' add : '  . implode(',', $ids_to_add);
-                PrestaShopLogger::addLog($msg, 1, null, 'Manifest', $manifest->id, Context::getContext()->employee->id ?? Context::getContext()->customer->id ?? null);
-            }
+            $manifest->save();
             return $manifest;
         } catch (Exception $e) {
             throw new Exception($e->getMessage());
@@ -350,7 +347,7 @@ class Manifest extends ObjectModel
     }
     /**
      * Generate new manifest
-     * @param string $orderdetails order details array of int
+     * @param array $orderdetails order details array of int
      * @param int $id_vendor vendor id
      * @param string $type manifest type (pickup or returns)
      * @param int|null $id_address address id 
@@ -360,13 +357,13 @@ class Manifest extends ObjectModel
     public static function generateNewManifestPDF($orderdetails, $id_vendor, $type, $id_address = null, $id_manifest_status = null)
     {
 
+        if ($id_manifest_status == null) {
+            $id_manifest_status = ManifestStatusType::getDefaultManifestStatusType($type);
+        }
+
         try {
-            if ($id_manifest_status == null) {
-                $id_manifest_status = ManifestStatusType::getDefaultManifestStatusType($type);
-            }
             $manifest = self::addNewManifest($orderdetails, $id_vendor, $type, $id_address, $id_manifest_status, true);
             $manifestTypeObj = new ManifestType($type);
-
             $pdfData = [
                 'orderDetailIds' => $orderdetails,
                 'vendor' => $id_vendor,
@@ -386,8 +383,46 @@ class Manifest extends ObjectModel
         }
     }
 
+    /**
+     * Generate a multiple manifest PDF for the given order details and type.
+     * If a vendor ID is provided, the PDF will be generated for the vendor.
+     * Otherwise, the PDF will be generated for all vendors.
+     *
+     * @param array $orderDetails order details array of int
+     * @param string $type manifest type (pickup or returns)
+     * @param int|null $vendorId vendor ID, optional
+     */
     public static function generateMulipleManifestPDF($orderDetails, $type, $vendorId = null)
     {
+        $id_manifest_status = ManifestStatusType::getDefaultManifestStatusType($type);
+        $manifestStatusObj = new ManifestStatusType($id_manifest_status);
+        $available_status = explode(',', $manifestStatusObj->allowed_order_line_status_type_ids);
+
+        foreach ($orderDetails as $orderdetail) {
+            $orderlinestatus = OrderLineStatus::getByOrderDetail($orderdetail);
+            $manifestTypeObj = new ManifestType($type);
+            $typename = strtolower($manifestTypeObj->name);
+            $result =  Manifest::getManifestByOrderDetailAndType($orderdetail, $type);
+            $link = Manifest::getAdminLink($result['id_manifest']);
+            $available_status_name = [];
+
+            if (!in_array($orderlinestatus['id_order_line_status_type'], $available_status)) {
+                foreach ($available_status as $status) {
+                    $OrderLineStatusTypeObj = new OrderLineStatusType($status);
+                    $available_status_name[] = $OrderLineStatusTypeObj->name;
+                }
+                throw new Exception("Le statut des lignes de commande n'est pas autorisé pour le manifeste. les statuts autorisés sont : <b>" . implode(', ', $available_status_name) . "</b>");
+            }
+            if (!empty($result)) {
+
+                $msg = "La ligne de commande ID : " . $orderdetail . " fait partie d'un " . $typename . "."
+                    . " Veuillez supprimer la ligne de commande du manifeste existant (Référence du manifeste : <a href='"
+                    . $link . "&id_manifest=" . $result['id_manifest'] . "' target='_blank'>"
+                    . $result['reference'] . "</a> ) avant d'en créer un nouveau.";
+                throw new Exception($msg);
+            }
+        }
+
 
         try {
             if ($vendorId) {
@@ -473,15 +508,20 @@ class Manifest extends ObjectModel
     public static function getModifiableManifest($id_vendor, $type)
     {
         try {
-            $sql = 'SELECT m.* 
-            FROM `' . _DB_PREFIX_ . 'mv_manifest` m
-            LEFT JOIN `' . _DB_PREFIX_ . 'mv_manifest_status_type` ms ON (m.id_manifest_status = ms.id_manifest_status_type)
-            WHERE m.id_vendor = ' . (int)$id_vendor . ' 
-            AND m.id_manifest_type = "' . pSQL($type) . '"
-            AND ms.allowed_modification = 1
-            ORDER BY m.date_add DESC';
+            if ($type == Manifest::TYPE_PICKUP) {
+                $id_manifest_status = Configuration::get('MANIFEST_PICKUP_DRAFT');
+            } elseif ($type == Manifest::TYPE_RETURNS) {
+                $id_manifest_status = Configuration::get('MANIFEST_RETURN_DRAFT');
+            }
+            $query = new DbQuery();
+            $query->select('m.*');
+            $query->from('mv_manifest', 'm');
+            $query->leftJoin('mv_manifest_status_type', 'ms', 'm.id_manifest_status = ms.id_manifest_status_type');
+            $query->where('m.id_vendor = ' . (int)$id_vendor);
+            $query->where('m.id_manifest_status = ' . (int)$id_manifest_status);
+            $query->orderBy('m.date_add DESC');
 
-            return Db::getInstance(_PS_USE_SQL_SLAVE_)->getRow($sql);
+            return Db::getInstance(_PS_USE_SQL_SLAVE_)->getRow($query);
         } catch (Exception $e) {
             PrestaShopLogger::addLog('Get Modifiable Manifest Error: ' . $e->getMessage(), 3, null, 'AdminVendorOrderDetails');
             return false;

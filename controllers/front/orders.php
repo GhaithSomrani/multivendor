@@ -146,6 +146,28 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
                 'server' => 'remote'
             ]
         );
+        $this->context->controller->registerStylesheet(
+            'nouislider-css',
+            'https://cdn.jsdelivr.net/npm/nouislider@15.7.0/dist/nouislider.min.css',
+            [
+                'media' => 'all',
+                'priority' => 201,
+                'server' => 'remote'
+            ]
+        );
+
+        $this->context->controller->registerJavascript(
+            'nouislider-js',
+            'https://cdn.jsdelivr.net/npm/nouislider@15.7.0/dist/nouislider.min.js',
+            [
+                'position' => 'head',
+                'priority' => 201,
+                'server' => 'remote'
+            ]
+        );
+
+
+
         $available_status_vendor = new orderlineStatusType(Configuration::get('MV_AVAILABLE_STATUS'));
         $out_of_stock_status = new orderlineStatusType(Configuration::get('MV_OUT_OF_STOCK_STATUS'));
         // Assign data to template

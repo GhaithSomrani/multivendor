@@ -137,12 +137,18 @@ class EntityLogHelper
 
             case 'employee':
                 $employee = new Employee((int)$context->employee->id);
-                $changedBy = 'PR/' . $employee->firstname . ' ' . $employee->lastname;
+                $changedBy = 'Prestashop/' . $employee->firstname . ' ' . $employee->lastname;
                 break;
 
             case 'customer':
                 $customer = new Customer((int)$context->customer->id);
-                $changedBy = 'VD/' . $customer->firstname . ' ' . $customer->lastname;
+                $vendor =  VendorHelper::getVendorByCustomer((int)$context->customer->id);
+                if (!empty($vendor)) {
+                    $prefix = 'Vendeur/';
+                } else {
+                    $prefix = 'QrCode/';
+                }
+                $changedBy = $prefix . $customer->firstname . ' ' . $customer->lastname;
                 break;
 
             default:
@@ -208,7 +214,7 @@ class EntityLogHelper
     public static function getStatusField($entity_type)
     {
         foreach (self::ENTITIES as $config) {
-            if ($config['parent'] === $entity_type || $config['child'] === $entity_type) {
+            if ($config['parent'] === $entity_type) {
                 return $config['status'];
             }
         }
@@ -217,13 +223,23 @@ class EntityLogHelper
     public static function getStatusObjectField($entity_type)
     {
         foreach (self::ENTITIES as $config) {
-            if ($config['parent'] === $entity_type || $config['child'] === $entity_type) {
+            if ($config['parent'] === $entity_type ) {
                 return $config['statusObject'];
             }
         }
         return null;
     }
 
+    public static function isStatusLoggable($entity_type)
+    {
+        //test if the status in entity !=null 
+        foreach (self::ENTITIES as $config) {
+            if ($config['parent'] === $entity_type) {
+                return $config['status'] !== null;
+            }
+        }
+        return false;
+    }
 
     public static function getContext($backtrace)
     {

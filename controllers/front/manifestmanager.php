@@ -1,5 +1,7 @@
 <?php
 
+use PSpell\Config;
+
 if (!defined('_PS_VERSION_')) {
     exit;
 }
@@ -248,7 +250,7 @@ class MultivendorManifestManagerModuleFrontController extends ModuleFrontControl
         $manifests = $this->getVendorManifests();
         $result = [];
         foreach ($manifests as $manifest) {
-            if ($manifest['id_manifest_status'] != 5) {
+            if ($manifest['id_manifest_status'] != Configuration::get('MANIFEST_RETURN_DRAFT')) {
                 $address = Manifest::getManifestAddress($manifest['id_manifest']);
                 $manifestTypeObj = new ManifestType($manifest['id_manifest_type']);
                 $orderdetails = OrderHelper::getVendorOrderDetails($this->vendor['id_vendor'], ['manifest' => $manifest['id_manifest']]);
@@ -277,7 +279,8 @@ class MultivendorManifestManagerModuleFrontController extends ModuleFrontControl
     {
         $orderDetails = Tools::getValue('order_details', []);
         $id_address = (int)Tools::getValue('id_address');
-
+        $validate = (bool)Tools::getValue('validate');
+        $id_manifest_status = $validate ? Configuration::get('mv_pickup') : 1;
         if (empty($orderDetails)) {
             $this->ajaxResponse(['error' => 'No order details selected'], 400);
             return;
@@ -295,7 +298,7 @@ class MultivendorManifestManagerModuleFrontController extends ModuleFrontControl
                 $this->vendor['id_vendor'],
                 Manifest::TYPE_PICKUP,
                 $id_address,
-                1
+                $id_manifest_status
             );
             $this->ajaxResponse([
                 'success' => true,

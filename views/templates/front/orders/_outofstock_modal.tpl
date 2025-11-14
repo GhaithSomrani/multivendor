@@ -12,9 +12,11 @@
             <div id="currentoutofstock">
                 <div class="mv-product-image">
                     <img src="" id="currentoutodstock-image" class="mv-product-image">
+
                 </div>
+                <strong class="mv-product-name" id="currentoutodstock-name"></strong>
+
                 <div class="mv-product-name">
-                    <strong class="mv-product-name" id="currentoutodstock-name"></strong>
                     <div class="mv-additional-option">
                         <div class="mv-mobile-product-sku" id="currentoutodstock-brand"></div>
                         <div class="mv-mobile-product-sku" id="currentoutodstock-price"></div>
@@ -23,8 +25,7 @@
                     </div>
                 </div>
                 <div id="generated-comment">
-                    <textarea id="input-comment" class="mv-form-control" rows="3"
-                        placeholder="Si vous ne trouvez pas votre suggestion dans la recherche, vous pouvez nous fournir des informations à ce sujet ici. Exemple (nom - référence - lien)"
+                    <textarea id="input-comment" class="mv-form-control" rows="1" placeholder="Note Supplémentaire"
                         style="resize: none; "></textarea>
                 </div>
             </div>
@@ -34,12 +35,23 @@
                 <div class="input-search-block">
                     <input type="text" id="product-search-input" class="mv-input"
                         placeholder="{l s='Tapez pour rechercher...' mod='multivendor'}"
-                        style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
-                    <span class="mv-status-badge-filter" style="" id="filter-pricefrom"></span>
-                    <span class="mv-status-badge-filter" id="filter-priceto"></span>
-                    <span class="mv-status-badge-filter" id="filter-category"></span>
+                        style="width: 45%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
 
-                    <button class="mv-btn mv-btn-primary"> Rechercher</button>
+                    {* <span class="mv-status-badge-filter" style="" id="filter-pricefrom"></span>
+                    <span class="mv-status-badge-filter" id="filter-priceto"></span> *}
+                    <div class="filter-out-of-stock">
+                        <span class="mv-status-badge-filter" id="filter-category"></span>
+                        <div class="out-price-filter">
+                            <div class="price-slider-wrapper">
+                                <div id="slider-range"></div>
+                            </div>
+                            <small id="filter-pricerange">0 - 1000</small>
+                        </div>
+                    </div>
+
+
+
+                    <button class="mv-btn mv-btn-primary" style="margin-left: auto;">🔍︎ Rechercher</button>
                 </div>
                 <div id="variant-selected" style="display :none;">
 
@@ -73,3 +85,22 @@
 
     </div>
 </div>
+
+{literal}
+    <script>
+        const slider = document.getElementById('slider-range');
+        noUiSlider.create(slider, {
+            start: [100, 900],
+            connect: true,
+            range: { min: 0, max: 5000 },
+            step: 10,
+
+        });
+
+        const display = document.getElementById('filter-pricerange');
+        slider.noUiSlider.on('update', (values) => {
+            display.textContent = `${Math.round(values[0])} TND - ${Math.round(values[1])} TND`;
+        });
+    </script>
+
+{/literal}

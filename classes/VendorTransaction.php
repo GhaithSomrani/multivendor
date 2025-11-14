@@ -112,4 +112,13 @@ class VendorTransaction extends ObjectModel
 
         return Db::getInstance()->getRow($query);
     }
+    public static function getTransactionsByVendorPayment($id_vendor_payment)
+    {
+        $query = new DbQuery();
+        $query->select('*');
+        $query->from('mv_vendor_transaction');
+        $query->where('id_vendor_payment = ' . (int)$id_vendor_payment);
+        $query->orderBy('date_add DESC');
+        return Db::getInstance()->executeS($query);
+    }
 }

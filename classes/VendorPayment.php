@@ -42,6 +42,60 @@ class VendorPayment extends ObjectModel
         ]
     ];
 
+
+    // webservice parameters
+    protected $webserviceParameters = [
+        'objectsNodeName' => 'vendor_payments',
+        'objectNodeName' => 'vendor_payment',
+        'fields' => [
+            'id_vendor' => ['xlink_resource' => 'vendors'],
+            'amount' => [],
+            'product' => ['getter' => 'getwsProducts' , 'type' => 'json'],
+            'id_supplier' => ['getter' => 'getwsSupplier' , 'type' => 'int'],
+        ],
+    ];
+
+    public function getwsProducts()
+    {
+        $products = [];
+        $payemntDetails = VendorTransaction::getTransactionsByVendorPayment($this->id);
+
+        foreach ($payemntDetails as $payemntDetail) {
+            if ($payemntDetail['order_detail_id']) {
+                $vendorOrderDetail = VendorOrderDetail::getByIdOrderDetail($payemntDetail['order_detail_id']);
+                if ($vendorOrderDetail) {
+                    $unit_price = (float)$vendorOrderDetail['vendor_amount'] / (float) $vendorOrderDetail['product_quantity'];
+                    $unit_price = $payemntDetail['transaction_type'] === 'commission' ? $unit_price : -$unit_price;
+                    $products[] = [
+                        'id_product' => $vendorOrderDetail['product_id'],
+                        'id_product_attribute' => $vendorOrderDetail['product_attribute_id'],
+                        'quantity' => $vendorOrderDetail['product_quantity'],
+                        'unit_amout' => number_format($unit_price, 3),
+                    ];
+                }
+            }
+        }
+
+        return  json_encode($products);
+    }
+
+    public function getwsSupplier()
+    {
+        $vendorObj = new Vendor($this->id_vendor);
+        return $vendorObj->id_supplier;
+    }
+
+    public function save($null_values = false, $auto_date = true)
+    {
+        $payemntDetails = VendorTransaction::getTransactionsByVendorPayment($this->id);
+        $total = 0;
+        foreach ($payemntDetails as $payemntDetail) {
+            $total = $total + $payemntDetail['vendor_amount'];
+        }
+        $this->amount = $total;
+        return parent::save($auto_date, $null_values);
+    }
+
     /**
      * Get payments for a vendor
      *

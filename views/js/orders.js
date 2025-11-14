@@ -809,7 +809,6 @@ let selectedMobileOrders = new Set();
 function initializeMobileFunctionality() {
     if (window.matchMedia('(max-width: 768px)').matches) {
         initializeMobileOrderHandlers();
-        initializeMobileMPNScanner();
         initializeMobileStatusSelects();
         initializeMobileHistoryButtons();
     }
@@ -935,6 +934,19 @@ function getcurrentorderdetails(orderDetailId) {
                 $('#currentoutodstock-price').html("Prix Public : " + parseFloat(data.orderDetail.product_price).toFixed(2));
                 $('#currentoutodstock-sku').html("Reférence : " + data.orderDetail.product_reference);
                 $('#currentoutodstock-mpn').html("Code-barre : " + data.orderDetail.product_mpn);
+                slider.noUiSlider.updateOptions({
+                    start: [
+                        parseFloat(data.orderDetail.product_price) * 0.7,
+                        parseFloat(data.orderDetail.product_price) * 1.3
+                    ],
+                    range: {
+                        min: 0,
+                        max: parseFloat(data.orderDetail.product_price) * 5
+                    },
+                    step: parseFloat(data.orderDetail.product_price) * 0.1,
+                    connect: true
+                });
+                searchProducts();
 
             }
         }
@@ -1059,11 +1071,9 @@ function openOutOfStockModal(orderDetailId) {
     selectedSuggestions = [];
     document.getElementById('generated-comment').value = '';
     document.getElementById('search-results').innerHTML = '';
-    // document.getElementById('variants-container').innerHTML = '';
     getcurrentorderdetails(orderDetailId);
     document.getElementById('outofstock-modal').classList.add('mv-modal-open');
 
-    searchProducts();
     $.ajax({
         url: ordersAjaxUrl,
         type: 'POST',
@@ -1084,11 +1094,15 @@ function openOutOfStockModal(orderDetailId) {
 }
 function searchProducts(page = 1, limit = 18) {
     const search = document.getElementById('product-search-input').value;
-
+    const priceFrom = slider.noUiSlider.get()[0];
+    const priceTo = slider.noUiSlider.get()[1];
+    console.log(priceFrom, priceTo);
     $.ajax({
         url: ordersAjaxUrl,
         type: 'POST',
         data: {
+            priceFrom: priceFrom,
+            priceTo: priceTo,
             action: 'searchOutOfStockProducts',
             currentOrderDetailId: currentOrderDetailId,
             search: search,
@@ -1249,7 +1263,7 @@ $(document).ready(function () {
 $(document).ready(function () {
 
     $('#input-comment').on('input', function () {
-        if (selectedSuggestions.length < 1  && !noSuggestion) {
+        if (selectedSuggestions.length < 1 && !noSuggestion) {
             $('#outofstock-btn').attr('disabled', true);
         } else {
             $('#outofstock-btn').attr('disabled', false);

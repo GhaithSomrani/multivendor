@@ -78,6 +78,11 @@ class VendorOrderDetail extends ObjectModel
             'date_add' => ['type' => self::TYPE_DATE, 'validate' => 'isDate']
         ]
     ];
+
+    public static function getAdminLink()
+    {
+        return Context::getContext()->link->getAdminLink('AdminVendorOrderDetails');
+    }
     /**
      * Get vendor order details by order ID
      *

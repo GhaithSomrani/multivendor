@@ -159,6 +159,11 @@ class ManifestStatusType extends ObjectModel
         return Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue($sql);
     }
 
+    public static function getName($id_manifest_status_type)
+    {
+        $object = new ManifestStatusType($id_manifest_status_type);
+        return $object->name;
+    }
 
 
 

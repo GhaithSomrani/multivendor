@@ -61,7 +61,6 @@ class TransactionHelper
             return false;
         }
     }
-
     /**
      * Get existing transaction for order detail and transaction type
      *

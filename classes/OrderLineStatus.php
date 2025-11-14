@@ -51,6 +51,7 @@ class OrderLineStatus extends ObjectModel
             'comment' => ['type' => self::TYPE_STRING, 'validate' => 'isCleanHtml'],
             'date_add' => ['type' => self::TYPE_DATE, 'validate' => 'isDate'],
             'date_upd' => ['type' => self::TYPE_DATE, 'validate' => 'isDate']
+
         ]
     ];
 
@@ -65,11 +66,23 @@ class OrderLineStatus extends ObjectModel
             'comment' => [],
             'date_add' => [],
             'date_upd' => [],
-            'changed_by' => ['required' => false],
+            'changed_by' => ['required' => false, 'getter' => 'getCurrentChangeBy'],
         ],
 
 
     ];
+
+
+    // get lastest changeby from  OrderLineStatusLog table
+    public function getCurrentChangeBy()
+    {
+        $query = new DbQuery();
+        $query->select('changed_by');
+        $query->from('mv_order_line_status_log');
+        $query->where('id_order_detail = ' . (int)$this->id_order_detail);
+        $query->orderBy('date_add DESC');
+        return Db::getInstance()->getValue($query);
+    }
 
     /**
      * Override update method to handle status updates with changability validation
@@ -228,16 +241,22 @@ class OrderLineStatus extends ObjectModel
         if (!$this->isApiCall()) {
             if (Context::getContext()->employee && Context::getContext()->employee->id) {
                 $employeeObject = new Employee((int)Context::getContext()->employee->id);
-                return 'PR/'.$employeeObject->firstname . ' ' . $employeeObject->lastname;
+                return 'Prestashop/' . $employeeObject->firstname . ' ' . $employeeObject->lastname;
             }
 
             if (Context::getContext()->customer && Context::getContext()->customer->id) {
                 $customerObject = new Customer((int)Context::getContext()->customer->id);
-                return 'VD/'.$customerObject->firstname . ' ' . $customerObject->lastname;
+                $vendor =  VendorHelper::getVendorByCustomer((int)Context::getContext()->customer->id);
+                if (!empty($vendor)) {
+                    $prefix = 'Vendeur/';
+                } else {
+                    $prefix = 'QrCode/';
+                }
+                return $prefix . $customerObject->firstname . ' ' . $customerObject->lastname;
             }
         } else {
             if (!empty($this->changed_by)) {
-                return 'OD/'.$this->changed_by;
+                return 'Odoo/' . $this->changed_by;
             }
         }
 
@@ -287,7 +306,7 @@ class OrderLineStatus extends ObjectModel
     public static function getByOrderDetail($id_order_detail)
     {
         $query = new DbQuery();
-        $query->select('ols.*, olst.name as status_name, olst.color, olst.commission_action');
+        $query->select('ols.*, olst.id_order_line_status_type, olst.name as status_name, olst.color, olst.commission_action');
         $query->from('mv_order_line_status', 'ols');
         $query->leftJoin('mv_order_line_status_type', 'olst', 'olst.id_order_line_status_type = ols.id_order_line_status_type');
         $query->where('ols.id_order_detail = ' . (int)$id_order_detail);

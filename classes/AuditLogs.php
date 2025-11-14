@@ -1,5 +1,7 @@
 <?php
 
+use Dom\Entity;
+
 class AudityLog extends ObjectModel
 {
     /**
@@ -95,7 +97,9 @@ class AudityLog extends ObjectModel
             self::handleChildRelationLogs($entityType, $entityId, $action, $beforeData, $after, $changedBy);
         }
 
-        self::handleStatusChange($entityType, $entityId, $beforeData, $after, $changedBy);
+        if (EntityLogHelper::isStatusLoggable($entityType)) {
+            self::handleStatusChange($entityType, $entityId, $beforeData, $after, $changedBy);
+        }
     }
 
     /**
@@ -168,13 +172,15 @@ class AudityLog extends ObjectModel
      */
     private static function handleStatusChange(string $entityType, int $entityId, array $beforeData, array $after, string $changedBy): void
     {
+
         $statusField = EntityLogHelper::getStatusField($entityType);
+
         if (!$statusField) {
             return;
         }
 
-        $oldStatus = $beforeData[$statusField];
-        $newStatus = $after[$statusField];
+        $oldStatus =  isset($beforeData[$statusField]) && $statusField ? $beforeData[$statusField] : "None";
+        $newStatus =  isset($after[$statusField]) && $statusField ? $after[$statusField] : "Deleted";
 
 
 
@@ -239,5 +245,14 @@ class AudityLog extends ObjectModel
             'before' => array_intersect_key($before, $changed),
             'after' => $changed
         ];
+    }
+
+
+    public static function getLogsByNameAndId($name, $id)
+    {
+        $query = new DbQuery();
+        $query->select('*');
+        $query->from('ps_audit_log');
+        $query->where('entity_type = "' . pSQL($name) . '" AND entity_id = ' . (int)$id);
     }
 }

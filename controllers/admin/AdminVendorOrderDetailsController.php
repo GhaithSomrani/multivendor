@@ -4,6 +4,7 @@
  * Admin Vendor Order Details Controller - Complete with Export Card and Order Status
  */
 
+
 if (!defined('_PS_VERSION_')) {
     exit;
 }
@@ -20,14 +21,14 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
         $this->_defaultOrderBy = 'id_vendor_order_detail';
         $this->_defaultOrderWay = 'DESC';
         $this->list_id = 'vendor_order_details';
-
         $this->bulk_actions = [
-            'updateStatus' => [
-                'text' => 'Mettre à jour le statut',
-                'icon' => 'icon-refresh',
+            'PrintPDF' => [
+                'text' => 'Imprimer Bon de retour',
+                'icon' => 'icon-print',
+                'confirm' => 'Confirmer impression ?'
+
             ]
         ];
-
         $this->addRowAction('view');
         $this->allow_export = true;
         $this->_use_found_rows = true;
@@ -38,7 +39,7 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
             'id_vendor_order_detail' => [
                 'title' => $this->l('ID'),
                 'align' => 'center',
-                'class' => 'fixed-width-xs'
+                'class' => 'fixed-width-xs',
             ],
             'id_order' => [
                 'title' => $this->l('ID Commande'),
@@ -51,7 +52,9 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
                 'title' => $this->l('ID Détail'),
                 'align' => 'center',
                 'class' => 'fixed-width-sm',
-                'filter_key' => 'a!id_order_detail'
+                'filter_key' => 'a!id_order_detail',
+                'callback' => 'displayId',
+
             ],
             'vendor_name' => [
                 'title' => $this->l('Vendeur'),
@@ -80,14 +83,18 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
                 'align' => 'center',
                 'callback' => 'displayManifestReference',
                 'orderby' => false,
-                'havingFilter' => true
+                'havingFilter' => true,
+                'remove_onclick' => true
+
             ],
             'manifest_rt' => [
                 'title' => $this->l('RT'),
                 'align' => 'center',
                 'callback' => 'displayManifestReference',
                 'orderby' => false,
-                'havingFilter' => true
+                'havingFilter' => true,
+                'remove_onclick' => true
+
             ],
             'payment_refund' => [
                 'title' => $this->l('Paiement retourné'),
@@ -95,7 +102,9 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
                 'type' => 'price',
                 'callback' => 'displayPaymentReference',
                 'orderby' => false,
-                'havingFilter' => true
+                'havingFilter' => true,
+                'remove_onclick' => true
+
             ],
             'payment_commission' => [
                 'title' => $this->l('Paiement commission'),
@@ -103,7 +112,8 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
                 'type' => 'price',
                 'callback' => 'displayPaymentReference',
                 'orderby' => false,
-                'havingFilter' => true
+                'havingFilter' => true,
+                'remove_onclick' => true
             ],
             'name' => [
                 'title' => $this->l('Statut ligne de commande'),
@@ -116,7 +126,7 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
             'order_date' => [
                 'title' => $this->l('Date de commande'),
                 'type' => 'datetime',
-                'filter_key' => 'o!date_add',
+                'filter_key' => 'a!date_add',
                 'havingFilter' => true
             ]
         ];
@@ -124,8 +134,9 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
         $this->populateStatusList();
 
         $this->_select = '
+        a.product_mpn AS product_mpn,
         o.reference AS order_reference,
-        o.date_add AS order_date,
+        a.date_add AS order_date,
         o.id_order,
         v.shop_name AS vendor_name,
         olst.name AS name,
@@ -151,6 +162,14 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
         $this->_group = 'GROUP BY a.id_vendor_order_detail';
     }
 
+
+
+
+
+    public function getBulkActionsList()
+    {
+        return $this->bulk_actions;
+    }
     /**
      * Populate the order status list for the dropdown filter
      */
@@ -171,6 +190,13 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
         }
 
         $this->fields_list['order_status_name']['list'] = $statusList;
+    }
+
+
+
+    public function displayId($id, $row)
+    {
+        return  '<span data-mpn = ' . $row['product_mpn'] . '>' . $id . '</span>';
     }
 
     /**
@@ -285,7 +311,6 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
 
         // Get all vendors for filtering
         $vendors = Vendor::getAllVendors();
-
         // Assign variables to Smarty
         $this->context->smarty->assign([
             'status_types' => $statusTypes,
@@ -348,18 +373,18 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
             }
 
             if ($date_from) {
-                $sql .= ' AND DATE(o.date_add) >= "' . pSQL($date_from) . '"';
+                $sql .= ' AND DATE(vod.date_add) >= "' . pSQL($date_from) . '"';
             }
 
             if ($date_to) {
-                $sql .= ' AND DATE(o.date_add) <= "' . pSQL($date_to) . '"';
+                $sql .= ' AND DATE(vod.date_add) <= "' . pSQL($date_to) . '"';
             }
 
             if ($order_reference) {
                 $sql .= ' AND o.reference LIKE "%' . pSQL($order_reference) . '%"';
             }
 
-            $sql .= ' ORDER BY o.date_add DESC';
+            $sql .= ' ORDER BY vod.date_add DESC';
 
             $results = Db::getInstance()->executeS($sql);
 
@@ -459,64 +484,27 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
     }
 
 
-    /**
-     * Render export card using template
-     */
-    protected function renderExportCard()
-    {
-        $vendors = Vendor::getAllVendors();
-        $statusTypes = OrderLineStatusType::getAllActiveStatusTypes();
-        $manifestTypes = ManifestType::getAll();
-        $this->context->smarty->assign([
-            'manifest_types' => $manifestTypes,
-            'vendors' => $vendors,
-            'status_types' => $statusTypes,
-            'current_index' => self::$currentIndex,
-            'token' => $this->token
-        ]);
 
-        // Fetch and return the template
-        return $this->context->smarty->fetch(_PS_MODULE_DIR_ . 'multivendor/views/templates/admin/vendor_export_card.tpl');
-    }
 
     /**
      * Override renderList to add mass update panel, export card and custom filter form
      */
     public function renderList()
     {
-        // Add the mass update panel at the top
-        $massUpdatePanel = $this->renderMassUpdatePanel();
 
-        $exportCard = $this->renderExportCard();
+
+
+
 
         $content = parent::renderList();
 
+        $massUpdatePanel = $this->renderMassUpdatePanel();
 
-        return  $exportCard  . $massUpdatePanel . $content;
+
+        return   $massUpdatePanel .   $content;
     }
 
-    /**
-     * Process export filtered PDF
-     */
-    protected function processExportFilteredPDF()
-    {
-        $id_vendor = (int)Tools::getValue('export_vendor') > 0 ? (int)Tools::getValue('export_vendor') : null;
-        $id_status_type = (int)Tools::getValue('export_status_type');
-        $export_type = Tools::getValue('export_type');
-        $orderDetailIds = $this->getFilteredOrderDetails($id_vendor, $id_status_type, $export_type);
 
-        if (empty($orderDetailIds)) {
-            $this->errors[] = $this->l('No order lines found with the specified criteria.');
-            return;
-        }
-        try {
-            Manifest::generateMulipleManifestPDF($orderDetailIds, $export_type, $id_vendor);
-        } catch (Exception $e) {
-            PrestaShopLogger::addLog('Export PDF Error: ' . $e->getMessage(), 3, null, 'AdminVendorOrderDetails');
-
-            $this->errors[] = $this->l('Error generating PDF: ') . $e->getMessage();
-        }
-    }
     public function ajaxProcesseExportSelectedIds()
     {
 
@@ -532,8 +520,11 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
         $orderDetailIds = [];
         foreach ($ids as $id) {
             $ordervendor =  new VendorOrderDetail((int)$id);
-            if (Validate::isLoadedObject($ordervendor)) {
+            $orderstatus = OrderLineStatus::getByOrderDetailAndVendor($ordervendor->id_order_detail, $ordervendor->id_vendor);
+            if ($orderstatus && $orderstatus['id_order_line_status_type'] == 12) {
                 $orderDetailIds[] = $ordervendor->id_order_detail;
+            } else {
+                throw new Exception('No order lines found with the specified criteria.');
             }
         }
         try {
@@ -559,7 +550,7 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
         if ($id_vendor > 0) {
             $sql .= ' AND vod.id_vendor = ' . (int)$id_vendor;
         }
-        $sql .=  ' ORDER BY o.date_add DESC';
+        $sql .=  ' ORDER BY vod.date_add DESC';
 
 
 
@@ -584,6 +575,7 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
      */
     public function postProcess()
     {
+
         // Handle AJAX requests
         if (Tools::getValue('ajax')) {
             $action = Tools::getValue('action');
@@ -608,8 +600,34 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
             return;
         }
 
+
         parent::postProcess();
     }
+
+    protected function processBulkPrintPDF()
+    {
+        $ids = Tools::getValue('vendor_order_detailsBox');
+        $type = Manifest::TYPE_RETURNS;
+        $orderDetailIds = [];
+        if (empty($ids)) {
+            $this->errors[] = $this->l('Vous devez choisir au moins une ligne de commande.');
+            return false;
+        }
+        foreach ($ids as $id) {
+            $ordervendor =  new VendorOrderDetail((int)$id);
+            $orderDetailIds[] = $ordervendor->id_order_detail;
+        }
+
+        if (!empty($orderDetailIds)) {
+            try {
+                Manifest::generateMulipleManifestPDF($orderDetailIds, $type, null);
+            } catch (Exception $e) {
+                PrestaShopLogger::addLog('Error generating PDF: ' . $e->getMessage(), 3, null, 'AdminVendorOrderDetails');
+                $this->errors[] = $this->l('Error generating PDF: ') . $e->getMessage();
+            }
+        }
+    }
+
 
     /**
      * Display vendor amount

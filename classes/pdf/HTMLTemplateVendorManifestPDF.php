@@ -34,6 +34,10 @@ class HTMLTemplateVendorManifestPDF extends HTMLTemplate
         $pdf_subtitle = ($export_type === 'retour') ? 'Document de Retour Multi-Articles' : 'Document de Collecte Multi-Articles';
         $commissionRate = (float)VendorCommission::getCommissionRate($id_vendor) / 100;
         $totalQty = $this->getTotalQty($this->data['orderDetailIds']);
+        $manifestId = Manifest::getIdByReference($this->data['maniefest_reference']) ?? null;
+
+        $qrcodelink = Context::getContext()->link->getModuleLink('multivendor', 'manifest', ['id' => $manifestId], true);
+
         $this->smarty->assign([
             'total_qty' => $totalQty,
             'maniefest_reference' => $this->data['maniefest_reference'] ?? '',
@@ -50,6 +54,8 @@ class HTMLTemplateVendorManifestPDF extends HTMLTemplate
             'export_type' => $export_type,
             'pdf_title' => $pdf_title,
             'pdf_subtitle' => $pdf_subtitle,
+            'manifest_id' => $manifestId,
+            'qrcodelink' => $qrcodelink
         ]);
 
         $template_path = _PS_MODULE_DIR_ . 'multivendor/views/templates/pdf/VendorManifestPDF.tpl';
