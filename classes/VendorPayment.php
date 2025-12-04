@@ -36,7 +36,7 @@ class VendorPayment extends ObjectModel
             'id_vendor' => ['type' => self::TYPE_INT, 'validate' => 'isUnsignedId', 'required' => true],
             'amount' => ['type' => self::TYPE_FLOAT, 'validate' => 'isFloat', 'required' => true],
             'payment_method' => ['type' => self::TYPE_STRING, 'validate' => 'isGenericName', 'required' => false, 'size' => 64],
-            'reference' => ['type' => self::TYPE_STRING, 'validate' => 'isGenericName', 'required' => true, 'size' => 64],
+            'reference' => ['type' => self::TYPE_STRING, 'validate' => 'isGenericName', 'required' => true, 'size' => 1024],
             'status' => ['type' => self::TYPE_STRING, 'validate' => 'isGenericName', 'required' => true, 'size' => 32],
             'date_add' => ['type' => self::TYPE_DATE, 'validate' => 'isDate']
         ]
@@ -50,8 +50,8 @@ class VendorPayment extends ObjectModel
         'fields' => [
             'id_vendor' => ['xlink_resource' => 'vendors'],
             'amount' => [],
-            'product' => ['getter' => 'getwsProducts' , 'type' => 'json'],
-            'id_supplier' => ['getter' => 'getwsSupplier' , 'type' => 'int'],
+            'product' => ['getter' => 'getwsProducts', 'type' => 'json'],
+            'id_supplier' => ['getter' => 'getwsSupplier', 'type' => 'int'],
         ],
     ];
 
@@ -85,6 +85,7 @@ class VendorPayment extends ObjectModel
         return $vendorObj->id_supplier;
     }
 
+
     public function save($null_values = false, $auto_date = true)
     {
         $payemntDetails = VendorTransaction::getTransactionsByVendorPayment($this->id);
@@ -93,6 +94,16 @@ class VendorPayment extends ObjectModel
             $total = $total + $payemntDetail['vendor_amount'];
         }
         $this->amount = $total;
+        $transactions = VendorTransaction::getTransactionsByVendorPayment($this->id);
+        foreach ($transactions as $transaction) {
+            $transactionObj = new VendorTransaction($transaction['id_vendor_transaction']);
+            $transactionObj->id_vendor_payment = $this->id;
+            // if payment is completed, mark transactions as paid
+            if ($this->status === 'completed') {
+                $transactionObj->status = 'paid';
+            }
+            $transactionObj->save();
+        }
         return parent::save($auto_date, $null_values);
     }
 
@@ -104,28 +115,72 @@ class VendorPayment extends ObjectModel
      * @param int $offset Optional offset
      * @return array Payments
      */
-    public static function getVendorPayments($id_vendor, $limit = null, $offset = null, $completed_only = true)
+    public static function getVendorPayments($id_vendor, $limit = null, $offset = null, $filter = [])
     {
+        $sql = 'SELECT * FROM ' . _DB_PREFIX_ . 'mv_vendor_payment 
+            WHERE id_vendor = ' . (int)$id_vendor;
 
-        $query = new DbQuery();
-        $query->select('*');
-        $query->from('mv_vendor_payment');
-        $query->where('id_vendor = ' . (int)$id_vendor);
-        if ($completed_only) {
-            $query->where('status = "completed"');
+        if (!empty($filter['reference'])) {
+            $sql .= ' AND reference LIKE "%' . pSQL($filter['reference']) . '%"';
+        }
+        if (!empty($filter['payment_method'])) {
+            $sql .= ' AND payment_method = "' . pSQL($filter['payment_method']) . '"';
+        }
+        if (!empty($filter['status'])) {
+            $sql .= ' AND status = "' . pSQL($filter['status']) . '"';
+        }
+        if (!empty($filter['amount_min'])) {
+            $sql .= ' AND amount >= ' . (float)$filter['amount_min'];
+        }
+        if (!empty($filter['amount_max'])) {
+            $sql .= ' AND amount <= ' . (float)$filter['amount_max'];
+        }
+        if (!empty($filter['datefilter'])) {
+            $dates = explode(' - ', $filter['datefilter']);
+            if (count($dates) == 2) {
+                $sql .= ' AND DATE(date_add) BETWEEN "' . pSQL($dates[0]) . '" AND "' . pSQL($dates[1]) . '"';
+            }
         }
 
-        $query->orderBy('date_add DESC');
+        $sql .= ' ORDER BY date_add DESC';
 
         if ($limit) {
-            $query->limit($limit, $offset);
+            $sql .= ' LIMIT ' . (int)$offset . ', ' . (int)$limit;
         }
 
-        return Db::getInstance()->executeS($query);
+        return Db::getInstance()->executeS($sql);
     }
 
 
+    public static function countTotalPayments($id_vendor, $filter = [])
+    {
+        $sql = 'SELECT COUNT(*) FROM ' . _DB_PREFIX_ . 'mv_vendor_payment 
+            WHERE id_vendor = ' . (int)$id_vendor;
 
+        if (!empty($filter['reference'])) {
+            $sql .= ' AND reference LIKE "%' . pSQL($filter['reference']) . '%"';
+        }
+        if (!empty($filter['payment_method'])) {
+            $sql .= ' AND payment_method = "' . pSQL($filter['payment_method']) . '"';
+        }
+        if (!empty($filter['status'])) {
+            $sql .= ' AND status = "' . pSQL($filter['status']) . '"';
+        }
+        if (!empty($filter['amount_min'])) {
+            $sql .= ' AND amount >= ' . (float)$filter['amount_min'];
+        }
+        if (!empty($filter['amount_max'])) {
+            $sql .= ' AND amount <= ' . (float)$filter['amount_max'];
+        }
+        if (!empty($filter['datefilter'])) {
+            $dates = explode(' - ', $filter['datefilter']);
+            if (count($dates) == 2) {
+                $sql .= ' AND DATE(date_add) BETWEEN "' . pSQL($dates[0]) . '" AND "' . pSQL($dates[1]) . '"';
+            }
+        }
+
+        return (int)Db::getInstance()->getValue($sql);
+    }
     /**
      * Get payment details including the order lines that were paid
      * 
@@ -162,9 +217,9 @@ class VendorPayment extends ObjectModel
      * @param int $offset Optional offset
      * @return array Payments with order details
      */
-    public static function getVendorPaymentsWithDetails($id_vendor, $limit = null, $offset = null)
+    public static function getVendorPaymentsWithDetails($id_vendor, $limit = null, $offset = null, $filter = [])
     {
-        $payments = self::getVendorPayments($id_vendor, $limit, $offset);
+        $payments = self::getVendorPayments($id_vendor, $limit, $offset, $filter);
 
         foreach ($payments as &$payment) {
             $payment['order_details'] = self::getPaymentDetails($payment['id_vendor_payment']);

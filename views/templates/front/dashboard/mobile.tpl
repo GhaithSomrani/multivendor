@@ -40,7 +40,7 @@
                     {/foreach}
                 </div>
                 <div class="mv-text-center">
-                    <a href="{$vendor_orders_url}" class="mv-btn mv-btn-outline">
+                    <a href="{$link->getModuleLink('multivendor', 'orders')}" class="mv-btn mv-btn-outline">
                         {l s='Voir toutes les lignes de commande' mod='multivendor'}
                     </a>
                 </div>

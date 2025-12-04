@@ -1,0 +1,865 @@
+/* Multivendor Facturation (Payments) Custom CSS - Desktop and Mobile */
+
+/* ====================================
+   Base Dashboard Styles
+   ==================================== */
+.mv-dashboard {
+    color: #333;
+    background-color: #f9f9f9;
+    min-height: 100vh;
+    padding: 20px;
+}
+
+.mv-container {
+    display: flex;
+    gap: 24px;
+    max-width: 100%;
+    margin: 0 auto;
+    flex-direction: column;
+}
+
+/* ====================================
+   Sidebar Navigation
+   ==================================== */
+.mv-sidebar {
+    width: 100%;
+}
+
+.mv-nav-link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    color: #555;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    border-left: 3px solid transparent;
+}
+
+.mv-nav-link:hover {
+    background-color: #f8f8f8;
+    color: #333;
+}
+
+.mv-nav-link-active {
+    background-color: #f0f0ff;
+    color: #6366f1;
+    border-left-color: #6366f1;
+}
+
+.mv-icon {
+    font-size: 20px;
+    display: inline-block;
+    width: 24px;
+    text-align: center;
+}
+
+/* ====================================
+   Card Styles
+   ==================================== */
+.mv-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+    margin-bottom: 24px;
+    overflow: hidden;
+}
+
+.mv-card-header {
+    align-items: center;
+    display: flex;
+    padding: 20px;
+    border-bottom: 1px solid #eee;
+    background-color: #fafafa;
+    justify-content: space-between;
+}
+
+.mv-card-title {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #1a1a1a;
+}
+
+.mv-card-body {
+    padding: 20px;
+}
+
+.mv-count-badge {
+    background-color: #e0e7ff;
+    color: #4338ca;
+    padding: 6px 12px;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+/* ====================================
+   Main Content
+   ==================================== */
+.mv-main-content {
+    flex: 1;
+    width: 100%;
+    min-width: 0;
+}
+
+/* ====================================
+   Desktop Table Styles
+   ==================================== */
+.mv-table-container {
+    overflow-x: auto;
+}
+
+.mv-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.mv-table th,
+.mv-table td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+}
+
+.mv-table th {
+    font-weight: 600;
+    color: #666;
+    font-size: 13px;
+    text-transform: uppercase;
+}
+
+.mv-table tbody tr {
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.mv-table tbody tr:hover {
+    background-color: #fafafa;
+}
+
+/* ====================================
+   Filter Row Styles
+   ==================================== */
+.mv-filter-row {
+    background-color: #f8f9fa !important;
+}
+
+.mv-filter-row th {
+    padding: 10px 12px;
+    vertical-align: middle;
+}
+
+.mv-filter-input {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 13px;
+    transition: border-color 0.2s;
+}
+
+.mv-filter-input:focus {
+    outline: none;
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.mv-filter-range {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.mv-filter-range .mv-filter-input {
+    flex: 1;
+    min-width: 0;
+}
+
+/* ====================================
+   Status Buttons & Action Buttons
+   ==================================== */
+.mv-status-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+.mv-btn-filter {
+    background-color: #6366f1;
+    color: white;
+}
+
+.mv-btn-filter:hover {
+    background-color: #4f46e5;
+    transform: translateY(-1px);
+}
+
+.mv-btn-reset {
+    background-color: #ef4444;
+    color: white;
+}
+
+.mv-btn-reset:hover {
+    background-color: #dc2626;
+    transform: translateY(-1px);
+}
+
+.mv-btn-print {
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+.mv-btn-print:hover {
+    background: #2563eb;
+    transform: translateY(-1px);
+}
+
+.mv-collapse-btn {
+    background: #6366f1;
+    color: white;
+    border: none;
+    padding: 4px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    min-width: 32px;
+}
+
+.mv-collapse-btn:hover {
+    background: #4f46e5;
+}
+
+/* ====================================
+   Collapsible Row Details
+   ==================================== */
+.mv-row-details {
+    display: none;
+    background-color: #f9fafb !important;
+}
+
+.mv-row-details.open {
+    display: table-row;
+}
+
+.mv-row-details td {
+    padding: 20px !important;
+    border-bottom: 2px solid #e5e7eb !important;
+}
+
+/* ====================================
+   Payment Details Table (Nested)
+   ==================================== */
+.mv-payment-details-table {
+    margin: 0;
+    background-color: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.mv-payment-details-table th {
+    background-color: #f3f4f6;
+    padding: 10px 12px;
+    font-size: 12px;
+    color: #6b7280;
+    font-weight: 600;
+}
+
+.mv-payment-details-table td {
+    background-color: white !important;
+    padding: 10px 12px !important;
+    font-size: 13px !important;
+    color: #374151;
+}
+
+.mv-payment-details-table tbody tr:hover {
+    background-color: #f9fafb !important;
+}
+
+.mv-payment-details-table tfoot td {
+    background-color: #f9fafb !important;
+    border-top: 2px solid #e5e7eb !important;
+    font-weight: 600;
+    padding: 12px !important;
+}
+
+.mv-text-center {
+    text-align: center;
+}
+
+.mv-text-right {
+    text-align: right;
+}
+
+/* ====================================
+   Status Badges
+   ==================================== */
+.mv-status-badge {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: capitalize;
+}
+
+.mv-status-pending {
+    background-color: #fbbf24;
+    color: #78350f;
+}
+
+.mv-status-completed {
+    background-color: #10b981;
+    color: #064e3b;
+}
+
+.mv-status-paid {
+    background-color: #34d399;
+    color: #064e3b;
+}
+
+.mv-status-cancelled {
+    background-color: #f87171;
+    color: #7f1d1d;
+}
+
+/* ====================================
+   Links
+   ==================================== */
+.mv-link {
+    color: #6366f1;
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.2s;
+}
+
+.mv-link:hover {
+    text-decoration: underline;
+    color: #4f46e5;
+}
+
+/* ====================================
+   Empty State
+   ==================================== */
+.mv-empty-state {
+    text-align: center;
+    color: #888;
+    padding: 40px 20px;
+    font-size: 14px;
+}
+
+/* ====================================
+   Pagination
+   ==================================== */
+.mv-pagination {
+    margin-top: 24px;
+    display: flex;
+    justify-content: center;
+}
+
+.mv-pagination-list {
+    display: flex;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    gap: 8px;
+}
+
+.mv-pagination-item {
+    margin: 0;
+}
+
+.mv-pagination-link {
+    display: block;
+    padding: 8px 12px;
+    color: #6366f1;
+    text-decoration: none;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    background-color: white;
+    transition: all 0.2s;
+    font-size: 14px;
+    min-width: 40px;
+    text-align: center;
+}
+
+.mv-pagination-link:hover {
+    background-color: #f5f5f5;
+    border-color: #6366f1;
+}
+
+.mv-pagination-active .mv-pagination-link {
+    background-color: #6366f1;
+    color: white;
+    border-color: #6366f1;
+}
+
+/* ====================================
+   MOBILE STYLES
+   ==================================== */
+
+/* Mobile Container */
+.mv-mobile-commissions {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* Mobile Card Specific */
+.mv-mobile-orders-card .mv-card-header {
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.mv-mobile-orders-card .mv-card-title {
+    font-size: 16px;
+}
+
+/* Mobile Orders Grid */
+.mv-mobile-orders-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* Mobile Order Item with Slide Effect */
+.mv-mobile-order-item {
+    position: relative;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.mv-mobile-order-item:hover {
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Main Content (visible by default) */
+.mv-main-content {
+    padding: 16px;
+    transition: transform 0.3s ease;
+    position: relative;
+    z-index: 1;
+    background: white;
+}
+
+.mv-mobile-order-item.slided .mv-main-content {
+    transform: translateX(-100%);
+}
+
+/* Hidden Content (slides in from right) */
+.mv-hidden-content {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 100%;
+    height: 100%;
+    padding: 16px;
+    background: white;
+    transform: translateX(100%);
+    transition: transform 0.3s ease;
+    overflow-y: auto;
+    z-index: 2;
+}
+
+.mv-mobile-order-item.slided .mv-hidden-content {
+    transform: translateX(0);
+}
+
+/* Mobile Order Header */
+.mv-mobile-order-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.mv-mobile-order-ref {
+    font-size: 15px;
+}
+
+.mv-mobile-order-ref strong {
+    color: #6366f1;
+    font-weight: 600;
+}
+
+.mv-mobile-order-date {
+    font-size: 13px;
+    color: #6b7280;
+}
+
+/* Mobile Action Buttons */
+.mv-mobile-action-buttons {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.mv-mobile-print-btn {
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+}
+
+.mv-mobile-print-btn:hover {
+    transform: translateY(-1px);
+}
+
+.mv-mobile-print-btn:active {
+    border: none;
+    transform: translateY(0);
+}
+
+/* Slide Arrow Button */
+.mv-slide-arrow {
+    background: #6366f1;
+    color: white;
+    border: none;
+    padding: 8px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.mv-slide-arrow:hover {
+    background: #4f46e5;
+    transform: translateY(-1px);
+}
+
+.mv-slide-arrow:active {
+    transform: translateY(0);
+}
+
+/* Mobile Order Content */
+.mv-mobile-order-content {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* Mobile Detail Rows */
+.mv-mobile-order-details {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.mv-mobile-detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.mv-mobile-detail-row:last-child {
+    border-bottom: none;
+}
+
+.mv-mobile-label {
+    color: #6b7280;
+    font-size: 13px;
+}
+
+.mv-mobile-value {
+    color: #374151;
+    font-size: 14px;
+    font-weight: 500;
+    text-align: right;
+}
+
+.mv-mobile-amount {
+    font-size: 18px !important;
+    font-weight: 700 !important;
+    color: #10b981 !important;
+}
+
+/* Mobile Status Section */
+.mv-mobile-status-section {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 10px;
+    margin-top: 12px;
+}
+
+.mv-mobile-current-status {
+    flex: 1;
+}
+
+/* Transactions Section (in hidden content) */
+.mv-transactions-section {
+    margin-top: 10px;
+}
+
+.mv-transactions-section h6 {
+    margin: 0 0 12px 0;
+    font-size: 14px;
+    color: #374151;
+    font-weight: 600;
+}
+
+/* Mobile Transaction Box */
+.mv-mobile-transaction-box {
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 10px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border-left: 3px solid #6366f1;
+}
+
+/* Mobile Empty State */
+.mv-mobile-empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: #9ca3af;
+}
+
+.mv-mobile-empty-icon {
+    font-size: 48px;
+    margin-bottom: 12px;
+}
+
+.mv-mobile-empty-state p {
+    margin: 0;
+    font-size: 14px;
+}
+
+/* Mobile Pagination */
+.mv-mobile-pagination {
+    margin-top: 24px;
+    padding: 16px 0;
+    border-top: 1px solid #e0e0e0;
+}
+
+.mv-mobile-pagination-info {
+    text-align: center;
+    font-size: 14px;
+    color: #666;
+    margin-bottom: 16px;
+}
+
+.mv-mobile-pagination-controls {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.mv-mobile-pagination-btn {
+    flex: 1;
+    padding: 12px 16px;
+    background: #6366f1;
+    color: #fff;
+    text-decoration: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    text-align: center;
+    transition: all 0.2s ease;
+}
+
+.mv-mobile-pagination-btn:hover {
+    background: #4f46e5;
+    transform: translateY(-1px);
+}
+
+/* ====================================
+   Responsive Adjustments
+   ==================================== */
+
+/* Tablet */
+@media (max-width: 1024px) {
+    .mv-container {
+        flex-direction: column;
+    }
+
+    .mv-sidebar {
+        width: 100%;
+    }
+}
+
+/* Mobile - Small Screens */
+@media (max-width: 768px) {
+    .mv-dashboard {
+        padding: 12px;
+    }
+
+    .mv-card-header {
+        padding: 16px;
+    }
+
+    .mv-card-body {
+        padding: 16px;
+    }
+
+    .mv-card-title {
+        font-size: 16px;
+    }
+
+    /* Hide desktop table on mobile */
+    .mv-table-container {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .mv-table {
+        font-size: 12px;
+    }
+
+    .mv-table th,
+    .mv-table td {
+        padding: 8px;
+    }
+
+    .mv-filter-input {
+        font-size: 12px;
+        padding: 6px 8px;
+    }
+
+    .mv-status-btn {
+        padding: 5px 8px;
+        font-size: 12px;
+    }
+}
+
+/* Mobile - Extra Small Screens */
+@media (max-width: 480px) {
+    .mv-dashboard {
+        padding: 10px;
+    }
+
+    .mv-card {
+        margin-bottom: 16px;
+    }
+
+    .mv-card-header {
+        padding: 12px;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+
+    .mv-card-body {
+        padding: 12px;
+    }
+
+    .mv-mobile-order-item {
+        border-radius: 10px;
+    }
+
+    .mv-main-content,
+    .mv-hidden-content {
+        padding: 12px;
+    }
+
+    .mv-mobile-order-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+
+    .mv-mobile-action-buttons {
+        width: 100%;
+        justify-content: stretch;
+    }
+
+    .mv-mobile-print-btn {
+        flex: 0 0 auto;
+    }
+
+    .mv-slide-arrow {
+        flex: 1;
+        text-align: center;
+    }
+
+    .mv-mobile-detail-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+
+    .mv-mobile-value {
+        text-align: left;
+    }
+
+    .mv-mobile-transaction-box {
+        padding: 10px;
+    }
+
+    .mv-mobile-pagination-controls {
+        flex-direction: column;
+    }
+
+    .mv-mobile-pagination-btn {
+        width: 100%;
+    }
+}
+
+/* ====================================
+   Utility Classes
+   ==================================== */
+.text-muted {
+    color: #6b7280 !important;
+}
+
+.text-center {
+    text-align: center;
+}
+
+/* ====================================
+   Print Styles
+   ==================================== */
+@media print {
+    .mv-sidebar,
+    .mv-filter-row,
+    .mv-pagination,
+    .mv-mobile-pagination,
+    .mv-btn-print,
+    .mv-collapse-btn,
+    .mv-slide-arrow {
+        display: none !important;
+    }
+
+    .mv-row-details {
+        display: table-row !important;
+    }
+
+    .mv-dashboard {
+        background: white;
+        padding: 0;
+    }
+
+    .mv-card {
+        box-shadow: none;
+        border: 1px solid #ddd;
+    }
+}

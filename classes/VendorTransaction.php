@@ -121,4 +121,20 @@ class VendorTransaction extends ObjectModel
         $query->orderBy('date_add DESC');
         return Db::getInstance()->executeS($query);
     }
+
+    /**
+     * Get all transactions for a specific order detail
+     *
+     * @param int $order_detail_id Order detail ID
+     * @return array Transactions
+     */
+    public static function getTransactionsByOrderDetail($order_detail_id)
+    {
+        $query = new DbQuery();
+        $query->select('vt.*, vt.date_add as transaction_date');
+        $query->from('mv_vendor_transaction', 'vt');
+        $query->where('vt.order_detail_id = ' . (int)$order_detail_id);
+        $query->orderBy('vt.date_add DESC');
+        return Db::getInstance()->executeS($query);
+    }
 }

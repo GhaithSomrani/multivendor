@@ -103,4 +103,14 @@ class OrderLineStatusLog extends ObjectModel
 
         return Db::getInstance()->executeS($query);
     }
+
+    public static function getprevouisStatusId($id_order_detail)
+    {
+        $query = new DbQuery();
+        $query->select('l.old_id_order_line_status_type ,l.id_order_line_status_log ,l.new_id_order_line_status_type ');
+        $query->from('mv_order_line_status_log', 'l');
+        $query->where('l.id_order_detail = ' . (int)$id_order_detail);
+        $query->orderBy('l.date_add DESC');
+        return Db::getInstance()->getRow($query);
+    }
 }

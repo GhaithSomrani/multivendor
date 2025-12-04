@@ -29,7 +29,6 @@ class MultivendorManifestModuleFrontController extends ModuleFrontController
         $status = $manifest->id_manifest_status;
         $vendor = VendorHelper::getVendorByCustomer($this->context->customer->id);
         $isvendor = !empty($vendor) ? true : false;
-        // Refund/Return flow (id_manifest_type = 2)
         if ($manifest->id_manifest_type == 2) {
             $collect_group = (int)Configuration::get('MULTIVENDOR_COLLECT_GROUP');
             $receive_group = (int)Configuration::get('MULTIVENDOR_RECEIVE_GROUP');
@@ -57,20 +56,19 @@ class MultivendorManifestModuleFrontController extends ModuleFrontController
             } else {
                 $this->errors[] = $this->module->l('Vous n\'avez pas l\'autorisation d\'effectuer cette action', 'manifest');
             }
-        }
-        // Standard pickup flow (id_manifest_type = 1)
-        else {
+        } else {
             $collect_group = (int)Configuration::get('MULTIVENDOR_COLLECT_GROUP');
             $receive_group = (int)Configuration::get('MULTIVENDOR_RECEIVE_GROUP');
             $status_collect = (int)Configuration::get('mv_pickup');
+            $status_processing = (int)Configuration::get('MANIFEST_PICKUP_PROCESSING');
             $status_collected = (int)Configuration::get('MULTIVENDOR_STATUS_COLLECTED');
             $status_received = (int)Configuration::get('MULTIVENDOR_STATUS_RECEIVED');
 
-            if ($status == $status_collect && in_array($collect_group, $group_list)) {
+            if (($status == $status_collect || $status == $status_processing) && in_array($collect_group, $group_list)) {
                 $manifest->id_manifest_status = $status_collected;
                 if ($manifest->update()) {
                     $this->success[] = sprintf(
-                        $this->module->l('Tous les produits du bon de collecte %s ont été récupérés avec succès', 'manifest'),
+                        $this->module->l('Tous les produits du bon de ramassage %s ont été récupérés avec succès', 'manifest'),
                         $manifest->reference
                     );
                     $status = $status_collected;
@@ -79,10 +77,19 @@ class MultivendorManifestModuleFrontController extends ModuleFrontController
                 $manifest->id_manifest_status = $status_received;
                 if ($manifest->update()) {
                     $this->success[] = sprintf(
-                        $this->module->l('Tous les produits du bon de collecte %s ont été reçus avec succès', 'manifest'),
+                        $this->module->l('Tous les produits du bon de ramassage %s ont été reçus avec succès', 'manifest'),
                         $manifest->reference
                     );
                     $status = $status_received;
+                }
+            } elseif ($status == $status_collect && $isvendor && $vendor['id_vendor'] == $manifest->id_vendor) {
+                $manifest->id_manifest_status = $status_processing;
+                if ($manifest->update()) {
+                    $this->success[] = sprintf(
+                        $this->module->l('Le bon de ramassage %s est maintenant en cours de livraison', 'manifest'),
+                        $manifest->reference
+                    );
+                    $status = $status_processing;
                 }
             } else {
                 $this->errors[] = $this->module->l('Vous n\'avez pas l\'autorisation d\'effectuer cette action', 'manifest');

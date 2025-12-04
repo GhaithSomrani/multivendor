@@ -119,12 +119,7 @@ class multivendorDashboardModuleFrontController extends ModuleFrontController
             'top_products' => $topProducts,
             'shop_name' => $vendor->shop_name,
             'status' => $vendor->status,
-            'vendor_orders_url' => $this->context->link->getModuleLink('multivendor', 'orders'),
-            'vendor_commissions_url' => $this->context->link->getModuleLink('multivendor', 'commissions'),
-            'vendor_profile_url' => $this->context->link->getModuleLink('multivendor', 'profile'),
-            'vendor_manage_orders_url' => $this->context->link->getModuleLink('multivendor', 'manageorders', []),
-            'vendor_dashboard_url' => $this->context->link->getModuleLink('multivendor', 'dashboard'),
-            'vendor_manifest_url' => $this->context->link->getModuleLink('multivendor', 'manifestmanager', []),
+          
             'currency_sign' => $this->context->currency->sign,
             'date_filter_active' => $date_filter_active,
             'filter_label' => $filter_label,

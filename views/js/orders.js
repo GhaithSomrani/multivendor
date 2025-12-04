@@ -981,15 +981,20 @@ function confirmOutOfStock() {
     let comment = '';
     let orderDetailId = currentOrderDetailId;
     let statusTypeId = $('#outofstock-btn').val();
+    let customComment = $('#input-comment').val();
+
+    // Always add custom note if it exists
+    if (customComment != '') {
+        comment += 'Notes : ' + customComment + '\n\n';
+    }
+
     if (noSuggestion) {
+        // Add "no alternative exists" message
         selectedSuggestions = [];
-        comment = $('#no-suggestion').val()
+        comment += $('#no-suggestion').val();
     } else {
+        // Add suggestions from catalog
         let suggestion = selectedSuggestions.join('\n \t');
-        let customComment = $('#input-comment').val();
-        if (customComment != '') {
-            comment += 'Notes : ' + customComment + '\n \n';
-        }
         if (suggestion != '') {
             comment += 'Suggestion de mon catalogue : \n \t' + suggestion;
         }
@@ -1229,12 +1234,213 @@ $(document).on('change', '.variant-select', function () {
     const allSelected = selects.toArray().every(sel => $(sel).val() !== '');
     const button = container.find('.suggest-btn');
 
+    // Enable/disable suggest button based on selection
     if (allSelected) {
-        button.prop('disabled', false);
+        // Update price and MPN when all variants are selected
+        updateProductPriceAndMPN(container);
+
+        // Check if this is the same combination as the out-of-stock one
+        if (isSameCombinationAsOutOfStock(container)) {
+            button.prop('disabled', true);
+            button.text('Même combinaison');
+            button.css('opacity', '0.5');
+
+            // Show warning
+            if (!container.find('.same-combination-warning').length) {
+                container.find('.mv-additional-option').append(
+                    '<div class="mv-mobile-product-sku same-combination-warning" style="color: #ff9800; font-weight: bold;">⚠ Cette combinaison est en rupture de stock</div>'
+                );
+            }
+        } else {
+            button.prop('disabled', false);
+            button.text(button.data('original-text') || 'Suggérer');
+            button.css('opacity', '1');
+            container.find('.same-combination-warning').remove();
+        }
     } else {
         button.prop('disabled', true);
+        button.text(button.data('original-text') || 'Suggérer');
+        button.css('opacity', '1');
+        container.find('.same-combination-warning').remove();
     }
+
+    // Update available options for other selects based on current selection
+    updateVariantAvailability(container);
 });
+
+/**
+ * Check if the selected combination is the same as the out-of-stock one
+ */
+function isSameCombinationAsOutOfStock(container) {
+    const outOfStockCombination = container.data('out-of-stock-combination');
+
+    console.log('=== Checking Combination ===');
+    console.log('Out of stock combination (raw):', outOfStockCombination);
+    console.log('Out of stock combination (type):', typeof outOfStockCombination);
+
+    // If no out-of-stock combination is stored, this is not the current product
+    if (!outOfStockCombination) {
+        console.log('No out-of-stock combination found - not current product');
+        return false;
+    }
+
+    // Get currently selected attributes
+    const selects = container.find('.variant-select');
+    const selectedAttributes = [];
+
+    console.log('Number of selects found:', selects.length);
+
+    selects.each(function() {
+        const value = $(this).val();
+        console.log('Select value:', value, 'Type:', typeof value);
+        if (value) {
+            selectedAttributes.push(value);
+        }
+    });
+
+    console.log('Selected attributes (before sort):', selectedAttributes);
+
+    // Sort and compare
+    selectedAttributes.sort((a, b) => parseInt(a) - parseInt(b));
+    const selectedCombination = selectedAttributes.join('-');
+
+    console.log('Selected attributes (after sort):', selectedAttributes);
+    console.log('Selected combination (string):', selectedCombination);
+    console.log('Out of stock combination (string):', String(outOfStockCombination));
+    console.log('Exact match (===):', selectedCombination === String(outOfStockCombination));
+    console.log('Loose match (==):', selectedCombination == outOfStockCombination);
+    console.log('=========================');
+
+    return selectedCombination === String(outOfStockCombination);
+}
+
+/**
+ * Update product price and MPN based on selected variant combination
+ */
+function updateProductPriceAndMPN(container) {
+    const selects = container.find('.variant-select');
+    const selectedAttributes = [];
+
+    // Collect all selected attribute IDs
+    selects.each(function() {
+        const value = $(this).val();
+        if (value) {
+            selectedAttributes.push(value);
+        }
+    });
+
+    // Check if all variants are selected
+    if (selectedAttributes.length !== selects.length) {
+        // Restore default values when not all variants selected
+        const priceDisplay = container.find('.product-price-display');
+        const mpnDisplay = container.find('.product-mpn-display');
+
+        // Restore default price
+        const defaultPrice = priceDisplay.data('default-price');
+        if (defaultPrice) {
+            priceDisplay.text(defaultPrice);
+        }
+
+        // Restore default MPN
+        const defaultMpn = mpnDisplay.data('default-mpn');
+        if (defaultMpn) {
+            mpnDisplay.text('MPN: ' + defaultMpn);
+        }
+
+        // Hide price shift
+        container.find('.product-price-shift').hide();
+        return;
+    }
+
+    // Get combinations data
+    const combinationsData = container.data('combinations');
+    if (!combinationsData) {
+        return;
+    }
+
+    // Sort attributes to match the combination key
+    selectedAttributes.sort((a, b) => parseInt(a) - parseInt(b));
+    const combinationKey = selectedAttributes.join('-');
+
+    // Find matching combination
+    const combination = combinationsData[combinationKey];
+
+    if (combination) {
+        console.log('Selected combination:', combinationKey, combination);
+
+        // Update price display
+        const priceDisplay = container.find('.product-price-display');
+        if (priceDisplay.length) {
+            priceDisplay.text(combination.price).show();
+        }
+
+        // Update MPN display
+        const mpnDisplay = container.find('.product-mpn-display');
+        if (mpnDisplay.length) {
+            if (combination.mpn && combination.mpn !== '') {
+                console.log('Updating MPN to:', combination.mpn);
+                mpnDisplay.text('MPN: ' + combination.mpn).show();
+            } else {
+                console.log('No MPN in combination, using default');
+                // If combination has no MPN, show default
+                const defaultMpn = mpnDisplay.data('default-mpn');
+                if (defaultMpn) {
+                    mpnDisplay.text('MPN: ' + defaultMpn).show();
+                } else {
+                    mpnDisplay.text('MPN: N/A').show();
+                }
+            }
+        }
+
+        // Calculate and display price difference from ORIGINAL out-of-stock price
+        const originalPrice = parseFloat(container.data('original-price'));
+        const priceShiftDisplay = container.find('.product-price-shift');
+
+        if (priceShiftDisplay.length && !isNaN(originalPrice) && originalPrice > 0) {
+            // Extract numeric value from selected combination price
+            const combinationPriceStr = combination.price.replace(/[^\d.,]/g, '').replace(',', '.');
+            const combinationPrice = parseFloat(combinationPriceStr);
+
+            console.log('Price calculation:', {
+                original: originalPrice,
+                combination: combinationPrice,
+                diff: combinationPrice - originalPrice
+            });
+
+            if (!isNaN(combinationPrice)) {
+                const priceDiff = combinationPrice - originalPrice;
+
+                if (Math.abs(priceDiff) > 0.01) {
+                    if (priceDiff > 0) {
+                        priceShiftDisplay.html('<span style="color:#00DFA2;"> ▲ <strong>' +
+                            priceDiff.toFixed(2) + ' TND</strong></span>').show();
+                    } else {
+                        priceShiftDisplay.html('<span style="color:#FF0060;"> ▼ <strong>' +
+                            priceDiff.toFixed(2) + ' TND</strong></span>').show();
+                    }
+                } else {
+                    priceShiftDisplay.hide();
+                }
+            }
+        }
+    } else {
+        console.log('No combination found for key:', combinationKey);
+        console.log('Available combinations:', Object.keys(combinationsData));
+    }
+
+        // Note: We no longer disable the button for out-of-stock combinations
+        // The only check is for the same combination in the change handler
+    }
+
+/**
+ * Update variant option availability based on current selections
+ * Note: This function is now simplified to allow all selections
+ */
+function updateVariantAvailability(container) {
+    // All variants are now selectable regardless of stock
+    // This function is kept for future enhancements if needed
+    return;
+}
 
 $(document).ready(function () {
     $('input[name="filter[datefilter]"]').daterangepicker({

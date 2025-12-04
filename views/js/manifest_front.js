@@ -6,6 +6,13 @@ var currentManifestId = null;
 var vendorAddresses = [];
 var currentAction = null;
 var currentManifestType = null;
+var manifestPagination = {
+    currentPage: 1,
+    totalPages: 1,
+    totalCount: 0,
+    perPage: 10
+};
+var manifestFilters = {};
 
 // Initialize when document is ready
 $(document).ready(function () {
@@ -25,6 +32,18 @@ function bindEvents() {
     $('#saveBtn').on('click', saveManifest);
     $('#justSaveBtn').on('click', justSaveManifest);
     $('#printBtn').on('click', printManifest);
+
+    // Filter and pagination buttons
+    $('#apply-manifest-filter').on('click', applyManifestFilter);
+    $('#reset-manifest-filter').on('click', resetManifestFilter);
+
+    // Enable Enter key to apply filters
+    $('.manifest-filter').on('keypress', function (e) {
+        if (e.which === 13 || e.keyCode === 13) {
+            e.preventDefault();
+            applyManifestFilter();
+        }
+    });
 
     // MPN barcode scanner
     $('.mv-form-control[placeholder*="Scannez"]').on('input keypress', function (e) {
@@ -104,24 +123,41 @@ function loadManifestOrders(manifestId) {
     });
 }
 
-function loadManifestList() {
+function loadManifestList(page = 1) {
+    var requestData = {
+        ajax: true,
+        action: 'getManifestList',
+        page: page
+    };
+
+    // Add filters to request
+    Object.assign(requestData, manifestFilters);
+
     $.ajax({
         url: window.manifestConfig.ajaxUrl,
         method: 'POST',
         dataType: 'json',
-        data: {
-            ajax: true,
-            action: 'getManifestList'
-        },
+        data: requestData,
         success: function (response) {
             if (response.error) {
                 showError(response.error);
                 return;
             }
             manifests = response.manifests;
+
+            // Normalize pagination keys from snake_case to camelCase
+            manifestPagination = {
+                currentPage: parseInt(response.pagination.current_page) || 1,
+                totalPages: parseInt(response.pagination.total_pages) || 1,
+                totalCount: parseInt(response.pagination.total_count) || 0,
+                perPage: parseInt(response.pagination.per_page) || 10
+            };
+
             renderManifestTable();
+            renderManifestPagination();
         },
         error: function () {
+            showError('Erreur lors du chargement des manifestes');
         }
     });
 }
@@ -299,176 +335,226 @@ function renderSelectedOrders(total) {
     }
 }
 
+function populateStatusFilter() {
+    var statusSelect = $('#filter-status');
+    if (statusSelect.length === 0) return; // Skip if filter doesn't exist (mobile view)
+
+    var existingValue = statusSelect.val();
+    var uniqueStatuses = {};
+
+    // Collect unique statuses from manifests
+    $.each(manifests, function(index, manifest) {
+        if (manifest.status && !uniqueStatuses[manifest.status]) {
+            uniqueStatuses[manifest.status] = true;
+        }
+    });
+
+    // Keep the "Tous" option and add unique statuses
+    var currentOptions = statusSelect.find('option:first').clone();
+    statusSelect.empty().append(currentOptions);
+
+    // Add status options
+    $.each(Object.keys(uniqueStatuses), function(index, status) {
+        $('<option>', {
+            value: status,
+            text: status
+        }).appendTo(statusSelect);
+    });
+
+    // Restore previous selection if it exists
+    if (existingValue) {
+        statusSelect.val(existingValue);
+    }
+}
+
 function renderManifestTable() {
-    var container = $('#manifestTableBody').parent().parent();
-    container.empty();
+    var tbody = $('#manifestTableBody');
+    tbody.empty();
+
+    // Update manifest count - show total count from pagination
+    var countText = manifestPagination.totalCount || manifests.length;
+    $('#manifestCount').text(countText);
+
+    // Populate status filter dropdown with unique statuses
+    populateStatusFilter();
 
     if (manifests.length === 0) {
-        container.html('<div class="mv-empty-state">No manifests found</div>');
+        tbody.html('<tr><td colspan="9"><div class="mv-empty-state">Aucun manifeste trouvé</div></td></tr>');
         return;
     }
 
-    var manifestList = $('<div>', { class: 'mv-payments-list' });
-
     $.each(manifests, function (index, manifest) {
-        var manifestItem = $('<div>', { class: 'mv-payment-item' });
+        // Main row
+        var mainRow = $('<tr>').attr('onclick', 'toggleManifestRow(this)').css('cursor', 'pointer');
 
-        // Header
-        var header = $('<div>', { class: 'mv-payment-header' });
+        // Reference
+        $('<td>').html('<strong>' + manifest.reference + '</strong>').appendTo(mainRow);
 
-        var info = $('<div>', { class: 'mv-payment-info' });
-
-        $('<span>', {
-            class: 'mv-payment-date',
-            text: manifest.date
-        }).appendTo(info);
-
-        $('<span>', {
-            class: 'mv-payment-amount',
-            text: parseFloat(manifest.total).toFixed(2) + ' TND'
-        }).appendTo(info);
-
-        $('<span>', {
-            class: 'mv-payment-method',
-            text: manifest.reference
-        }).appendTo(info);
-
-        $('<span>', {
-            class: manifest.type == 1 ? 'mv-manifest-rm' : 'mv-manifest-rt',
+        // Type with badge
+        var typeBadge = $('<span>', {
+            class: manifest.type == 1 ? 'mv-manifest-badge mv-manifest-pickup' : 'mv-manifest-badge mv-manifest-return',
             text: manifest.type_name
-        }).appendTo(info);
+        });
+        $('<td>').append(typeBadge).appendTo(mainRow);
 
-        $('<span>', {
-            class: 'mv-payment-reference',
-            text: 'Articles: ' + manifest.nbre
-        }).appendTo(info);
+        // Date
+        $('<td>', { text: manifest.date }).appendTo(mainRow);
 
-        $('<span>', {
-            class: 'mv-payment-reference',
-            text: 'QTÉ: ' + manifest.qty
-        }).appendTo(info);
+        // Address (truncated)
+        $('<td>', {
+            text: manifest.address,
+            title: manifest.address
+        }).appendTo(mainRow);
 
-        $('<span>', {
+        // Number of items
+        $('<td>', {
+            text: manifest.nbre,
+            class: 'mv-text-center'
+        }).appendTo(mainRow);
+
+        // Total quantity
+        $('<td>', {
+            text: manifest.qty,
+            class: 'mv-text-center'
+        }).appendTo(mainRow);
+
+        // Total amount
+        $('<td>').html('<strong>' + parseFloat(manifest.total).toFixed(3) + ' TND</strong>').appendTo(mainRow);
+
+        // Status
+        var statusBadge = $('<span>', {
             class: 'mv-status-badge mv-status-completed',
             text: manifest.status
-        }).appendTo(info);
+        });
+        $('<td>').append(statusBadge).appendTo(mainRow);
 
-        // Actions in header
-        var actionButtons = $('<div>', { style: 'display: flex; gap: 8px; margin-left: auto;' });
+        // Actions
+        var actionsCell = $('<td>');
+        var actionsDiv = $('<div>', {
+            style: 'display: flex; gap: 0.5rem; justify-content: end; align-items: center;'
+        });
+
+        // Edit button
         if (manifest.editable == 1) {
             $('<button>', {
-                class: 'action-btn load-btn',
-                title: 'Load Manifest',
+                class: 'mv-status-btn mv-btn-edit',
+                title: 'Modifier le manifeste',
                 text: '✏️',
-                click: () => loadManifest(manifest.id, manifest.type),
-            }).appendTo(actionButtons);
+                click: function(e) {
+                    e.stopPropagation();
+                    loadManifest(manifest.id, manifest.type);
+                }
+            }).appendTo(actionsDiv);
         }
 
-
-
+        // Print button
         $('<button>', {
-            class: 'action-btn print-btn',
-            title: 'Print Manifest',
+            class: 'mv-status-btn mv-btn-print',
+            title: 'Imprimer le manifeste',
             text: '🖨️',
-            click: () => printExistingManifest(manifest.id)
-        }).appendTo(actionButtons);
+            click: function(e) {
+                e.stopPropagation();
+                printExistingManifest(manifest.id);
+            }
+        }).appendTo(actionsDiv);
 
+        // Delete button
         if (manifest.deletable == 1) {
             $('<button>', {
-                class: 'action-btn delete-btn',
-                title: 'Delete',
+                class: 'mv-status-btn mv-btn-delete',
+                title: 'Supprimer',
                 text: '🗑️',
-                click: () => deleteManifest(manifest.id)
-            }).appendTo(actionButtons);
+                click: function(e) {
+                    e.stopPropagation();
+                    deleteManifest(manifest.id);
+                }
+            }).appendTo(actionsDiv);
         }
 
-        info.appendTo(header);
-        actionButtons.appendTo(header);
+        // Collapse button
+        $('<button>', {
+            class: 'mv-collapse-btn',
+            text: '+',
+            click: function(e) {
+                e.stopPropagation();
+                toggleManifestCollapse(this);
+            }
+        }).appendTo(actionsDiv);
 
-        var toggle = $('<button>', {
-            class: 'mv-btn-toggle',
-            click: () => toggleManifestDetails('manifest-' + manifest.id)
-        });
+        actionsDiv.appendTo(actionsCell);
+        actionsCell.appendTo(mainRow);
+        mainRow.appendTo(tbody);
 
-        $('<i>', {
-            class: 'mv-icon-chevron',
-            text: '▼'
-        }).appendTo(toggle);
-
-        toggle.appendTo(header);
-        header.appendTo(manifestItem);
-
-        // Details - Order Details Table
-        var details = $('<div>', {
-            class: 'mv-payment-details',
-            id: 'manifest-' + manifest.id,
-            css: { display: 'none' }
-        });
+        // Details row (collapsible)
+        var detailsRow = $('<tr>', { class: 'mv-row-details' });
+        var detailsCell = $('<td>', { colspan: 9 });
 
         if (manifest.orderdetails && manifest.orderdetails.length > 0) {
-            var table = $('<table>', { class: 'mv-table mv-payment-details-table' });
+            var detailsTable = $('<table>', { class: 'mv-table mv-manifest-details-table' });
 
-            var thead = $('<thead>');
-            var headerRow = $('<tr>');
-
+            // Table header
+            var detailsThead = $('<thead>');
+            var detailsHeaderRow = $('<tr>');
             ['Commande', 'Produit', 'SKU', 'Qté', 'Montant', 'Date'].forEach(function (header) {
-                $('<th>', { text: header }).appendTo(headerRow);
+                $('<th>', { text: header }).appendTo(detailsHeaderRow);
             });
+            detailsHeaderRow.appendTo(detailsThead);
+            detailsThead.appendTo(detailsTable);
 
-            headerRow.appendTo(thead);
-            thead.appendTo(table);
-
-            var tbody = $('<tbody>');
-
+            // Table body
+            var detailsTbody = $('<tbody>');
             $.each(manifest.orderdetails, function (i, order) {
-                var row = $('<tr>');
+                var orderRow = $('<tr>');
 
-                $('<td>').html('<a href="#" class="mv-link">#' + order.id_order + '</a>').appendTo(row);
-                $('<td>', { text: order.product_name }).appendTo(row);
-                $('<td>', { text: order.product_reference }).appendTo(row);
-                $('<td>', { class: 'mv-text-center', text: order.product_quantity }).appendTo(row);
-                $('<td>', { text: parseFloat(order.vendor_amount).toFixed(3) + ' TND' }).appendTo(row);
-                $('<td>', { text: order.order_date ? new Date(order.order_date).toLocaleDateString() : '' }).appendTo(row);
+                $('<td>').html('<a href="#" class="mv-link"><strong>#' + order.id_order + '</strong><br><small>' + order.id_order_detail + '</small></a>').appendTo(orderRow);
+                $('<td>', { text: order.product_name ? order.product_name.substring(0, 40) + (order.product_name.length > 40 ? '...' : '') : '-' }).appendTo(orderRow);
+                $('<td>', { text: order.product_reference || '-' }).appendTo(orderRow);
+                $('<td>', { class: 'mv-text-center', text: order.product_quantity || '-' }).appendTo(orderRow);
+                $('<td>', { text: parseFloat(order.vendor_amount).toFixed(3) + ' TND' }).appendTo(orderRow);
+                $('<td>', { text: order.order_date ? new Date(order.order_date).toLocaleDateString('fr-FR') : '-' }).appendTo(orderRow);
 
-                row.appendTo(tbody);
+                orderRow.appendTo(detailsTbody);
             });
+            detailsTbody.appendTo(detailsTable);
 
-            tbody.appendTo(table);
-
-            var tfoot = $('<tfoot>');
+            // Table footer
+            var detailsTfoot = $('<tfoot>');
             var totalRow = $('<tr>');
-            $('<td>', { colspan: '4', class: 'mv-text-right', html: '<strong>Total :</strong>' }).appendTo(totalRow);
+            $('<td>', { colspan: 4, class: 'mv-text-right', html: '<strong>Total :</strong>' }).appendTo(totalRow);
             $('<td>', { html: '<strong>' + parseFloat(manifest.total).toFixed(3) + ' TND</strong>' }).appendTo(totalRow);
             $('<td>').appendTo(totalRow);
-            totalRow.appendTo(tfoot);
-            tfoot.appendTo(table);
+            totalRow.appendTo(detailsTfoot);
+            detailsTfoot.appendTo(detailsTable);
 
-            table.appendTo(details);
+            detailsTable.appendTo(detailsCell);
         } else {
-            $('<p>', { text: 'No order details available', style: 'text-align: center; color: #666; padding: 20px;' }).appendTo(details);
+            $('<p>', {
+                class: 'mv-empty-state',
+                text: 'Aucun détail de commande disponible'
+            }).appendTo(detailsCell);
         }
 
-        details.appendTo(manifestItem);
-        manifestItem.appendTo(manifestList);
+        detailsCell.appendTo(detailsRow);
+        detailsRow.appendTo(tbody);
     });
-
-    manifestList.appendTo(container);
 }
 
-function toggleManifestDetails(detailsId) {
-    var details = $('#' + detailsId);
-    var toggle = details.prev().find('.mv-btn-toggle');
-    var icon = toggle.find('.mv-icon-chevron');
+// Toggle collapse button for manifest details
+function toggleManifestCollapse(button) {
+    var row = $(button).closest('tr');
+    var detailsRow = row.next('.mv-row-details');
 
-    if (details.is(':visible')) {
-        details.hide();
-        toggle.removeClass('expanded');
-        icon.text('▼');
-    } else {
-        details.show();
-        toggle.addClass('expanded');
-        icon.text('▲');
-    }
+    detailsRow.toggleClass('open');
+    button.textContent = detailsRow.hasClass('open') ? '-' : '+';
+}
+
+// Toggle row on click (for entire row)
+function toggleManifestRow(row) {
+    var detailsRow = $(row).next('.mv-row-details');
+    var button = $(row).find('.mv-collapse-btn');
+
+    detailsRow.toggleClass('open');
+    button.text(detailsRow.hasClass('open') ? '-' : '+');
 }
 
 function toggleOrderSelection(orderId) {
@@ -780,7 +866,7 @@ function viewManifest(manifestId) {
 function processMpnScan(mpnValue) {
     if (!mpnValue) return;
 
-    // Find order by MPN in available orders   
+    // Find order by MPN in available orders
     var foundOrder = availableOrders.find(order =>
         order.mpn && order.mpn.toLowerCase() == mpnValue.toLowerCase() && !order.checked && !order.disabled
     );
@@ -793,6 +879,9 @@ function processMpnScan(mpnValue) {
         setTimeout(function () {
             orderElement.css('background-color', '');
         }, 3000);
+
+        // Clear the input field after successful scan
+        $('.mv-form-control[placeholder*="Scannez"]').val('');
 
     }
 }
@@ -878,4 +967,148 @@ function showNotification(type, message) {
     setTimeout(() => {
         $notification.fadeOut(() => $notification.remove());
     }, removeDelay);
+}
+
+// Filter handling functions
+function applyManifestFilter() {
+    manifestFilters = {
+        reference: $('#filter-reference').val(),
+        type: $('#filter-type').val(),
+        date: $('#filter-date').val(),
+        address: $('#filter-address').val(),
+        items_min: $('#filter-items-min').val(),
+        items_max: $('#filter-items-max').val(),
+        qty_min: $('#filter-qty-min').val(),
+        qty_max: $('#filter-qty-max').val(),
+        total_min: $('#filter-total-min').val(),
+        total_max: $('#filter-total-max').val(),
+        status: $('#filter-status').val()
+    };
+
+    // Remove empty filters
+    Object.keys(manifestFilters).forEach(key => {
+        if (manifestFilters[key] === '' || manifestFilters[key] === null) {
+            delete manifestFilters[key];
+        }
+    });
+
+    // Reset to page 1 when applying filters
+    loadManifestList(1);
+}
+
+function resetManifestFilter() {
+    // Clear all filter inputs
+    $('.manifest-filter').val('');
+    manifestFilters = {};
+
+    // Reload manifest list
+    loadManifestList(1);
+}
+
+// Pagination handling functions
+function renderManifestPagination() {
+    var paginationContainer = $('#manifestPagination');
+    var paginationList = $('#manifestPaginationList');
+
+    if (manifestPagination.totalPages <= 1) {
+        paginationContainer.hide();
+        return;
+    }
+
+    paginationContainer.show();
+    paginationList.empty();
+
+    var currentPage = manifestPagination.currentPage;
+    var totalPages = manifestPagination.totalPages;
+
+    // First page button
+    if (currentPage > 1) {
+        $('<li>', { class: 'mv-pagination-item' })
+            .append(
+                $('<a>', {
+                    class: 'mv-pagination-link',
+                    text: '«',
+                    href: '#',
+                    click: function(e) {
+                        e.preventDefault();
+                        loadManifestList(1);
+                    }
+                })
+            )
+            .appendTo(paginationList);
+
+        // Previous page button
+        $('<li>', { class: 'mv-pagination-item' })
+            .append(
+                $('<a>', {
+                    class: 'mv-pagination-link',
+                    text: '‹',
+                    href: '#',
+                    click: function(e) {
+                        e.preventDefault();
+                        loadManifestList(currentPage - 1);
+                    }
+                })
+            )
+            .appendTo(paginationList);
+    }
+
+    // Page number buttons
+    var startPage = Math.max(1, currentPage - 2);
+    var endPage = Math.min(totalPages, currentPage + 2);
+
+    for (var i = startPage; i <= endPage; i++) {
+        (function(page) {
+            var isActive = page === currentPage;
+            $('<li>', {
+                class: 'mv-pagination-item' + (isActive ? ' mv-pagination-active' : '')
+            })
+                .append(
+                    $('<a>', {
+                        class: 'mv-pagination-link',
+                        text: page,
+                        href: '#',
+                        click: function(e) {
+                            e.preventDefault();
+                            if (!isActive) {
+                                loadManifestList(page);
+                            }
+                        }
+                    })
+                )
+                .appendTo(paginationList);
+        })(i);
+    }
+
+    // Next page button
+    if (currentPage < totalPages) {
+        $('<li>', { class: 'mv-pagination-item' })
+            .append(
+                $('<a>', {
+                    class: 'mv-pagination-link',
+                    text: '›',
+                    href: '#',
+                    click: function(e) {
+                        e.preventDefault();
+                        loadManifestList(currentPage + 1);
+                    }
+                })
+            )
+            .appendTo(paginationList);
+
+        // Last page button
+        $('<li>', { class: 'mv-pagination-item' })
+            .append(
+                $('<a>', {
+                    class: 'mv-pagination-link',
+                    text: '»',
+                    href: '#',
+                    click: function(e) {
+                        e.preventDefault();
+                        loadManifestList(totalPages);
+                    }
+                })
+            )
+            .appendTo(paginationList);
+    }
 }

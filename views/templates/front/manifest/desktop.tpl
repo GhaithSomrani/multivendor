@@ -44,11 +44,118 @@
 
     {* Section Liste des Manifestes *}
     <div class="manifest-section">
-        <table class="manifest-table" id="manifestTable">
+        <div class="mv-card">
+            <div class="mv-card-header">
+                <h3 class="mv-card-title">{l s='Liste des Manifestes' mod='multivendor'}</h3>
+                <div class="mv-count-badge">
+                    <span id="manifestCount">0</span> {l s='manifestes' mod='multivendor'}
+                </div>
+            </div>
+            <div class="mv-card-body">
+                <div class="mv-table-container">
+                    <table class="mv-table" id="manifestTable">
+                        <thead>
+                            <tr>
+                                <th>{l s='Référence' mod='multivendor'}</th>
+                                <th>{l s='Type' mod='multivendor'}</th>
+                                <th>{l s='Date' mod='multivendor'}</th>
+                                <th>{l s='Adresse' mod='multivendor'}</th>
+                                <th>{l s='Articles' mod='multivendor'}</th>
+                                <th>{l s='Quantité' mod='multivendor'}</th>
+                                <th>{l s='Total' mod='multivendor'}</th>
+                                <th>{l s='Statut' mod='multivendor'}</th>
+                                <th></th>
+                            </tr>
+                            <tr class="mv-filter-row">
+                                <th>
+                                    <input type="text" class="mv-filter-input manifest-filter"
+                                        id="filter-reference" placeholder="Référence">
+                                </th>
+                                <th>
+                                    <select class="mv-filter-input manifest-filter" id="filter-type">
+                                        <option value="">{l s='Tous' mod='multivendor'}</option>
+                                        <option value="1">{l s='Ramassage' mod='multivendor'}</option>
+                                        <option value="2">{l s='Retours' mod='multivendor'}</option>
+                                    </select>
+                                </th>
+                                <th>
+                                    <input type="text" class="mv-filter-input manifest-filter"
+                                        id="filter-date" name="manifest_date_filter" placeholder="Période">
+                                </th>
+                                <th>
+                                    <input type="text" class="mv-filter-input manifest-filter"
+                                        id="filter-address" placeholder="Adresse">
+                                </th>
+                                <th class="mv-filter-range">
+                                    <input type="text" class="mv-filter-input manifest-filter"
+                                        id="filter-items-min" placeholder="Min">
+                                    <input type="text" class="mv-filter-input manifest-filter"
+                                        id="filter-items-max" placeholder="Max">
+                                </th>
+                                <th class="mv-filter-range">
+                                    <input type="text" class="mv-filter-input manifest-filter"
+                                        id="filter-qty-min" placeholder="Min">
+                                    <input type="text" class="mv-filter-input manifest-filter"
+                                        id="filter-qty-max" placeholder="Max">
+                                </th>
+                                <th class="mv-filter-range">
+                                    <input type="text" class="mv-filter-input manifest-filter"
+                                        id="filter-total-min" placeholder="Min">
+                                    <input type="text" class="mv-filter-input manifest-filter"
+                                        id="filter-total-max" placeholder="Max">
+                                </th>
+                                <th>
+                                    <select class="mv-filter-input manifest-filter" id="filter-status">
+                                        <option value="">{l s='Tous' mod='multivendor'}</option>
+                                    </select>
+                                </th>
+                                <th class="mv-filter-range" style="justify-content: right;">
+                                    <button type="button" class="mv-status-btn mv-btn-filter"
+                                        id="apply-manifest-filter">🔍︎</button>
+                                    <button type="button" class="mv-status-btn mv-btn-reset"
+                                        id="reset-manifest-filter">✖</button>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody id="manifestTableBody">
+                            <tr>
+                                <td colspan="9">
+                                    <div class="mv-empty-state">{l s='Chargement des manifestes...' mod='multivendor'}</div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
 
-            <tbody id="manifestTableBody">
-
-            </tbody>
-        </table>
+                {* Pagination *}
+                <nav class="mv-pagination" id="manifestPagination" style="display: none;">
+                    <ul class="mv-pagination-list" id="manifestPaginationList">
+                    </ul>
+                </nav>
+            </div>
+        </div>
     </div>
 </div>
+
+<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js" type="text/javascript"></script>
+<script>
+    $(document).ready(function() {
+        // Date range picker initialization
+        $('input[name="manifest_date_filter"]').daterangepicker({
+            autoUpdateInput: false,
+            locale: {
+                cancelLabel: 'Effacer',
+                applyLabel: 'Appliquer',
+                format: 'DD/MM/YYYY'
+            }
+        });
+
+        $('input[name="manifest_date_filter"]').on('apply.daterangepicker', function(ev, picker) {
+            $(this).val(picker.startDate.format('DD/MM/YYYY') + ' - ' + picker.endDate.format('DD/MM/YYYY'));
+        });
+
+        $('input[name="manifest_date_filter"]').on('cancel.daterangepicker', function(ev, picker) {
+            $(this).val('');
+        });
+    });
+</script>

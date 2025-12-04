@@ -24,7 +24,7 @@ class AdminManifestController extends ModuleAdminController
         $this->list_id = 'manifest';
         $this->allow_export = true;
         $this->_use_found_rows = true;
-
+        $this->row_hover = false;
 
         parent::__construct();
 
@@ -38,6 +38,8 @@ class AdminManifestController extends ModuleAdminController
             'reference' => [
                 'title' => $this->l('Reference'),
                 'filter_key' => 'a!reference',
+                'remove_onclick' => true
+
             ],
             'type_name' => [
                 'title' => $this->l('Type'),
@@ -71,6 +73,14 @@ class AdminManifestController extends ModuleAdminController
                 'search' => false,
                 'orderby' => false
             ],
+            'total_amount' => [
+                'title' => $this->l('Total Amount'),
+                'align' => 'right',
+                'type' => 'price',
+                'currency' => true,
+                'search' => false,
+                'orderby' => false
+            ],
             'date_add' => [
                 'title' => $this->l('Date Add'),
                 'align' => 'right',
@@ -87,9 +97,10 @@ class AdminManifestController extends ModuleAdminController
 
         $this->_join .= '
         LEFT JOIN `' . _DB_PREFIX_ . 'mv_vendor` v ON (v.id_vendor = a.id_vendor)
-        LEFT JOIN `' . _DB_PREFIX_ . 'mv_manifest_status_type` mst ON (mst.id_manifest_status_type = a.id_manifest_status) 
-        LEFT JOIN `' . _DB_PREFIX_ . 'mv_manifest_details` md ON (md.id_manifest = a.id_manifest) 
-        LEFT JOIN `' . _DB_PREFIX_ . 'mv_manifest_type` mt ON (mt.id_manifest_type = a.id_manifest_type)';
+        LEFT JOIN `' . _DB_PREFIX_ . 'mv_manifest_status_type` mst ON (mst.id_manifest_status_type = a.id_manifest_status)
+        LEFT JOIN `' . _DB_PREFIX_ . 'mv_manifest_details` md ON (md.id_manifest = a.id_manifest)
+        LEFT JOIN `' . _DB_PREFIX_ . 'mv_manifest_type` mt ON (mt.id_manifest_type = a.id_manifest_type)
+        LEFT JOIN `' . _DB_PREFIX_ . 'mv_vendor_order_detail` vod ON (vod.id_order_detail = md.id_order_details)';
 
         $this->_select = '
         a.id_manifest as manifest,
@@ -97,7 +108,8 @@ class AdminManifestController extends ModuleAdminController
             mst.name as status_name,
             a.id_manifest_status as status_display,
             count(md.id_manifest_details) as total_items,
-            mt.name as type_name';
+            mt.name as type_name,
+            COALESCE(SUM(vod.vendor_amount * vod.product_quantity), 0) as total_amount';
 
         $this->_group = 'GROUP BY a.id_manifest';
         $this->bulk_actions = array(
@@ -847,5 +859,61 @@ class AdminManifestController extends ModuleAdminController
             'success' => true,
             'statuses' => $statuses
         ]));
+    }
+
+    public function ajaxProcessGetManifestDetails()
+    {
+        $id_manifest = (int)Tools::getValue('id_manifest');
+
+        if (!$id_manifest) {
+            die(json_encode(['success' => false, 'message' => 'Invalid manifest ID']));
+        }
+
+        try {
+            $manifest = new Manifest($id_manifest);
+
+            if (!Validate::isLoadedObject($manifest)) {
+                die(json_encode(['success' => false, 'message' => 'Manifest not found']));
+            }
+
+            $id_vendor = $manifest->id_vendor;
+            $vendor = $manifest->getVendorByManifest();
+            $filters['manifest'] = $id_manifest;
+            $details = OrderHelper::getVendorOrderDetails($id_vendor, $filters);
+
+            $address = new Address($manifest->id_address);
+            $addressFormatted = AddressFormat::generateAddress($address, [], '<br>', ' ');
+
+            $manifestType = $manifest->getManifestType();
+            $manifestStatus = Manifest::getStatus($id_manifest);
+
+            // Calculate totals
+            $totalQuantity = 0;
+            $totalAmount = 0;
+            foreach ($details as $detail) {
+                $totalQuantity += (int)$detail['product_quantity'];
+                $totalAmount += (float)($detail['vendor_amount'] * $detail['product_quantity']);
+            }
+
+            die(json_encode([
+                'success' => true,
+                'manifest' => [
+                    'id_manifest' => $manifest->id,
+                    'reference' => $manifest->reference,
+                    'vendor_name' => $vendor['shop_name'],
+                    'type' => $manifestType,
+                    'status' => $manifestStatus,
+                    'address' => $addressFormatted,
+                    'date_add' => $manifest->date_add,
+                    'date_upd' => $manifest->date_upd,
+                    'total_items' => count($details),
+                    'total_quantity' => $totalQuantity,
+                    'total_amount' => $totalAmount
+                ],
+                'order_details' => $details
+            ]));
+        } catch (Exception $e) {
+            die(json_encode(['success' => false, 'message' => $e->getMessage()]));
+        }
     }
 }

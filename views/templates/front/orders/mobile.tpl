@@ -77,12 +77,12 @@
                             <div class="mv-mobile-order-content">
                                 <div class="mv-mobile-product-info">
                                     {assign var="product_image" value=OrderHelper::getProductImageLink($line.product_id, $line.product_attribute_id,'medium_default')}
-                                    {assign var="large_image" value=OrderHelper::getProductImageLink($line.product_id, $line.product_attribute_id, 'medium_default')}
+                                    {assign var="large_image" value=OrderHelper::getProductImageLink($line.product_id, $line.product_attribute_id, 'large_default')}
 
                                     <div class="zoom-container">
-                                        <img src="{$product_image}" data-zoom="{$large_image}"
+                                        <img src="{$product_image}" data-large="{$large_image}"
                                             alt="{$line.product_name|escape:'html':'UTF-8'}"
-                                            class="zoomable-image mv-product-image">
+                                            class="mv-product-image mv-mobile-clickable-image" onclick="openImageModal(this)">
                                     </div>
 
                                     <span class="mv-mobile-product-name">{$line.product_name}
@@ -261,14 +261,103 @@
         {/if}
     </div>
 </div>
+{* Image Modal *}
+<div id="imageModal" class="mv-image-modal" style="display: none;">
+    <div class="mv-image-modal-overlay" onclick="closeImageModal()"></div>
+    <div class="mv-image-modal-content">
+        <button class="mv-image-modal-close" onclick="closeImageModal()">✕</button>
+        <img id="modalImage" src="" alt="" class="mv-modal-image">
+    </div>
+</div>
+
+<style>
+    .mv-mobile-clickable-image {
+        cursor: pointer;
+    }
+
+    .mv-image-modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .mv-image-modal-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.85);
+    }
+
+    .mv-image-modal-content {
+        position: relative;
+        max-width: 95%;
+        max-height: 95%;
+        z-index: 10000;
+    }
+
+    .mv-modal-image {
+        max-width: 100%;
+        max-height: 95vh;
+        object-fit: contain;
+        border-radius: 8px;
+    }
+
+    .mv-image-modal-close {
+        position: absolute;
+        right: 0;
+        background: #ffffff00;
+        border: none;
+        font-size: 28px;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10001;
+    }
+
+    .mv-image-modal-close:active {
+        background: rgba(255, 255, 255, 1);
+    }
+</style>
+
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        document.querySelectorAll('.zoomable-image').forEach(function(img) {
-            new Drift(img, {
-                inlineOffsety: 200,
-                zoomFactor: 2,
-            });
-        });
+    function openImageModal(imgElement) {
+        const modal = document.getElementById('imageModal');
+        const modalImg = document.getElementById('modalImage');
+        const largeImageSrc = imgElement.getAttribute('data-large');
+
+        modalImg.src = largeImageSrc;
+        modalImg.alt = imgElement.alt;
+        modal.style.display = 'flex';
+
+        // Prevent body scroll when modal is open
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeImageModal() {
+        const modal = document.getElementById('imageModal');
+        modal.style.display = 'none';
+
+        // Restore body scroll
+        document.body.style.overflow = '';
+    }
+
+    // Close modal on ESC key
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            closeImageModal();
+        }
     });
 
     function toggleSlide(button) {

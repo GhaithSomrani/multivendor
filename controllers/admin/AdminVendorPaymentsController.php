@@ -210,7 +210,7 @@ class AdminVendorPaymentsController extends ModuleAdminController
 
         // Use a dedicated print template
         $content = $this->context->smarty->fetch(
-            _PS_MODULE_DIR_ . 'multivendor/views/templates/admin/payment_print.tpl'
+            _PS_MODULE_DIR_ . 'multivendor/views/templates/pdf/payment_print.tpl'
         );
 
         // Output the print page
@@ -234,7 +234,7 @@ class AdminVendorPaymentsController extends ModuleAdminController
             ['id' => 'bank_transfer', 'name' => $this->l('Bank Transfer')],
             ['id' => 'cash', 'name' => $this->l('Cash')],
             ['id' => 'check', 'name' => $this->l('Check')],
-            ['id' => 'other', 'name' => $this->l('Other')]
+            // ['id' => 'other', 'name' => $this->l('Other')]
         ];
 
         $this->fields_form = [
@@ -759,9 +759,11 @@ class AdminVendorPaymentsController extends ModuleAdminController
      */
     public function processUpdate()
     {
-        // For existing payments, we don't need to handle transaction selection
-        // as it's handled via AJAX calls for add/remove transactions
-        return parent::processUpdate();
+        if (parent::processUpdate()) {
+            $paymentId = (int)Tools::getValue($this->identifier);
+            $paymentObj = new VendorPayment($paymentId);
+            return $paymentObj->save();
+        }
     }
 
     /**

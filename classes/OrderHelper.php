@@ -357,7 +357,7 @@ class OrderHelper
                 $vendorOrderDetailObj = new VendorOrderDetail($vendorOrderDetail['id_vendor_order_detail']);
                 $vendorOrderDetailObj->product_name = $orderDetail->product_name;
                 $vendorOrderDetailObj->product_reference = $orderDetail->product_reference;
-                $vendorOrderDetailObj->product_mpn = $product->mpn ?: $orderDetail->product_reference;
+                $vendorOrderDetailObj->product_mpn = $orderDetail->product_mpn;
                 $vendorOrderDetailObj->product_price = $orderDetail->unit_price_tax_incl;
                 $vendorOrderDetailObj->product_quantity = $orderDetail->product_quantity;
                 $vendorOrderDetailObj->commission_rate = $commission_rate;

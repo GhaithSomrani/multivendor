@@ -248,8 +248,7 @@
                         {$vendor_address.city}<br>{/if}
                         {if $vendor_address.country}{$vendor_address.country}<br>{/if}
                         {if $vendor_address.phone}Tél: {$vendor_address.phone}<br>{/if}
-                        {if $vendor_address.vat_number}{$vat_number}<br>{/if}
-
+                        {if $vendor_address.vat_number} {$vat_number} <br> {/if}
                     {else}
                         <strong>{$vendor->shop_name}</strong><br>
                         {if $vendor->address}{$vendor->address}<br>{/if}
@@ -288,45 +287,45 @@
             <table class="transactions-table">
                 <thead>
                     <tr>
-                        <th>Référence<br>Commande</th>
-                        <th>Nom du Produit</th>
-                        <th>SKU</th>
-                        <th>MPN (Code-barres)</th>
-                        <th>Qté</th>
-                        <th>Montant HT</th>
+                        <th width="10%">Num</th>
+                        <th width="40%">PRODUIT</th>
+                        <th width="15%">RÉFÉRENCE</th>
+                        <th width="12%">PRIX UNITAIRE TTC</th>
+                        <th width="8%">QTÉ</th>
+                        <th width="15%">PRIX HT</th>
                     </tr>
                 </thead>
                 <tbody>
+                    {assign var="totalqty" value=0 }
                     {foreach from=$transaction_details item=detail}
                         <tr>
-                            <td>{$detail.id_order|default:'N/A'}<br>{$detail.id_order_detail|default:'N/A'}
+                            <td class="center">
+                                <strong>{$detail.id_order|default:'N/A'}<br>#{$detail.id_order_detail|default:'N/A'}</strong>
                             </td>
                             <td>{$detail.product_name|default:'N/A'}</td>
-                            <td>{$detail.product_reference|default:'-'}</td>
-                            <td class="center">-</td>
+                            <td class="center">{$detail.product_reference|default:'-'}</td>
+                            <td class="center">{($detail.vendor_amount/$detail.product_quantity)|number_format:3}</td>
                             <td class="center">{$detail.product_quantity|default:'1'}</td>
-                            <td class="right">{($detail.vendor_amount/1.19)|number_format:3} TND</td>
+                            {assign var="totalqty" value=$totalqty+$detail.product_quantity }
+                            <td class="right">{($detail.vendor_amount/1.19)|number_format:3}</td>
                         </tr>
                     {/foreach}
                 </tbody>
                 <tfoot>
                     <tr class="totals-row">
-                        <td colspan="4"><strong>Montant Total HT :</strong></td>
+                        <td colspan="4"><strong>TOTAL HT</strong></td>
                         <td class="center">
-                            <strong>{if $transaction_details}{$transaction_details|@count}{else}0{/if}</strong>
+                            <strong>{$totalqty}</strong>
                         </td>
                         <td class="right"><strong>{($payment->amount/1.19)|number_format:3} TND</strong></td>
                     </tr>
                     <tr>
-                        <td colspan="4"><strong>TVA :</strong></td>
-                        <td class="center">19%</td>
-                        <td class="right">{($payment->amount*0.19)|number_format:3} TND</td>
+                        <td colspan="4"><strong>TVA (19%)</strong></td>
+                        <td class="center"><strong>19%</strong></td>
+                        <td class="right"><strong>{($payment->amount*0.19/1.19)|number_format:3} TND</strong></td>
                     </tr>
-                    <tr class="totals-row">
-                        <td colspan="4"><strong>Montant Total TTC :</strong></td>
-                        <td class="center">
-                            <strong>{if $transaction_details}{$transaction_details|@count}{else}0{/if}</strong>
-                        </td>
+                    <tr class="totals-row" style="background: #e0e0e0;">
+                        <td colspan="5"><strong>MONTANT TOTAL TTC</strong></td>
                         <td class="right"><strong>{$payment->amount|number_format:3} TND</strong></td>
                     </tr>
                 </tfoot>

@@ -104,6 +104,21 @@ class OrderLineStatusType extends ObjectModel
         return Db::getInstance()->executeS($query);
     }
 
+
+    public static function getDisplayedStatusTypes($vendor = false, $admin = false)
+    {
+        $hidden_Statuses = Configuration::get('MV_HIDE_FROM_VENDOR');
+        $query = new DbQuery();
+        $query->select('*');
+        $query->from('mv_order_line_status_type');
+        $query->where('active = 1');
+        $query->where('id_order_line_status_type NOT IN (' . pSQL($hidden_Statuses) . ')');
+
+        return Db::getInstance()->executeS($query);
+    }
+
+
+
     protected function isActiveStatus($id_order_line_status_type)
     {
         $query = new DbQuery();

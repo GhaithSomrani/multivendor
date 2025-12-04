@@ -149,6 +149,17 @@ class Vendor extends ObjectModel
             self::buildPaidSql($id_vendor, $paymentDateFilter)
         );
 
+        // Ensure count_details always has a value
+        if (!isset($pendingAmount['count_details'])) {
+            $pendingAmount['count_details'] = 0;
+        }
+        if (!isset($totalCommissionPending['count_details'])) {
+            $totalCommissionPending['count_details'] = 0;
+        }
+        if (!isset($totalCommissionRefunded['count_details'])) {
+            $totalCommissionRefunded['count_details'] = 0;
+        }
+
         $totalCommissionAdded['total'] =
             ($pendingAmount['total'] ?? 0) +
             ($totalCommissionPending['total'] ?? 0) +
@@ -220,7 +231,7 @@ class Vendor extends ObjectModel
     protected static function getRefundedCommissions($id_vendor, $filter)
     {
         $query = new DbQuery();
-        $query->select('SUM(vod.vendor_amount) * -1 AS total, COUNT(vod.id_order_detail) AS count_details');
+        $query->select('COALESCE(SUM(vod.vendor_amount), 0) * -1 AS total, COUNT(DISTINCT vod.id_order_detail) AS count_details');
         $query->from('mv_vendor_order_detail', 'vod');
         $query->leftJoin('mv_order_line_status', 'ols', 'ols.id_order_detail = vod.id_order_detail');
 
@@ -232,7 +243,7 @@ class Vendor extends ObjectModel
         }
 
         $query->where('vod.id_vendor = ' . (int)$id_vendor);
-        $query->where('ols.id_order_line_status_type = 13');
+        $query->where('ols.id_order_line_status_type IN (13, 27)');
 
         if (!empty($filter['order_id'])) {
             $id = pSQL($filter['order_id']);
@@ -255,38 +266,47 @@ class Vendor extends ObjectModel
 
     protected static function buildPendingSql($id_vendor, $joins, $conditions, $paymentDate)
     {
-        return '
-        SELECT SUM(vt.vendor_amount) AS total, COUNT(vod.id_order_detail) AS count_details
+        $sql = '
+        SELECT COALESCE(SUM(vt.vendor_amount), 0) AS total, COUNT(DISTINCT vod.id_order_detail) AS count_details
         FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod
-        LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status ols 
+        LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status ols
                ON ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor
-        LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status_type olst 
+        LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status_type olst
                ON olst.id_order_line_status_type = ols.id_order_line_status_type
-        LEFT JOIN ' . _DB_PREFIX_ . 'mv_vendor_transaction vt 
+        LEFT JOIN ' . _DB_PREFIX_ . 'mv_vendor_transaction vt
                ON vt.order_detail_id = vod.id_order_detail
-        LEFT JOIN ' . _DB_PREFIX_ . 'mv_vendor_payment vp 
+        LEFT JOIN ' . _DB_PREFIX_ . 'mv_vendor_payment vp
                ON vp.id_vendor_payment = vt.id_vendor_payment
         ' . $joins . '
         WHERE vod.id_vendor = ' . (int)$id_vendor . '
-        AND olst.id_order_line_status_type != 15
+        AND olst.id_order_line_status_type NOT IN (15, 13)
         AND olst.commission_action = "add"
         AND vt.transaction_type = "commission"
         AND (vt.status = "pending" OR vp.status = "pending" OR vt.id_vendor_payment = 0)
-        ' . $conditions . $paymentDate;
+        ' . $conditions;
+
+
+
+
+        if ($paymentDate) {
+            $sql .= ' AND ' . $paymentDate;
+        }
+
+        return  $sql;
     }
 
     protected static function buildPendingCommissionSql($id_vendor, $joins, $conditions, $paymentDate)
     {
-        return '
-        SELECT SUM(vt.vendor_amount) AS total, COUNT(vod.id_order_detail) AS count_details
+        $sql = '
+        SELECT COALESCE(SUM(vt.vendor_amount), 0) AS total, COUNT(DISTINCT vod.id_order_detail) AS count_details
         FROM ' . _DB_PREFIX_ . 'mv_vendor_order_detail vod
-        LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status ols 
+        LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status ols
                ON ols.id_order_detail = vod.id_order_detail AND ols.id_vendor = vod.id_vendor
-        LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status_type olst 
+        LEFT JOIN ' . _DB_PREFIX_ . 'mv_order_line_status_type olst
                ON olst.id_order_line_status_type = ols.id_order_line_status_type
-        LEFT JOIN ' . _DB_PREFIX_ . 'mv_vendor_transaction vt 
+        LEFT JOIN ' . _DB_PREFIX_ . 'mv_vendor_transaction vt
                ON vt.order_detail_id = vod.id_order_detail
-        LEFT JOIN ' . _DB_PREFIX_ . 'mv_vendor_payment vp 
+        LEFT JOIN ' . _DB_PREFIX_ . 'mv_vendor_payment vp
                ON vp.id_vendor_payment = vt.id_vendor_payment
         ' . $joins . '
         WHERE vod.id_vendor = ' . (int)$id_vendor . '
@@ -294,16 +314,25 @@ class Vendor extends ObjectModel
         AND vt.transaction_type = "commission"
         AND vt.status = "pending"
         AND vt.id_vendor_payment = 0
-        ' . $conditions . $paymentDate;
+        ' . $conditions;
+
+        if ($paymentDate) {
+            $sql .= ' AND ' . $paymentDate;
+        }
+        return  $sql;
     }
 
     protected static function buildPaidSql($id_vendor, $paymentFilter)
     {
-        return '
+        $sql = '
         SELECT SUM(vp.amount) AS total
         FROM ' . _DB_PREFIX_ . 'mv_vendor_payment vp
         WHERE vp.id_vendor = ' . (int)$id_vendor . '
-        AND vp.status = "completed"' . $paymentFilter;
+        AND vp.status = "completed"';
+        if ($paymentFilter) {
+            $sql .= ' AND ' . $paymentFilter;
+        }
+        return   $sql;
     }
 
 

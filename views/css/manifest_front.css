@@ -648,7 +648,7 @@
 
 /* Hide mobile elements on desktop */
 @media (min-width: 769px) {
-/* 
+    /* 
     .mv-mobile-actions-card,
     .mv-mobile-counter-card,
     .mv-mobile-orders-card,
@@ -675,4 +675,370 @@
     height: 100%;
     justify-content: center;
     align-items: center;
+}
+
+/* ====================================
+   Manifest Table Styles
+   ==================================== */
+
+/* Manifest Type Badges */
+.mv-manifest-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: capitalize;
+    min-width: max-content;
+}
+
+.mv-manifest-pickup {
+    background-color: #dbeafe;
+    color: #1e40af;
+}
+
+.mv-manifest-return {
+    background-color: #fef3c7;
+    color: #92400e;
+}
+
+/* Action Buttons in Manifest Table */
+.mv-btn-edit {
+    background: #ffcf7e;
+    color: white;
+}
+
+.mv-btn-edit:hover {
+    background: #d97706;
+}
+
+.mv-btn-delete {
+    background: #ef4444;
+    color: white;
+}
+
+.mv-btn-delete:hover {
+    background: #dc2626;
+}
+
+/* Manifest Section Card */
+.manifest-section {
+    margin-top: 24px;
+}
+
+.manifest-section .mv-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+}
+
+/* Manifest Table Container */
+.mv-table-container {
+    overflow-x: auto;
+    width: 100%;
+}
+
+/* Manifest Table Column Widths */
+.manifest-section .mv-table {
+    table-layout: auto;
+    min-width: 1200px;
+}
+
+.manifest-section .mv-table th:nth-child(1),
+.manifest-section .mv-table td:nth-child(1) {
+    min-width: 120px;
+}
+
+.manifest-section .mv-table th:nth-child(2),
+.manifest-section .mv-table td:nth-child(2) {
+    min-width: 100px;
+}
+
+.manifest-section .mv-table th:nth-child(3),
+.manifest-section .mv-table td:nth-child(3) {
+    min-width: 120px;
+}
+
+/* .manifest-section .mv-table th:nth-child(4),
+.manifest-section .mv-table td:nth-child(4) {
+    min-width: 150px;
+} */
+
+.manifest-section .mv-table th:nth-child(5),
+.manifest-section .mv-table td:nth-child(5) {
+    min-width: 120px;
+    text-align: center;
+}
+
+.manifest-section .mv-table th:nth-child(6),
+.manifest-section .mv-table td:nth-child(6) {
+    min-width: 120px;
+    text-align: center;
+}
+
+.manifest-section .mv-table th:nth-child(7),
+.manifest-section .mv-table td:nth-child(7) {
+    min-width: 120px;
+}
+
+.manifest-section .mv-table th:nth-child(8),
+.manifest-section .mv-table td:nth-child(8) {
+    min-width: 120px;
+}
+
+.manifest-section .mv-table th:nth-child(9),
+.manifest-section .mv-table td:nth-child(9) {
+    min-width: 180px;
+}
+
+/* Manifest Count Badge */
+.mv-count-badge {
+    background-color: #e0e7ff;
+    color: #4338ca;
+    padding: 6px 12px;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+/* Collapsible Row Details for Manifest */
+.manifest-section .mv-row-details {
+    display: none;
+    background-color: #f9fafb !important;
+}
+
+.manifest-section .mv-row-details.open {
+    display: table-row;
+}
+
+
+
+/* Manifest Details Table (Nested) */
+.manifest-section .mv-manifest-details-table {
+    margin: 0;
+    background-color: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.manifest-section .mv-manifest-details-table th {
+    background-color: #f3f4f6;
+    padding: 5px 10px;
+    font-size: 12px;
+    color: #6b7280;
+    font-weight: 600;
+}
+
+.manifest-section .mv-manifest-details-table td {
+    background-color: white !important;
+    padding: 5px;
+    font-size: 13px !important;
+    color: #374151;
+}
+
+.manifest-section .mv-row-details .mv-manifest-details-table td {
+    background-color: white !important;
+    padding: 5px !important;
+    font-size: 13px !important;
+    color: #374151;
+}
+
+
+.manifest-section .mv-manifest-details-table tbody tr:hover {
+    background-color: #f9fafb !important;
+}
+
+.manifest-section .mv-row-details .mv-manifest-details-table tfoot td {
+    background-color: #f9fafb !important;
+    border-top: 2px solid #e5e7eb !important;
+    font-weight: 600;
+    padding: 5px !important;
+}
+
+/* Manifest Table Row Hover */
+.manifest-section .mv-table tbody tr:not(.mv-row-details):hover {
+    background-color: #fafafa;
+}
+
+/* Filter Row Styles */
+.mv-filter-row th {
+    padding: 8px 4px !important;
+    background-color: #f8f9fa !important;
+    vertical-align: middle;
+    border-bottom: 2px solid #e5e7eb !important;
+}
+
+.mv-filter-input {
+    width: 100%;
+    padding: 6px 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 13px;
+    background-color: white;
+    box-sizing: border-box;
+}
+
+.mv-filter-input:focus {
+    outline: none;
+    border-color: #25b9d7;
+    box-shadow: 0 0 0 2px rgba(37, 185, 215, 0.1);
+}
+
+.mv-filter-input::placeholder {
+    color: #9ca3af;
+    font-size: 12px;
+}
+
+/* Filter Range (Min/Max) Inputs */
+.mv-filter-range {
+    display: table-cell !important;
+    gap: 4px;
+    align-items: center;
+    flex-wrap: nowrap;
+}
+
+.mv-filter-range input {
+    flex: 1;
+    min-width: 50px;
+    max-width: 100%;
+}
+
+/* Filter Buttons */
+.mv-btn-filter,
+.mv-btn-reset {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
+}
+
+.mv-btn-filter {
+    background-color: #25b9d7;
+    color: white;
+}
+
+.mv-btn-filter:hover {
+    background-color: #1da1ba;
+}
+
+.mv-btn-reset {
+    background-color: #ef4444;
+    color: white;
+}
+
+.mv-btn-reset:hover {
+    background-color: #dc2626;
+}
+
+/* Pagination Styles */
+.mv-pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px 0;
+    margin-top: 20px;
+}
+
+.mv-pagination-list {
+    display: flex;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    gap: 4px;
+}
+
+.mv-pagination-item {
+    list-style: none;
+}
+
+.mv-pagination-link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+    height: 36px;
+    padding: 0 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    background-color: white;
+    color: #374151;
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.2s;
+    cursor: pointer;
+}
+
+.mv-pagination-link:hover {
+    background-color: #f3f4f6;
+    border-color: #25b9d7;
+    color: #25b9d7;
+}
+
+.mv-pagination-active .mv-pagination-link {
+    background-color: #25b9d7;
+    border-color: #25b9d7;
+    color: white;
+    cursor: default;
+}
+
+.mv-pagination-active .mv-pagination-link:hover {
+    background-color: #25b9d7;
+    border-color: #25b9d7;
+    color: white;
+}
+
+/* Responsive for Manifest Section */
+@media (max-width: 768px) {
+    .manifest-section .mv-table {
+        font-size: 12px;
+    }
+
+    .manifest-section .mv-table th,
+    .manifest-section .mv-table td {
+        padding: 8px;
+    }
+
+    .manifest-section .mv-manifest-badge {
+        font-size: 10px;
+        padding: 3px 8px;
+    }
+
+    .manifest-section .mv-status-btn {
+        padding: 4px 8px;
+        font-size: 12px;
+    }
+
+    .manifest-section .mv-collapse-btn {
+        padding: 3px 10px;
+        font-size: 14px;
+    }
+
+    .mv-filter-row th {
+        padding: 4px 2px !important;
+    }
+
+    .mv-filter-input {
+        font-size: 11px;
+        padding: 4px 6px;
+    }
+
+    .mv-pagination {
+        padding: 15px 0;
+        margin-top: 15px;
+    }
+
+    .mv-pagination-link {
+        min-width: 32px;
+        height: 32px;
+        padding: 0 8px;
+        font-size: 13px;
+    }
+
+    .mv-pagination-list {
+        gap: 2px;
+    }
 }

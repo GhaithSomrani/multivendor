@@ -278,9 +278,10 @@ class AdminOrderLineStatusController  extends ModuleAdminController
 
     protected function countUsedStatuses($id_status_type)
     {
+
         return Db::getInstance()->getValue(
             'SELECT COUNT(*) 
-         FROM `' . _DB_PREFIX_ . 'mv_order_line_status_type` 
+         FROM `' . _DB_PREFIX_ . 'mv_order_line_status` 
          WHERE id_order_line_status_type = ' . (int)$id_status_type
         );
     }
@@ -374,6 +375,4 @@ class AdminOrderLineStatusController  extends ModuleAdminController
         }
         return $fields;
     }
-
-
 }

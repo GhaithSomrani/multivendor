@@ -1530,8 +1530,23 @@ h3.mv-card-title.address-title {
 
 
 .mv-search-container .mv-payment-header.selected {
-    background-color: #e3f2fd;
-    border-color: #2196f3;
+    background-color: #fff3e0;
+    border-color: #ff9800;
+    position: relative;
+}
+
+.mv-search-container .mv-payment-header.selected::before {
+    content: "Produit actuel";
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background-color: #ff9800;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
 }
 
 .mv-search-container .mv-product-name {

@@ -37,7 +37,7 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
 
         // get ajax actions from template
 
- 
+
         $id_vendor = $this->context->smarty->getTemplateVars('id_vendor');
         $id_supplier = $this->context->smarty->getTemplateVars('id_supplier');
         // Get Vendor Address 
@@ -198,12 +198,6 @@ class multivendorOrdersModuleFrontController extends ModuleFrontController
             'status_colors' => $status_colors,
             'pages_nb' => $total_pages,
             'current_page' => $page,
-            'vendor_dashboard_url' => $this->context->link->getModuleLink('multivendor', 'dashboard'),
-            'vendor_commissions_url' => $this->context->link->getModuleLink('multivendor', 'commissions'),
-            'vendor_profile_url' => $this->context->link->getModuleLink('multivendor', 'profile'),
-            'vendor_orders_url' => $this->context->link->getModuleLink('multivendor', 'orders'),
-            'vendor_manage_orders_url' => $this->context->link->getModuleLink('multivendor', 'manageorders', []),
-            'vendor_manifest_url' => $this->context->link->getModuleLink('multivendor', 'manifestmanager', []),
             'changeable_info' => $changeableStatusInfo['changeable_info'],
             'allowed_status_transitions' => $changeableStatusInfo['allowed_transitions'],
             'currency_sign' => $this->context->currency->sign,

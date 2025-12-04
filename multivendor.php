@@ -149,9 +149,6 @@ class multivendor extends Module
             ['class_name' => 'AdminVendorPayments', 'name' => 'Paiements', 'icon' => 'wallet'],
             ['class_name' => 'AdminVendors', 'name' => 'Fournisseurs', 'icon' => 'storefront'],
             ['class_name' => 'AdminVendorCommissions', 'name' => 'Commissions', 'icon' => 'money-off'],
-            ['class_name' => 'AdminOrderLineStatus', 'name' => 'Statut des Lignes de Commande', 'icon' => 'mi-settings'],
-            ['class_name' => 'AdminManifestStatusType', 'name' => 'Statut du Manifest', 'icon' => 'mi-settings'],
-            ['class_name' => 'AdminManifestType', 'name' => 'Types de Manifests', 'icon' => 'mi-settings'],
         ];
 
         foreach ($tabs as $t) {
@@ -163,6 +160,40 @@ class multivendor extends Module
                 $tab->name[$language['id_lang']] = $this->l($t['name']);
             }
             $tab->id_parent = $tabParent->id;
+            $tab->module = $this->name;
+            $tab->add();
+        }
+
+        // Create Settings parent tab
+        $tabSettings = new Tab();
+        $tabSettings->active = 1;
+        $tabSettings->name = array();
+        $tabSettings->class_name = 'AdminVendorSettings';
+
+        foreach (Language::getLanguages() as $language) {
+            $tabSettings->name[$language['id_lang']] = $this->l('Paramètres');
+        }
+
+        $tabSettings->id_parent = $tabParent->id;
+        $tabSettings->module = $this->name;
+        $tabSettings->add();
+
+        // Settings sub-tabs
+        $settingsTabs = [
+            ['class_name' => 'AdminOrderLineStatus', 'name' => 'Statut des Lignes de Commande'],
+            ['class_name' => 'AdminManifestStatusType', 'name' => 'Statut du Manifest'],
+            ['class_name' => 'AdminManifestType', 'name' => 'Types de Manifests'],
+        ];
+
+        foreach ($settingsTabs as $t) {
+            $tab = new Tab();
+            $tab->active = 1;
+            $tab->class_name = $t['class_name'];
+            $tab->name = array();
+            foreach (Language::getLanguages() as $language) {
+                $tab->name[$language['id_lang']] = $this->l($t['name']);
+            }
+            $tab->id_parent = $tabSettings->id;
             $tab->module = $this->name;
             $tab->add();
         }
@@ -242,11 +273,13 @@ class multivendor extends Module
             // In getContent() method, after existing Configuration::updateValue calls:
             Configuration::updateValue('MULTIVENDOR_COLLECT_GROUP', (int)Tools::getValue('MULTIVENDOR_COLLECT_GROUP'));
             Configuration::updateValue('MULTIVENDOR_RECEIVE_GROUP', (int)Tools::getValue('MULTIVENDOR_RECEIVE_GROUP'));
+
             Configuration::updateValue('MULTIVENDOR_STATUS_COLLECTED', (int)Tools::getValue('MULTIVENDOR_STATUS_COLLECTED'));
             Configuration::updateValue('MULTIVENDOR_STATUS_RECEIVED', (int)Tools::getValue('MULTIVENDOR_STATUS_RECEIVED'));
             Configuration::updateValue('MULTIVENDOR_STATUS_REFUND_PROCESSING', (int)Tools::getValue('MULTIVENDOR_STATUS_REFUND_PROCESSING'));
             Configuration::updateValue('MULTIVENDOR_STATUS_REFUND_COLLECTED', (int)Tools::getValue('MULTIVENDOR_STATUS_REFUND_COLLECTED'));
             Configuration::updateValue('MANIFEST_PICKUP_DRAFT', (int)Tools::getValue('MANIFEST_PICKUP_DRAFT'));
+            Configuration::updateValue('MANIFEST_PICKUP_PROCESSING', (int)Tools::getValue('MANIFEST_PICKUP_PROCESSING'));
             Configuration::updateValue('MANIFEST_RETURN_DRAFT', (int)Tools::getValue('MANIFEST_RETURN_DRAFT'));
             $output .= $this->displayConfirmation($this->l('Configuration mise à jour'));
 
@@ -509,6 +542,17 @@ class multivendor extends Module
 
                     [
                         'type' => 'select',
+                        'label' => $this->l('Statut du Manifeste de Livraison en Cours'),
+                        'name' => 'MANIFEST_PICKUP_PROCESSING',
+                        'desc' => $this->l('statut du manifeste pour les manifestes de ramassage en cours de livraison'),
+                        'options' => [
+                            'query' => $pickup_options,
+                            'id' => 'id_manifest_status_type',
+                            'name' => 'name'
+                        ],
+                    ],
+                    [
+                        'type' => 'select',
                         'label' => $this->l('Brouillion de Ramassage'),
                         'name' => 'MANIFEST_PICKUP_DRAFT',
                         'desc' => $this->l('statut du manifeste par défaut pour les nouveaux manifestes de ramassage'),
@@ -628,6 +672,7 @@ class multivendor extends Module
             'MULTIVENDOR_STATUS_RECEIVED' => Configuration::get('MULTIVENDOR_STATUS_RECEIVED'),
             'MULTIVENDOR_STATUS_REFUND_PROCESSING' => Configuration::get('MULTIVENDOR_STATUS_REFUND_PROCESSING'),
             'MULTIVENDOR_STATUS_REFUND_COLLECTED' => Configuration::get('MULTIVENDOR_STATUS_REFUND_COLLECTED'),
+            'MANIFEST_PICKUP_PROCESSING' => Configuration::get('MANIFEST_PICKUP_PROCESSING'),
             'MANIFEST_PICKUP_DRAFT' => Configuration::get('MANIFEST_PICKUP_DRAFT'),
             'MANIFEST_RETURN_DRAFT' => Configuration::get('MANIFEST_RETURN_DRAFT'),
         ];

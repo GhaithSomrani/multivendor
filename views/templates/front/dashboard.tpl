@@ -21,30 +21,7 @@
         {/if}
 
         <div class="mv-container">
-            <aside class="mv-sidebar">
-                <div class="mv-card">
-                    <div class="mv-card-body">
-                        <nav class="mv-nav">
-                            <a class="mv-nav-link mv-nav-link-active" href="{$vendor_dashboard_url}">
-                                <i class="mv-icon">📊</i>
-                                <span>{l s='Tableau de bord' mod='multivendor'}</span>
-                            </a>
-                            <a class="mv-nav-link" href="{$vendor_orders_url}">
-                                <i class="mv-icon">🛒</i>
-                                <span>{l s='Commandes' mod='multivendor'}</span>
-                            </a>
-                            <a class="mv-nav-link" href="{$vendor_manifest_url}">
-                                <i class="mv-icon">📋</i>
-                                <span>{l s='Manifestes' mod='multivendor'}</span>
-                            </a>
-                            <a class="mv-nav-link" href="{$vendor_commissions_url}">
-                                <i class="mv-icon">💰</i>
-                                <span>{l s='Commissions' mod='multivendor'}</span>
-                            </a>
-                        </nav>
-                    </div>
-                </div>
-            </aside>
+            {include file="module:multivendor/views/templates/front/_partials/sidebar.tpl" active_page="dashboard"}
 
             <main class="mv-main-content">
                 {* Date Filter Form *}
@@ -54,6 +31,7 @@
                         <span class="mv-active-filter">{l s='Filtre actuel :' mod='multivendor'} {$filter_label}</span>
                     </div>
                     <div class="mv-card-body">
+                    {assign var="vendor_dashboard_url" value=$link->getModuleLink('multivendor', 'dashboard') }
                         <form action="{$vendor_dashboard_url}" method="post" class="mv-date-filter-form">
                             <div class="mv-date-filter-options">
                                 <div class="mv-date-option">

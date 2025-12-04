@@ -303,6 +303,9 @@
                                 {if $first_manifest.supplier_address.country}{$first_manifest.supplier_address.country}<br>{/if}
                                 {if $first_manifest.supplier_address.phone}Tél:
                                 {$first_manifest.supplier_address.phone}<br>{/if}
+                                {if $first_manifest.supplier_address.vat_number} 
+                                    {$first_manifest.supplier_address.vat_number}
+                                {/if}
                             {else}
                                 <strong>{$first_manifest.vendor.name}</strong><br>
                             {/if}
@@ -373,10 +376,10 @@
                                     <img src="{$manifest.orderDetail.barcode nofilter}" width="100px">
                                     <span>{$manifest.orderDetail.product_mpn}</span>
                                 </td>
-                                <td class="text-center" >
+                                <td class="text-center">
                                     {$manifest.orderDetail.unit_price_tax_incl|string_format:"%.3f"}
                                 </td>
-                                <td class="text-center" >
+                                <td class="text-center">
                                     {$manifest.orderDetail.product_quantity|default:0}
                                 </td>
                                 <td class="text-right" {if !$manifest_id} rowspan="2" {/if}>

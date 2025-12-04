@@ -41,6 +41,11 @@ class MultivendorManifestManagerModuleFrontController extends ModuleFrontControl
         $this->context->controller->addCSS($this->module->getPathUri() . 'views/css/commissions.css');
         $this->context->controller->addCSS($this->module->getPathUri() . 'views/css/orders.css');
 
+        // Add daterangepicker library
+        $this->context->controller->registerStylesheet('daterangepicker-css', 'https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css', ['media' => 'all', 'priority' => 200, 'server' => 'remote']);
+        $this->context->controller->registerJavascript('moment-js', 'https://cdn.jsdelivr.net/npm/moment@2.29.1/moment.min.js', ['position' => 'head', 'priority' => 200, 'server' => 'remote']);
+        $this->context->controller->registerJavascript('daterangepicker-js', 'https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js', ['position' => 'bottom', 'priority' => 201, 'server' => 'remote']);
+
         $VendorObj = new Vendor($this->vendor['id_vendor']);
         $vendorAddresses = $VendorObj->getVendorAddress();
         $vendorFormattedAddresses = [];
@@ -65,11 +70,7 @@ class MultivendorManifestManagerModuleFrontController extends ModuleFrontControl
             'vendor_dashboard_url' => $this->context->link->getModuleLink('multivendor', 'dashboard'),
             'pickup_validation_name' => $pickupValidationName,
             'returns_validation_name' => $returnsValidationName,
-            'vendor_commissions_url' => $this->context->link->getModuleLink('multivendor', 'commissions'),
-            'vendor_profile_url' => $this->context->link->getModuleLink('multivendor', 'profile'),
-            'vendor_orders_url' => $this->context->link->getModuleLink('multivendor', 'orders'),
-            'vendor_manage_orders_url' => $this->context->link->getModuleLink('multivendor', 'manageorders', []),
-            'vendor_manifest_url' => $this->context->link->getModuleLink('multivendor', 'manifestmanager', []),
+     
         ]);
 
         $this->setTemplate('module:multivendor/views/templates/front/manifest.tpl');
@@ -247,18 +248,56 @@ class MultivendorManifestManagerModuleFrontController extends ModuleFrontControl
 
     private function getManifestList()
     {
-        $manifests = $this->getVendorManifests();
+        // Get filters
+        $filters = [
+            'reference' => Tools::getValue('reference'),
+            'type' => Tools::getValue('type'),
+            'date_range' => Tools::getValue('date'),
+            'address' => Tools::getValue('address'),
+            'items_min' => Tools::getValue('items_min'),
+            'items_max' => Tools::getValue('items_max'),
+            'qty_min' => Tools::getValue('qty_min'),
+            'qty_max' => Tools::getValue('qty_max'),
+            'total_min' => Tools::getValue('total_min'),
+            'total_max' => Tools::getValue('total_max'),
+            'status' => Tools::getValue('status'),
+        ];
+
+        // Parse date range if provided
+        $dateFrom = null;
+        $dateTo = null;
+        if (!empty($filters['date_range']) && strpos($filters['date_range'], ' - ') !== false) {
+            list($dateFromStr, $dateToStr) = explode(' - ', $filters['date_range']);
+            $dateFrom = DateTime::createFromFormat('d/m/Y', trim($dateFromStr));
+            $dateTo = DateTime::createFromFormat('d/m/Y', trim($dateToStr));
+        }
+
+        // Remove empty filters
+        $filters = array_filter($filters, function ($value) {
+            return $value !== '' && $value !== null && $value !== false;
+        });
+
+        // Pagination
+        $page = (int)Tools::getValue('page', 1);
+        $per_page = 10;
+        $offset = ($page - 1) * $per_page;
+
+        // Get all manifests first
+        $allManifests = $this->getVendorManifests($filters);
         $result = [];
-        foreach ($manifests as $manifest) {
+
+        foreach ($allManifests as $manifest) {
             if ($manifest['id_manifest_status'] != Configuration::get('MANIFEST_RETURN_DRAFT')) {
                 $address = Manifest::getManifestAddress($manifest['id_manifest']);
                 $manifestTypeObj = new ManifestType($manifest['id_manifest_type']);
                 $orderdetails = OrderHelper::getVendorOrderDetails($this->vendor['id_vendor'], ['manifest' => $manifest['id_manifest']]);
                 $total = array_sum(array_column($orderdetails, 'vendor_amount'));
+
                 $result[] = [
                     'id' => $manifest['id_manifest'],
                     'reference' => $manifest['reference'],
                     'address' =>  substr($address, 0, 25) . (strlen($address) > 25 ? '...' : ''),
+                    'full_address' => $address,
                     'date' => date('d/m/Y', strtotime($manifest['date_add'])),
                     'type' => $manifest['id_manifest_type'],
                     'type_name' => $manifestTypeObj->name,
@@ -272,7 +311,96 @@ class MultivendorManifestManagerModuleFrontController extends ModuleFrontControl
                 ];
             }
         }
-        $this->ajaxResponse(['manifests' => $result]);
+
+        // Apply filters
+        if (!empty($filters) || $dateFrom || $dateTo) {
+            $result = array_filter($result, function ($manifest) use ($filters, $dateFrom, $dateTo) {
+                // Reference filter
+                if (isset($filters['reference']) && stripos($manifest['reference'], $filters['reference']) === false) {
+                    return false;
+                }
+
+                // Type filter
+                if (isset($filters['type']) && $manifest['type'] != $filters['type']) {
+                    return false;
+                }
+
+                // Date range filter
+                if ($dateFrom && $dateTo) {
+                    $manifestDate = DateTime::createFromFormat('d/m/Y', $manifest['date']);
+                    if (!$manifestDate) {
+                        return false;
+                    }
+                    // Set time to start of day for comparison
+                    $manifestDate->setTime(0, 0, 0);
+                    $dateFrom->setTime(0, 0, 0);
+                    $dateTo->setTime(23, 59, 59);
+
+                    if ($manifestDate < $dateFrom || $manifestDate > $dateTo) {
+                        return false;
+                    }
+                }
+
+                // Address filter
+                if (isset($filters['address']) && stripos($manifest['full_address'], $filters['address']) === false) {
+                    return false;
+                }
+
+                // Items min filter
+                if (isset($filters['items_min']) && $manifest['nbre'] < $filters['items_min']) {
+                    return false;
+                }
+
+                // Items max filter
+                if (isset($filters['items_max']) && $manifest['nbre'] > $filters['items_max']) {
+                    return false;
+                }
+
+                // Qty min filter
+                if (isset($filters['qty_min']) && $manifest['qty'] < $filters['qty_min']) {
+                    return false;
+                }
+
+                // Qty max filter
+                if (isset($filters['qty_max']) && $manifest['qty'] > $filters['qty_max']) {
+                    return false;
+                }
+
+                // Total min filter
+                if (isset($filters['total_min']) && $manifest['total'] < $filters['total_min']) {
+                    return false;
+                }
+
+                // Total max filter
+                if (isset($filters['total_max']) && $manifest['total'] > $filters['total_max']) {
+                    return false;
+                }
+
+                // Status filter (exact match for dropdown)
+                if (isset($filters['status']) && $filters['status'] !== '' && $manifest['status'] !== $filters['status']) {
+                    return false;
+                }
+
+                return true;
+            });
+        }
+
+        // Calculate pagination
+        $total_count = count($result);
+        $total_pages = ceil($total_count / $per_page);
+
+        // Apply pagination
+        $result = array_slice($result, $offset, $per_page);
+
+        $this->ajaxResponse([
+            'manifests' => array_values($result),
+            'pagination' => [
+                'current_page' => $page,
+                'total_pages' => $total_pages,
+                'total_count' => $total_count,
+                'per_page' => $per_page
+            ]
+        ]);
     }
 
     private function createManifest()

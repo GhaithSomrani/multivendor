@@ -70,7 +70,7 @@ $sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'mv_vendor_payment` (
     `id_vendor_payment` int(10) unsigned NOT NULL AUTO_INCREMENT,
     `id_vendor` int(10) unsigned NOT NULL,
     `amount` decimal(20,6) NOT NULL DEFAULT "0.000000",
-    `payment_method` varchar(64) NOT NULL,
+    `payment_method` varchar(1024) NOT NULL,
     `reference` varchar(64) NOT NULL,
     `status` varchar(32) NOT NULL,
     `date_add` datetime NOT NULL,

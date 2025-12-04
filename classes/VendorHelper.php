@@ -897,7 +897,7 @@ class VendorHelper
         $query->leftJoin('mv_order_line_status_type', 'olst', 'olst.id_order_line_status_type = ols.id_order_line_status_type');
         $query->leftJoin('mv_vendor_payment', 'vp', 'vp.id_vendor_payment = vt.id_vendor_payment');
         $query->where('vod.id_vendor = ' . (int)$id_vendor);
-        $query->where('vt.transaction_type IN ("add", "refund")');
+        $query->where('vt.transaction_type IN ("commission", "refund")');
 
         // Apply filters
         if (!empty($filter['order_id'])) {
@@ -922,11 +922,8 @@ class VendorHelper
             $query->where('vt.status = "' . pSQL($filter['transaction_status']) . '"');
         }
         if (!empty($filter['line_status'])) {
-            if ($filter['line_status'] == 'delivered') {
-                $query->where('olst.id_order_line_status_type = 15');
-            } elseif ($filter['line_status'] == 'in_progress') {
-                $query->where('olst.id_order_line_status_type != 15');
-            }
+            // Filter by status ID directly
+            $query->where('olst.id_order_line_status_type = ' . (int)$filter['line_status']);
         }
         if (!empty($filter['datefilter'])) {
             $dates = explode(' - ', $filter['datefilter']);
@@ -984,7 +981,7 @@ class VendorHelper
         $query->leftJoin('mv_order_line_status_type', 'olst', 'olst.id_order_line_status_type = ols.id_order_line_status_type');
         $query->leftJoin('mv_vendor_payment', 'vp', 'vp.id_vendor_payment = vt.id_vendor_payment');
         $query->where('vod.id_vendor = ' . (int)$id_vendor);
-        $query->where('vt.transaction_type IN ("add", "refund")');
+        $query->where('vt.transaction_type IN ("commission", "refund")');
 
         // Apply same filters
         if (!empty($filter['order_id'])) {
@@ -1009,11 +1006,8 @@ class VendorHelper
             $query->where('vt.status = "' . pSQL($filter['transaction_status']) . '"');
         }
         if (!empty($filter['line_status'])) {
-            if ($filter['line_status'] == 'delivered') {
-                $query->where('olst.id_order_line_status_type = 15');
-            } elseif ($filter['line_status'] == 'in_progress') {
-                $query->where('olst.id_order_line_status_type != 15');
-            }
+            // Filter by status ID directly
+            $query->where('olst.id_order_line_status_type = ' . (int)$filter['line_status']);
         }
         if (!empty($filter['datefilter'])) {
             $dates = explode(' - ', $filter['datefilter']);
@@ -1034,6 +1028,315 @@ class VendorHelper
 
         return (int)Db::getInstance()->getValue($query);
     }
+
+    /**
+     * Get VendorOrderDetails with their related transactions
+     */
+    public static function getVendorOrderDetailsWithTransactions($id_vendor, $limit = null, $offset = null, $filter = [])
+    {
+        $query = new DbQuery();
+        $query->select('
+            vod.id_order_detail,
+            vod.id_order,
+            vod.product_id,
+            vod.product_attribute_id,
+            vod.vendor_amount,
+            vod.commission_amount,
+            vod.commission_rate,
+            vod.product_name,
+            vod.product_quantity,
+            vod.product_reference,
+            vod.product_mpn,
+            vod.product_price,
+            o.reference as order_reference,
+            o.date_add as order_date,
+            olst.name as line_status,
+            olst.color as status_color,
+            olst.id_order_line_status_type
+        ');
+        $query->from('mv_vendor_order_detail', 'vod');
+        $query->leftJoin('orders', 'o', 'o.id_order = vod.id_order');
+        $query->leftJoin('mv_order_line_status', 'ols', 'ols.id_order_detail = vod.id_order_detail');
+        $query->leftJoin('mv_order_line_status_type', 'olst', 'olst.id_order_line_status_type = ols.id_order_line_status_type');
+        $query->where('vod.id_vendor = ' . (int)$id_vendor);
+
+        // Only show order details that have at least one transaction
+        $query->where('EXISTS (SELECT 1 FROM ' . _DB_PREFIX_ . 'mv_vendor_transaction vt WHERE vt.order_detail_id = vod.id_order_detail)');
+
+        // Apply filters
+        if (!empty($filter['order_id'])) {
+            $query->where('(vod.id_order LIKE "%' . pSQL($filter['order_id']) . '%" OR o.reference LIKE "%' . pSQL($filter['order_id']) . '%")');
+        }
+        if (!empty($filter['product_name'])) {
+            $query->where('vod.product_name LIKE "%' . pSQL($filter['product_name']) . '%"');
+        }
+        if (!empty($filter['reference'])) {
+            $query->where('vod.product_reference LIKE "%' . pSQL($filter['reference']) . '%"');
+        }
+        if (!empty($filter['amount_min'])) {
+            $query->where('vod.vendor_amount >= ' . (float)$filter['amount_min']);
+        }
+        if (!empty($filter['amount_max'])) {
+            $query->where('vod.vendor_amount <= ' . (float)$filter['amount_max']);
+        }
+        if (!empty($filter['line_status'])) {
+            // Filter by status ID directly
+            $query->where('olst.id_order_line_status_type = ' . (int)$filter['line_status']);
+        }
+        if (!empty($filter['line_status_not'])) {
+            // Exclude specific status ID
+            $query->where('olst.id_order_line_status_type != ' . (int)$filter['line_status_not']);
+        }
+        if (!empty($filter['datefilter'])) {
+            $dates = explode(' - ', $filter['datefilter']);
+            if (count($dates) == 2) {
+                $start = date('Y-m-d', strtotime($dates[0]));
+                $end = date('Y-m-d', strtotime($dates[1]));
+                $query->where('DATE(o.date_add) BETWEEN "' . pSQL($start) . '" AND "' . pSQL($end) . '"');
+            }
+        }
+
+        // Filter by transaction status if specified
+        if (!empty($filter['transaction_status'])) {
+            if ($filter['transaction_status'] == 'pending') {
+                // Special case: if line_status=15 (delivered), match the summary (more restrictive)
+                if (!empty($filter['line_status']) && $filter['line_status'] == '15') {
+                    $subQuery = 'EXISTS (SELECT 1 FROM ' . _DB_PREFIX_ . 'mv_vendor_transaction vt
+                        WHERE vt.order_detail_id = vod.id_order_detail
+                        AND vt.status = "pending"
+                        AND vt.id_vendor_payment = 0)';
+                } else {
+                    // Match the summary calculation: pending transaction OR pending payment OR no payment assigned
+                    $subQuery = 'EXISTS (SELECT 1 FROM ' . _DB_PREFIX_ . 'mv_vendor_transaction vt
+                        LEFT JOIN ' . _DB_PREFIX_ . 'mv_vendor_payment vp ON vp.id_vendor_payment = vt.id_vendor_payment
+                        WHERE vt.order_detail_id = vod.id_order_detail
+                        AND (vt.status = "pending" OR vp.status = "pending" OR vt.id_vendor_payment = 0 OR vt.id_vendor_payment IS NULL))';
+                }
+            } else {
+                $subQuery = 'EXISTS (SELECT 1 FROM ' . _DB_PREFIX_ . 'mv_vendor_transaction vt
+                    WHERE vt.order_detail_id = vod.id_order_detail
+                    AND vt.status = "' . pSQL($filter['transaction_status']) . '")';
+            }
+            $query->where($subQuery);
+        }
+
+        // Filter by commission_action (order line status type commission_action)
+        if (!empty($filter['commission_action'])) {
+            if ($filter['commission_action'] == 'refund') {
+                // Special case: refund action should filter by status types 13 and 27
+                $query->where('olst.id_order_line_status_type IN (13, 27)');
+                $subQuery = 'EXISTS (SELECT 1 FROM ' . _DB_PREFIX_ . 'mv_vendor_transaction vt
+                    WHERE vt.order_detail_id = vod.id_order_detail
+                    AND vt.transaction_type = "refund")';
+                $query->where($subQuery);
+            } elseif ($filter['commission_action'] == 'commission') {
+                // Filter by commission transaction type for backward compatibility
+                $subQuery = 'EXISTS (SELECT 1 FROM ' . _DB_PREFIX_ . 'mv_vendor_transaction vt
+                    WHERE vt.order_detail_id = vod.id_order_detail
+                    AND vt.transaction_type = "commission")';
+                $query->where($subQuery);
+            } else {
+                // Filter by order line status type commission_action
+                $query->where('olst.commission_action = "' . pSQL($filter['commission_action']) . '"');
+            }
+        }
+
+        // Filter by transaction_type
+        if (!empty($filter['transaction_type'])) {
+            $subQuery = 'EXISTS (SELECT 1 FROM ' . _DB_PREFIX_ . 'mv_vendor_transaction vt
+                WHERE vt.order_detail_id = vod.id_order_detail
+                AND vt.transaction_type = "' . pSQL($filter['transaction_type']) . '")';
+            $query->where($subQuery);
+        }
+
+        // Filter by payment date
+        if (!empty($filter['payment_datefilter'])) {
+            $dates = explode(' - ', $filter['payment_datefilter']);
+            if (count($dates) == 2) {
+                $start = date('Y-m-d', strtotime($dates[0]));
+                $end = date('Y-m-d', strtotime($dates[1]));
+                $subQuery = 'EXISTS (SELECT 1 FROM ' . _DB_PREFIX_ . 'mv_vendor_transaction vt
+                    LEFT JOIN ' . _DB_PREFIX_ . 'mv_vendor_payment vp ON vp.id_vendor_payment = vt.id_vendor_payment
+                    WHERE vt.order_detail_id = vod.id_order_detail
+                    AND DATE(vp.date_add) BETWEEN "' . pSQL($start) . '" AND "' . pSQL($end) . '")';
+                $query->where($subQuery);
+            }
+        }
+
+        // Apply sorting
+        $orderBy = !empty($filter['order_by']) ? $filter['order_by'] : 'order_date';
+        $orderWay = !empty($filter['order_way']) && in_array(strtoupper($filter['order_way']), ['ASC', 'DESC']) ? strtoupper($filter['order_way']) : 'DESC';
+
+        $allowedOrderBy = [
+            'id_order' => 'vod.id_order',
+            'product_name' => 'vod.product_name',
+            'vendor_amount' => 'vod.vendor_amount',
+            'line_status' => 'olst.name',
+            'order_date' => 'o.date_add'
+        ];
+
+        $orderByField = isset($allowedOrderBy[$orderBy]) ? $allowedOrderBy[$orderBy] : 'o.date_add';
+        $query->orderBy($orderByField . ' ' . $orderWay);
+
+        if ($limit) {
+            $query->limit($limit, $offset);
+        }
+
+        $orderDetails = Db::getInstance()->executeS($query);
+
+        // Get transactions for each order detail
+        if ($orderDetails) {
+            foreach ($orderDetails as &$detail) {
+                $detail['transactions'] = self::getTransactionsForOrderDetail($detail['id_order_detail']);
+            }
+        }
+
+        return $orderDetails;
+    }
+
+    /**
+     * Get transactions for a specific order detail
+     */
+    public static function getTransactionsForOrderDetail($id_order_detail)
+    {
+        $query = new DbQuery();
+        $query->select('
+            vt.id_vendor_transaction,
+            vt.vendor_amount,
+            vt.transaction_type,
+            vt.status,
+            vt.date_add as transaction_date,
+            vp.reference as payment_reference,
+            vp.date_add as payment_date,
+            vp.id_vendor_payment
+        ');
+        $query->from('mv_vendor_transaction', 'vt');
+        $query->leftJoin('mv_vendor_payment', 'vp', 'vp.id_vendor_payment = vt.id_vendor_payment');
+        $query->where('vt.order_detail_id = ' . (int)$id_order_detail);
+        $query->orderBy('vt.date_add DESC');
+
+        return Db::getInstance()->executeS($query);
+    }
+
+    /**
+     * Count total VendorOrderDetails with filters
+     */
+    public static function countVendorOrderDetails($id_vendor, $filter = [])
+    {
+        $query = new DbQuery();
+        $query->select('COUNT(DISTINCT vod.id_order_detail)');
+        $query->from('mv_vendor_order_detail', 'vod');
+        $query->leftJoin('orders', 'o', 'o.id_order = vod.id_order');
+        $query->leftJoin('mv_order_line_status', 'ols', 'ols.id_order_detail = vod.id_order_detail');
+        $query->leftJoin('mv_order_line_status_type', 'olst', 'olst.id_order_line_status_type = ols.id_order_line_status_type');
+        $query->where('vod.id_vendor = ' . (int)$id_vendor);
+
+        // Only count order details that have at least one transaction
+        $query->where('EXISTS (SELECT 1 FROM ' . _DB_PREFIX_ . 'mv_vendor_transaction vt WHERE vt.order_detail_id = vod.id_order_detail)');
+
+        // Apply same filters
+        if (!empty($filter['order_id'])) {
+            $query->where('(vod.id_order LIKE "%' . pSQL($filter['order_id']) . '%" OR o.reference LIKE "%' . pSQL($filter['order_id']) . '%")');
+        }
+        if (!empty($filter['product_name'])) {
+            $query->where('vod.product_name LIKE "%' . pSQL($filter['product_name']) . '%"');
+        }
+        if (!empty($filter['reference'])) {
+            $query->where('vod.product_reference LIKE "%' . pSQL($filter['reference']) . '%"');
+        }
+        if (!empty($filter['amount_min'])) {
+            $query->where('vod.vendor_amount >= ' . (float)$filter['amount_min']);
+        }
+        if (!empty($filter['amount_max'])) {
+            $query->where('vod.vendor_amount <= ' . (float)$filter['amount_max']);
+        }
+        if (!empty($filter['line_status'])) {
+            // Filter by status ID directly
+            $query->where('olst.id_order_line_status_type = ' . (int)$filter['line_status']);
+        }
+        if (!empty($filter['line_status_not'])) {
+            // Exclude specific status ID
+            $query->where('olst.id_order_line_status_type != ' . (int)$filter['line_status_not']);
+        }
+        if (!empty($filter['datefilter'])) {
+            $dates = explode(' - ', $filter['datefilter']);
+            if (count($dates) == 2) {
+                $start = date('Y-m-d', strtotime($dates[0]));
+                $end = date('Y-m-d', strtotime($dates[1]));
+                $query->where('DATE(o.date_add) BETWEEN "' . pSQL($start) . '" AND "' . pSQL($end) . '"');
+            }
+        }
+
+        // Filter by transaction status if specified
+        if (!empty($filter['transaction_status'])) {
+            if ($filter['transaction_status'] == 'pending') {
+                // Special case: if line_status=15 (delivered), match the summary (more restrictive)
+                if (!empty($filter['line_status']) && $filter['line_status'] == '15') {
+                    $subQuery = 'EXISTS (SELECT 1 FROM ' . _DB_PREFIX_ . 'mv_vendor_transaction vt
+                        WHERE vt.order_detail_id = vod.id_order_detail
+                        AND vt.status = "pending"
+                        AND vt.id_vendor_payment = 0)';
+                } else {
+                    // Match the summary calculation: pending transaction OR pending payment OR no payment assigned
+                    $subQuery = 'EXISTS (SELECT 1 FROM ' . _DB_PREFIX_ . 'mv_vendor_transaction vt
+                        LEFT JOIN ' . _DB_PREFIX_ . 'mv_vendor_payment vp ON vp.id_vendor_payment = vt.id_vendor_payment
+                        WHERE vt.order_detail_id = vod.id_order_detail
+                        AND (vt.status = "pending" OR vp.status = "pending" OR vt.id_vendor_payment = 0 OR vt.id_vendor_payment IS NULL))';
+                }
+            } else {
+                $subQuery = 'EXISTS (SELECT 1 FROM ' . _DB_PREFIX_ . 'mv_vendor_transaction vt
+                    WHERE vt.order_detail_id = vod.id_order_detail
+                    AND vt.status = "' . pSQL($filter['transaction_status']) . '")';
+            }
+            $query->where($subQuery);
+        }
+
+        // Filter by commission_action (order line status type commission_action)
+        if (!empty($filter['commission_action'])) {
+            if ($filter['commission_action'] == 'refund') {
+                // Special case: refund action should filter by status types 13 and 27
+                $query->where('olst.id_order_line_status_type IN (13, 27)');
+                $subQuery = 'EXISTS (SELECT 1 FROM ' . _DB_PREFIX_ . 'mv_vendor_transaction vt
+                    WHERE vt.order_detail_id = vod.id_order_detail
+                    AND vt.transaction_type = "refund")';
+                $query->where($subQuery);
+            } elseif ($filter['commission_action'] == 'commission') {
+                // Filter by commission transaction type for backward compatibility
+                $subQuery = 'EXISTS (SELECT 1 FROM ' . _DB_PREFIX_ . 'mv_vendor_transaction vt
+                    WHERE vt.order_detail_id = vod.id_order_detail
+                    AND vt.transaction_type = "commission")';
+                $query->where($subQuery);
+            } else {
+                // Filter by order line status type commission_action
+                $query->where('olst.commission_action = "' . pSQL($filter['commission_action']) . '"');
+            }
+        }
+
+        // Filter by transaction_type
+        if (!empty($filter['transaction_type'])) {
+            $subQuery = 'EXISTS (SELECT 1 FROM ' . _DB_PREFIX_ . 'mv_vendor_transaction vt
+                WHERE vt.order_detail_id = vod.id_order_detail
+                AND vt.transaction_type = "' . pSQL($filter['transaction_type']) . '")';
+            $query->where($subQuery);
+        }
+
+        // Filter by payment date
+        if (!empty($filter['payment_datefilter'])) {
+            $dates = explode(' - ', $filter['payment_datefilter']);
+            if (count($dates) == 2) {
+                $start = date('Y-m-d', strtotime($dates[0]));
+                $end = date('Y-m-d', strtotime($dates[1]));
+                $subQuery = 'EXISTS (SELECT 1 FROM ' . _DB_PREFIX_ . 'mv_vendor_transaction vt
+                    LEFT JOIN ' . _DB_PREFIX_ . 'mv_vendor_payment vp ON vp.id_vendor_payment = vt.id_vendor_payment
+                    WHERE vt.order_detail_id = vod.id_order_detail
+                    AND DATE(vp.date_add) BETWEEN "' . pSQL($start) . '" AND "' . pSQL($end) . '")';
+                $query->where($subQuery);
+            }
+        }
+
+        return (int)Db::getInstance()->getValue($query);
+    }
+
     /**
      * Get the list of the available customers that are not vendors
      */
@@ -1230,7 +1533,7 @@ class VendorHelper
     public static function getSupplierAddressByVendor($id_vendor)
     {
         $query = new DbQuery();
-        $query->select('a.id_address, s.name, a.address1 as address, a.address2, a.postcode, a.city, a.phone, co.name as country');
+        $query->select('a.id_address, s.name, a.address1 as address, a.address2, a.postcode, a.city, a.phone, co.name as country ,a.vat_number');
         $query->from('mv_vendor', 'v');
         $query->leftJoin('supplier', 's', 's.id_supplier = v.id_supplier');
         $query->leftJoin('address', 'a', 'a.id_supplier = s.id_supplier');

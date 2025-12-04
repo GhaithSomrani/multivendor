@@ -4,6 +4,8 @@
  * OrderLineStatus model class - UPDATED VERSION with update() override
  */
 
+use PrestaShop\PrestaShop\Adapter\Entity\Tools;
+
 if (!defined('_PS_VERSION_')) {
     exit;
 }
@@ -68,8 +70,6 @@ class OrderLineStatus extends ObjectModel
             'date_upd' => [],
             'changed_by' => ['required' => false, 'getter' => 'getCurrentChangeBy'],
         ],
-
-
     ];
 
 
@@ -89,12 +89,32 @@ class OrderLineStatus extends ObjectModel
      */
     public function update($nullValues = false)
     {
+
+
+        if (!$this->isApiCall()) {
+            $prevouisStatusId = OrderLineStatusLog::getprevouisStatusId($this->id_order_detail);
+            if (isset(Context::getContext()->employee) && Context::getContext()->employee->isSuperAdmin()) {
+                if (parent::update($nullValues)) {
+                    $orderLineStatusLog = new OrderLineStatusLog();
+                    $orderLineStatusLog->id_order_detail = (int)$this->id_order_detail;
+                    $orderLineStatusLog->id_vendor = (int)$this->id_vendor;
+                    $orderLineStatusLog->old_id_order_line_status_type = $prevouisStatusId['new_id_order_line_status_type'];
+                    $orderLineStatusLog->new_id_order_line_status_type = (int)$this->id_order_line_status_type;
+                    $orderLineStatusLog->comment = "Changement d'état par le super administrateur";
+                    $orderLineStatusLog->changed_by = $this->getChangedBy();
+                    return $orderLineStatusLog->save();
+                }
+            }
+        }
+
+
         try {
             $className = Context::getContext()->controller->className ?? 'FrontOffice';
 
 
+
             // Auto-determine vendor if not set
-            if (empty($this->id_vendor) && !empty($this->id_order_detail)) {
+            if (empty($this->id_vendor) && !empty($tihis->id_order_detail)) {
                 $this->id_vendor = self::getVendorByOrderDetail($this->id_order_detail);
 
                 if (!$this->id_vendor) {
@@ -122,7 +142,7 @@ class OrderLineStatus extends ObjectModel
                 return false;
             }
 
-            // Validate status type
+            // Validate status type first to get commission_action
             $statusType = new OrderLineStatusType($this->id_order_line_status_type);
             if (!Validate::isLoadedObject($statusType)) {
                 $error_msg = 'ID de type de statut invalide : ' . $this->id_order_line_status_type . ' - Class Name : ' . $className;
@@ -135,6 +155,23 @@ class OrderLineStatus extends ObjectModel
                 }
                 return false;
             }
+
+            if (self::isTransactionLinkedToPayment($this->id_order_detail)) {
+                $allowedActions = ['cancel'];
+                if (in_array($statusType->commission_action, $allowedActions)) {
+                    $error_msg = 'Changement de statut bloque : la transaction est liée à un paiement. ';
+                    error_log($error_msg);
+                    PrestaShopLogger::addLog($error_msg, 3, null, 'OrderLineStatus', $this->id, true);
+
+                    if ($this->isApiCall()) {
+                        $this->setWsError($error_msg, 403);
+                        return false;
+                    }
+                    return false;
+                }
+            }
+
+
 
             // Check user permissions
             $is_api_call = $this->isApiCall();
@@ -182,6 +219,7 @@ class OrderLineStatus extends ObjectModel
 
             return $success;
         } catch (Exception $e) {
+
             $error_msg = 'Erreur dans OrderLineStatus::update : ' . $e->getMessage() . ' - Class Name : ' . $className;
             PrestaShopLogger::addLog($error_msg . ' \n - Trace de la pile : ' . $e->getTraceAsString(), 3, null, 'OrderLineStatus', $this->id, true);
 
@@ -457,5 +495,49 @@ class OrderLineStatus extends ObjectModel
 
         $this->id_order_detail = (int)$id_order_detail;
         return true;
+    }
+
+    /**
+     * Check if the transaction for this order detail is linked to a payment
+     *
+     * @param int $id_order_detail Order detail ID
+     * @return bool True if linked to a payment, false otherwise
+     */
+    protected static function isTransactionLinkedToPayment($id_order_detail)
+    {
+        $query = new DbQuery();
+        $query->select('COUNT(*)');
+        $query->from('mv_vendor_transaction');
+        $query->where('order_detail_id = ' . (int)$id_order_detail);
+        $query->where('id_vendor_payment != 0');
+
+        $count = Db::getInstance()->getValue($query);
+        return (int)$count > 0;
+    }
+
+    public static function revertToPreviousStatus($id_order_detail, $changeby)
+    {
+        if (Context::getContext()->employee->isSuperAdmin()) {
+
+            $orderLineStatus = OrderLineStatus::getByOrderDetail($id_order_detail);
+            $prevouisStatus = OrderLineStatusLog::getprevouisStatusId($id_order_detail);
+            if ($prevouisStatus['old_id_order_line_status_type'] == 0) {
+                throw new Exception('Aucun état précédent disponible pour le détail de commande ID : ' . $id_order_detail);
+            }
+            $orderLineStatusObject = new OrderLineStatus($orderLineStatus['id_order_line_status']);
+            $orderLineStatusObject->id_order_line_status_type = $prevouisStatus['old_id_order_line_status_type'];
+            $orderLineStatusObject->changed_by = $changeby;
+            $orderLineStatusObject->comment =  "Restauration de l'état précédent par le super administrateur";
+            if ($orderLineStatusObject->save()) {
+                $orderLineStatusLog = new OrderLineStatusLog();
+                $orderLineStatusLog->id_order_detail = (int)$id_order_detail;
+                $orderLineStatusLog->id_vendor = (int)$orderLineStatus['id_vendor'];
+                $orderLineStatusLog->old_id_order_line_status_type = $prevouisStatus['new_id_order_line_status_type'];
+                $orderLineStatusLog->new_id_order_line_status_type = (int)$prevouisStatus['old_id_order_line_status_type'];
+                $orderLineStatusLog->comment = "Restauration de l'état précédent par le super administrateur";
+                $orderLineStatusLog->changed_by = $changeby;
+                $orderLineStatusLog->save();
+            }
+        }
     }
 }

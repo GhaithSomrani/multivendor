@@ -30,11 +30,15 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
             ]
         ];
         $this->addRowAction('view');
+
         $this->allow_export = true;
         $this->_use_found_rows = true;
 
         parent::__construct();
+        if (Context::getContext()->employee->isSuperAdmin()) {
 
+            $this->addRowAction('restauration');
+        }
         $this->fields_list = [
             'id_vendor_order_detail' => [
                 'title' => $this->l('ID'),
@@ -163,8 +167,69 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
     }
 
 
+    /*************  ✨ Windsurf Command ⭐  *************/
+    /**
+     * Generate a link to restorate the given order detail
+     *
+     * @param string|null $token The token to use for the link
+     * @param int $id The ID of the order detail
+     * @param string|null $name The name of the order detail (optional)
+     *
+     * @return string The rendered link
+     */
+    /*******  53f18b41-3c6f-4133-9b33-57b5e2bce8d1  *******/
+    public function displayRestaurationLink($token = null, $id, $name = null)
+    {
+        $tpl = $this->createTemplate('helpers/list/list_action_edit.tpl');
+
+        // Assign variables to the template
+        // check if the user is super admin
+        if (Context::getContext()->employee->isSuperAdmin()) {
+            $tpl->assign(array(
+                'href' => self::$currentIndex . '&' . $this->identifier . '=' . $id . '&restauration' . $this->table . '=1&token=' . ($token != null ? $token : $this->token),
+                'action' => $this->l('Retourner au statut précédent'), // The link title
+                'id' => $id
+            ));
+        }
 
 
+
+        return $tpl->fetch();
+    }
+
+
+    public function processRestauration()
+    {
+        $id = (int)Tools::getValue($this->identifier);
+        try {
+            if ($id) {
+                $vendorOrderDetail = new VendorOrderDetail($id);
+                $id_order_detail = $vendorOrderDetail->id_order_detail;
+                $changeby = EntityLogHelper::getChangedBy();
+                Orderlinestatus::revertToPreviousStatus($id_order_detail, $changeby);
+                $this->confirmations[] = $this->l('Statut rétabli avec succès. ');
+                Tools::redirectAdmin(
+                    self::$currentIndex
+                        . '&' . $this->identifier . '=' . $id
+                        . '&conf=4' // Optional: PrestaShop success message ID
+                        . '&token=' . $this->token
+                );
+            }
+        } catch (Exception $e) {
+            PrestaShopLogger::addLog('Restauration Error: ' . $e->getMessage(), 3, null, 'AdminVendorOrderDetails');
+            $this->errors[] = $this->l('Error during restauration: ') . $e->getMessage();
+            return;
+        }
+    }
+
+    public function initProcess()
+    {
+        parent::initProcess();
+
+        if (Tools::getIsset('restauration' . $this->table)) {
+            $this->action = 'restauration';
+        }
+    }
 
     public function getBulkActionsList()
     {
@@ -491,19 +556,28 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
      */
     public function renderList()
     {
-
-
-
-
-
         $content = parent::renderList();
-
         $massUpdatePanel = $this->renderMassUpdatePanel();
-
-
         return   $massUpdatePanel .   $content;
     }
 
+
+    public function ajaxProcessRevertStatus()
+    {
+        try {
+            $ids = Tools::getValue('ids', []);
+
+            $changeby = Tools::getValue('changeby');
+            foreach ($ids as $id) {
+                $ordervendor =  new VendorOrderDetail((int)$id);
+                OrderLineStatus::revertToPreviousStatus($ordervendor->id_order_detail, $changeby);
+            }
+            die(json_encode(['success' => true, 'message' => 'Statut rétabli avec succès pour les lignes sélectionnées.']));
+        } catch (Exception $e) {
+            PrestaShopLogger::addLog('Revert Status Error: ' . $e->getMessage(), 3, null, 'AdminVendorOrderDetails');
+            die(json_encode(['success' => false, 'message' => 'Error reverting status: ' . $e->getMessage()]));
+        }
+    }
 
     public function ajaxProcesseExportSelectedIds()
     {
@@ -585,6 +659,9 @@ class AdminVendorOrderDetailsController extends ModuleAdminController
                     $this->ajaxProcessAjaxMassUpdateStatus();
                 case 'exportSelectedIds':
                     $this->ajaxProcesseExportSelectedIds();
+                    break;
+                case 'Revert':
+                    $this->ajaxProcessRevertStatus();
                     break;
             }
 

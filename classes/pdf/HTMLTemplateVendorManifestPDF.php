@@ -97,7 +97,8 @@ class HTMLTemplateVendorManifestPDF extends HTMLTemplate
                     'country' => $Address->country,
                     'phone' => $Address->phone,
                     'vat_number' => $Address->vat_number,
-                    'dni' => $Address->dni
+                    'dni' => $Address->dni,
+                    'vat_number' => $Address->vat_number
                 ] : [],
                 'order' => [
                     'id' => $order->id,

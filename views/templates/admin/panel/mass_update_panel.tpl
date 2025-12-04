@@ -29,8 +29,6 @@
         <div class="row" id="checkbox-update-section">
             <div class="form-horizontal">
                 <div class="row">
-
-
                     <div class="col-md-4">
                         <div class="form-group">
                             <label class="control-label">{l s='Nouveau statut' mod='multivendor'} :</label>
@@ -84,15 +82,31 @@
                 </div>
             </div>
         </div>
+        {assign var="isSuperAdmin" value=Context::getContext()->employee->isSuperAdmin() }
+        {if $isSuperAdmin}
+            <div class="row">
+                <button type="button" class="btn btn-primary" id="revert-button">
+                    Retourner au statut précédent
+                </button>
+            </div>
+        {/if}
+
         <hr>
     </div>
+    {assign var="changeby" value=EntityLogHelper::getChangedBy()}
+
+
 </div>
+
+
 
 <script type="text/javascript">
     $(document).ready(function() {
         // AJAX URL for mass update
         var ajaxUrl = '{$current_index|escape:'html':'UTF-8'}&ajax=1&action=ajaxMassUpdateStatus&token={$token|escape:'html':'UTF-8'}';
         var ajaxUrlBarcode ='{$current_index|escape:'html':'UTF-8'}&ajax=1&action=checkBarCode&token={$token|escape:'html':'UTF-8'}'
+        var ajaxUrlRevert ='{$current_index|escape:'html':'UTF-8'}&ajax=1&action=Revert&token={$token|escape:'html':'UTF-8'}'
+
         // Update selected count display
         function updateSelectedCount() {
             var checkedBoxes = $("input[name='vendor_order_detailsBox[]']:checked");
@@ -270,7 +284,16 @@
 
         barcodeTimer = setTimeout(function() {
             let barcode = $('#barcode').val().trim();
-            if (!barcode) return;
+
+            // 1️⃣ ERROR: no barcode entered
+            if (!barcode) {
+                if (typeof window.showErrorMessage === 'function') {
+                    window.showErrorMessage('Veuillez saisir un code barre.', 'error');
+                } else {
+                    alert('Veuillez saisir un code barre.');
+                }
+                return;
+            }
 
             // Find all spans with the matching data-mpn
             let $spans = $('span[data-mpn="' + barcode + '"]');
@@ -297,10 +320,74 @@
                 }
             });
 
+            // 2️⃣ ERROR: barcode exists, but all matching rows are already checked OR no matches
             if (!checkedOne) {
-                console.log('Aucun élément non coché trouvé pour le code barre : ' + barcode);
+                if ($spans.length === 0) {
+                    // No rows with this barcode at all
+                    if (typeof window.showErrorMessage === 'function') {
+                        window.showErrorMessage(
+                            'Aucun produit trouvé pour le code barre : ' + barcode,
+                            'error'
+                        );
+                    } else {
+                        alert('Aucun produit trouvé pour ce code barre.');
+                    }
+                } else {
+                    // Exists but all are checked
+                    if (typeof window.showErrorMessage === 'function') {
+                        window.showErrorMessage(
+                            'Plus aucun produit disponible pour le code barre : ' + barcode,
+                            'error'
+                        );
+                    } else {
+                        alert('Plus aucun produit disponible pour ce code barre.');
+                    }
+                }
             }
         }, 500);
     });
+
+
+    $("#revert-button").on('click', function(e) {
+        e.preventDefault();
+        var checkedBoxes = $("input[name='vendor_order_detailsBox[]']:checked");
+        if (checkedBoxes.length === 0) {
+            alert("{l s='Veuillez sélectionner au moins un élément.' mod='multivendor'}");
+            return false;
+        }
+        var selectedIds = [];
+        checkedBoxes.each(function() {
+            selectedIds.push($(this).val());
+        });
+
+        $.ajax({
+            url: ajaxUrlRevert,
+            type: 'POST',
+            dataType: 'json',
+            data: {
+                ids: selectedIds,
+                changeby : '{$changeby}'
+            },
+            success: function(response) {
+                if (response.success) {
+                    window.showSuccessMessage(
+                        response.message
+                    );
+                    setTimeout(function() {
+                        window.location.reload();
+                    }, 500);
+                } else {
+                    window.showErrorMessage(
+                        response.message
+                    );
+                }
+
+            },
+            error: function(xhr, status, error) {
+
+            }
+        });
+    });
+
     });
 </script>
